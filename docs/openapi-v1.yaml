@@ -6985,6 +6985,7 @@ components:
             oneOf:
             - {$ref: '#/components/schemas/Fecha'}
             - {type: 'null'}
+          servicio_tipo: {type: [string, 'null'], enum: [natural, ia, iatf, null], description: 'TPA-27 (aditivo): tipo del último servicio'}
           fpp_precision: {type: [string, 'null']}
           retiro_carne_hasta:
             oneOf:

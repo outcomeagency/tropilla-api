@@ -50,6 +50,7 @@ class AnimalResource extends JsonResource
             'partos' => (int) $a->partos,
             'ultimo_parto_fecha' => $a->ultimo_parto_fecha,
             'servicio_fecha' => $a->servicio_fecha,
+            'servicio_tipo' => $a->servicio_tipo,
             'fpp_precision' => $a->fpp_precision,
             'retiro_carne_hasta' => $a->retiro_carne_hasta,
             'retiro_leche_hasta' => $a->retiro_leche_hasta,

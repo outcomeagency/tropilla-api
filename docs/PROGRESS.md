@@ -453,3 +453,19 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
   **publicados** (la carpeta documental es TPA-36: hasta entonces siempre «No coincide»). Un archivo privado responde igual que uno inexistente.
 - Verificado: 4 tests (evento sin contenido + eslabón recalculable + prueba.json, versión no vigente y sobre público de oferta
   re-hasheable, 404, archivo por hash/subida sin guardar/422).
+
+## TPA-27 · Servicio natural e inseminación · ✅ (parte API)
+
+**Endpoints:** vía `POST …/eventos` (`reproduccion.servicio_natural`, `reproduccion.inseminacion`) y push; resultado en la ficha
+(`estado_reproductivo`, `servicio_fecha`, `servicio_tipo` — **nuevo campo aditivo** en `Animal`, ya en el YAML —, `fecha_probable_parto`, `fpp_precision`).
+
+**Comentario del dev:**
+- La proyección ya venía de TPA-22 (servida + FPP con gestación por especie/raza); se agregó `App\Domain\Reproduccion\ReglasReproductivas`,
+  que `RegistrarEvento` llama para todo `reproduccion.*` (bloqueantes en el paso 8, advertencias en el 10): una sola puerta, sin duplicar reglas.
+- Servicio natural: `fin ≥ inicio` (422), al menos una hembra entre los sujetos, toros (`toro_ids`) del establecimiento, machos enteros y de la
+  especie de las hembras; `lote_toros_id` existente y de la especie; toros externos como texto. IA/IATF: `semen.toro_id` macho de la especie,
+  `semen.raza` del catálogo de la especie, inseminador/centro/partida como texto; IA en macho bloquea por `requiere_sexo` (dato).
+- Trampa: un lote de servicio (M6) se expande con los toros adentro; el proyector solo marca «servida» a las hembras (antes el toro quedaba «servido»).
+- Advertencias: `servicio_en_prenada` (la FPP nueva reemplaza a la del tacto) y `toro_no_activo`; en la web piden confirmación, por sync quedan como observación.
+- Verificado: 5 tests (servicio natural con toro adentro y FPP Murrah desde el inicio, IA/IATF bovina 283 d y semen propio, 10 reglas bloqueantes/422,
+  advertencia + confirmación, 403 lectura / 404 ajeno). Suite completa verde.

@@ -14,6 +14,7 @@ use App\Domain\Integridad\Actions\RegistrarEnCadena;
 use App\Domain\Integridad\CanonicalizacionInvalida;
 use App\Domain\Integridad\CanonicalJson;
 use App\Domain\Integridad\Models\Cadena;
+use App\Domain\Reproduccion\ReglasReproductivas;
 use App\Domain\Sync\Actions\RegistrarCambio;
 use App\Exceptions\ApiException;
 use App\Models\User;
@@ -492,6 +493,9 @@ final class RegistrarEvento
         if ($s->tipo === 'hacienda.identificacion') {
             $this->reglasIdentificacion($ctx, $p);
         }
+        if (str_starts_with($s->tipo, 'reproduccion.')) {
+            app(ReglasReproductivas::class)->validar($ctx);
+        }
         foreach ($ctx->nuevos as $n) {
             foreach ((array) ($n->identificaciones ?? []) as $j => $ident) {
                 if ($ident->tipo === 'registro_genealogico' && empty($ident->entidad)) {
@@ -741,6 +745,9 @@ final class RegistrarEvento
         }
         if ($s->tipo === 'hacienda.egreso' && ($p->destino ?? null) !== 'faena' && Interdiccion::vigente($ctx->est->id) !== null) {
             $obs[] = ['codigo' => 'interdiccion_vigente', 'mensaje' => 'El establecimiento tiene una interdicción declarada.', 'interna' => false];
+        }
+        if (str_starts_with($s->tipo, 'reproduccion.')) {
+            $obs = [...$obs, ...app(ReglasReproductivas::class)->observaciones($ctx)];
         }
 
         return $obs;
