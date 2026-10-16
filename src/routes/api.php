@@ -3,9 +3,12 @@
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\DispositivoController;
 use App\Http\Controllers\Api\V1\Establecimientos\EstablecimientoController;
+use App\Http\Controllers\Api\V1\Establecimientos\InvitacionController;
+use App\Http\Controllers\Api\V1\Establecimientos\MembresiaController;
 use App\Http\Controllers\Api\V1\Establecimientos\OnboardingController;
 use App\Http\Controllers\Api\V1\Establecimientos\ProductorController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\Sistema\AuditoriaController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -36,6 +39,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
         });
     });
 
+    // Público (sin token)
+    Route::get('public/invitaciones/{token}', [InvitacionController::class, 'publica'])->middleware('throttle:publico')->name('public.invitaciones.show');
+
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         // Establecimientos (TPA-10, 12, 13)
         Route::post('onboarding', OnboardingController::class)->name('onboarding');
@@ -44,5 +50,18 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('establecimientos', [EstablecimientoController::class, 'index'])->name('establecimientos.index');
         Route::post('establecimientos', [EstablecimientoController::class, 'store'])->name('establecimientos.store');
         Route::get('establecimientos/{establecimiento}', [EstablecimientoController::class, 'show'])->name('establecimientos.show');
+
+        // Usuarios y roles (TPA-11)
+        Route::post('invitaciones/{token}/aceptar', [InvitacionController::class, 'aceptar'])->name('invitaciones.aceptar');
+        Route::prefix('establecimientos/{establecimiento}')->name('establecimientos.')->scopeBindings()->group(function () {
+            Route::get('membresias', [MembresiaController::class, 'index'])->name('membresias.index');
+            Route::post('membresias/{membresia}/rol', [MembresiaController::class, 'rol'])->name('membresias.rol');
+            Route::post('membresias/{membresia}/revocar', [MembresiaController::class, 'revocar'])->name('membresias.revocar');
+            Route::post('titularidad', [MembresiaController::class, 'titularidad'])->name('titularidad');
+            Route::get('invitaciones', [InvitacionController::class, 'index'])->name('invitaciones.index');
+            Route::post('invitaciones', [InvitacionController::class, 'store'])->name('invitaciones.store');
+            Route::post('invitaciones/{invitacion}/revocar', [InvitacionController::class, 'revocar'])->name('invitaciones.revocar');
+            Route::get('auditoria', AuditoriaController::class)->name('auditoria');
+        });
     });
 });

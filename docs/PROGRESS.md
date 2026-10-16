@@ -62,3 +62,21 @@ acá y en la sección «Desvíos del contrato» al final.
 - La API no guarda el «establecimiento activo»: lo recuerda cada cliente (cookie en Next, `sync_estado` en la app).
   La descarga offline del activo es `GET /sync/snapshot?establecimiento_id=` (TPA-43).
 - Verificado: 2 tests (filtra ajenos/revocados/archivados, privados null para asesor, lista vacía, 401).
+
+## TPA-11 · Invitar usuarios al establecimiento con roles · ✅
+
+**Endpoints:** `GET …/membresias?estado=`, `POST …/membresias/{m}/rol`, `POST …/membresias/{m}/revocar`,
+`POST …/titularidad`, `GET|POST …/invitaciones`, `POST …/invitaciones/{i}/revocar`, `GET /public/invitaciones/{token}`,
+`POST /invitaciones/{token}/aceptar`, `GET …/auditoria` (cursor).
+
+**Comentario del dev:**
+- `invitaciones` con `token_hash` (SHA-256; el token solo vive en el mail y en `url` de la respuesta de creación),
+  vence a 7 días, rol nunca `dueno`. Por teléfono no hay SMS: el dueño comparte la `url` (WhatsApp). Aceptar exige
+  sesión pero no que el email coincida (el token es el secreto). Matriz de `functional/04 §12` = `Rol::MATRIZ` (TPA-10).
+- Cambiar rol = revocar + crear (historia en `membresias` + `auditoria`); el dueño no se degrada ni se revoca (422
+  `regla_bloqueante`): primero transferir titularidad, que solo hace el dueño hacia un miembro activo; el saliente queda **admin** (decisión).
+- Trampas: el binding con scope adivina la relación con el plural inglés (`invitacions`); se resolvió con el trait
+  `BindingHijosEnEspanol` (inflector español local) — cambiar el Pluralizer global rompe `personal_access_tokens`.
+  Paginación por cursor genérica (`CursorRespuesta`: solo `data` + `meta`), usada por la auditoría.
+- Verificado: 10 tests (invitar mail/teléfono, flujo público→aceptar, vencida/revocada, 422/403/404, cambio de rol,
+  protección del dueño, revocación → `membresia_revocada`, scoped 404, transferencia, auditoría paginada).

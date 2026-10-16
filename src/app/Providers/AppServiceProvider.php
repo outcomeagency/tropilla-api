@@ -45,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
 
         // api-v1.md §5: login/registro 5/min/IP; resto 300/min/usuario.
         RateLimiter::for('auth', fn (Request $request) => Limit::perMinute(5)->by('auth|'.$request->ip()));
+        RateLimiter::for('publico', fn (Request $request) => Limit::perMinute(120)->by('publico|'.$request->ip()));
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(300)->by($request->user()?->getAuthIdentifier() ?: $request->ip()));
 
         // Token web: vencimiento deslizante de N días (se extiende como mucho una vez por hora).
