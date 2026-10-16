@@ -14,3 +14,6 @@ Schedule::command('hacienda:sugerir-categorias')->dailyAt('04:00')->timezone('Am
 
 // Plan sanitario (TPA-33): tareas con horizonte de 90 días.
 Schedule::command('sanidad:generar-tareas')->dailyAt('04:30')->timezone('America/Argentina/Buenos_Aires')->withoutOverlapping();
+
+// Subida diferida (TPA-44): limpiar subidas vencidas.
+Schedule::command('archivos:expirar-subidas')->hourly()->withoutOverlapping();

@@ -14,6 +14,18 @@ return [
         'restablecer_password_minutos' => 60,
     ],
 
+    // Subida diferida de archivos (TPA-44). `driver`: s3 (presigna contra el bucket) | local (URLs firmadas a la propia API:
+    // dev sin MinIO y tests). `endpoint_publico`: host con el que el teléfono llega al bucket (la firma SigV4 incluye el host,
+    // así que se presigna con un cliente apuntado ahí; en el emulador Android suele ser http://10.0.2.2:9010).
+    'archivos' => [
+        'driver' => env('TROPILLA_ARCHIVOS_DRIVER', env('FILESYSTEM_DISK') === 's3' ? 's3' : 'local'),
+        'endpoint_publico' => env('AWS_PUBLIC_ENDPOINT', env('AWS_ENDPOINT')),
+        'parte_bytes' => (int) env('TROPILLA_PARTE_BYTES', 5 * 1024 * 1024),
+        'multipart_desde_bytes' => (int) env('TROPILLA_MULTIPART_DESDE', 8 * 1024 * 1024),
+        'max_bytes' => 100 * 1024 * 1024,
+        'subida_horas' => 24,
+    ],
+
     // Pepper del HMAC de CUIT (búsqueda exacta / unicidad sin descifrar). modelo-datos §2.3.
     'cuit_pepper' => env('TROPILLA_CUIT_PEPPER', env('APP_KEY')),
 ];

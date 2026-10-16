@@ -3014,7 +3014,10 @@ paths:
       tags: [Archivos]
       summary: Iniciar subida (dedupe por SHA-256)
       operationId: post_archivos_subidas
-      description: '200 {estado: completo} si ya existe. TPA-44'
+      description: '200 {estado: completo} si ya existe (dedupe por SHA-256: no se sube de nuevo). TPA-44. `simple` (un PUT a `url`) si
+        `bytes` < 8 MiB; si no `multipart` con `partes[]` de `parte_bytes` (5 MiB). URLs prefirmadas contra el almacén (S3/MinIO, host
+        `AWS_PUBLIC_ENDPOINT`), vencen a las 24 h; reintentar = iniciar otra subida. Requiere `documentos.crear`, `sync.push` o
+        `importaciones.gestionar` en el establecimiento.'
       requestBody:
         required: true
         content:
@@ -3038,6 +3041,9 @@ paths:
       tags: [Archivos]
       summary: Completar multipart
       operationId: post_archivos_subidas_subida_completar
+      description: 'Cierra el multipart (o ensambla la subida simple) y **verifica SHA-256 y bytes** del objeto: si no coinciden el objeto se
+        borra (la clave es el hash) → 422 `archivo_corrupto`. Subida vencida o cerrada → 422 `subida_vencida`. Idempotente si el archivo
+        ya quedó completo por otra subida. Simple: `partes` vacío u omitido.'
       parameters:
       - name: subida
         in: path

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Archivos\ArchivoController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\DispositivoController;
 use App\Http\Controllers\Api\V1\Catalogos\CatalogoController;
@@ -79,6 +80,8 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('establecimientos/{slug}/contratos', [PerfilPublicoController::class, 'contratos'])->name('establecimientos.contratos');
         Route::post('consultas', ConsultaPublicaController::class)->middleware('throttle:consultas')->name('consultas.store');
     });
+    // Subida diferida con almacén local (dev/tests): la URL firmada es la credencial (como una URL prefirmada de S3).
+    Route::put('archivos/subidas/{subida}/partes/{numero}', [ArchivoController::class, 'parte'])->middleware('signed')->whereNumber('numero')->name('archivos.parte');
     Route::get('public/invitaciones/{token}', [InvitacionController::class, 'publica'])->middleware('throttle:publico')->name('public.invitaciones.show');
 
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
@@ -92,6 +95,11 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::patch('establecimientos/{establecimiento}', [EstablecimientoController::class, 'update'])->name('establecimientos.update');
 
         Route::get('sync/catalogos', CatalogoController::class)->name('sync.catalogos');
+        // Archivos (TPA-44)
+        Route::post('archivos/subidas', [ArchivoController::class, 'iniciar'])->name('archivos.subidas.store');
+        Route::post('archivos/subidas/{subida}/completar', [ArchivoController::class, 'completar'])->name('archivos.subidas.completar');
+        Route::get('archivos/{sha256}', [ArchivoController::class, 'descargar'])->where('sha256', '[0-9a-fA-F]{64}')->name('archivos.show');
+        Route::get('archivos/{sha256}/estado', [ArchivoController::class, 'estado'])->where('sha256', '[0-9a-fA-F]{64}')->name('archivos.estado');
         Route::get('catalogos/productos-sugeridos', [ProductoSanitarioController::class, 'sugeridos'])->name('catalogos.productos-sugeridos');
         Route::get('importaciones/plantilla', [ImportacionController::class, 'plantilla'])->name('importaciones.plantilla');
         // Sync offline (TPA-43)
