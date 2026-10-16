@@ -53,6 +53,13 @@ it('borrador desde lote con precarga (peso, edad, dentición, clase faena) → p
     $this->artisan('integridad:verificar-cadenas')->assertSuccessful();
 });
 
+it('acepta el tipo lote que envía el flujo de oferta desde lote', function () {
+    $this->postJson("{$this->base}/ofertas/desde-lote", ['tipo' => 'lote', 'lote_id' => $this->lote])
+        ->assertCreated()
+        ->assertJsonPath('data.tipo', 'lote')
+        ->assertJsonPath('data.estado', 'borrador');
+});
+
 it('avisos: pesaje viejo y retiro vigente exigen confirmar para publicar', function () {
     $this->travel(70)->days();
     $a = $this->animales[0]['animal_id'];
