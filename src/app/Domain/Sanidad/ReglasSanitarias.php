@@ -34,6 +34,10 @@ final class ReglasSanitarias
             throw new EventoRechazado('esquema_invalido', 'Enfermedad desconocida.', ['payload.enfermedad' => ['No está en el catálogo.']]);
         }
 
+        if ($s->tipo === 'sanidad.prueba_diagnostica') {
+            $this->prueba($ctx, $p);
+        }
+
         // Potrero: el servidor resuelve los animales individuales presentes al registrar (propio o el de su lote),
         // para que el retiro llegue a cada ficha. Queda fijo en `evento_animales` (append-only).
         if (($s->sujetos->tipo ?? null) === 'potrero' && in_array($s->tipo, self::APLICACIONES, true)) {
@@ -55,6 +59,9 @@ final class ReglasSanitarias
 
         if (isset($p->envase_vence) && $p->envase_vence < $fecha) {
             $obs[] = ['codigo' => 'envase_vencido', 'mensaje' => "El envase venció el {$p->envase_vence}.", 'interna' => false, 'detalle' => ['envase_vence' => $p->envase_vence]];
+        }
+        if ($s->tipo === 'sanidad.prueba_diagnostica') {
+            return [...$obs, ...$this->observacionesPrueba($ctx, $p)];
         }
         if (! in_array($s->tipo, self::APLICACIONES, true) || ! isset($p->producto_id)) {
             return $obs;
@@ -78,6 +85,70 @@ final class ReglasSanitarias
         }
 
         return $obs;
+    }
+
+    /**
+     * Prueba diagnóstica (TPA-34): tipo del catálogo para la especie; con lecturas, un solo animal; `calculado` exige lecturas y
+     * coincidir con los umbrales vigentes (web → 422; app → aceptado con revisión: los umbrales pudieron cambiar offline).
+     */
+    private function prueba(ContextoEvento $ctx, stdClass $p): void
+    {
+        $tipo = DB::table('tipos_prueba')->where('codigo', $p->prueba)->first();
+        if ($tipo === null) {
+            throw new EventoRechazado('esquema_invalido', 'Prueba desconocida.', ['payload.prueba' => ['No está en el catálogo.']]);
+        }
+        $especies = array_filter(explode(',', trim((string) $tipo->especies, '{}')));
+        foreach ($ctx->sujetosExistentes as $a) {
+            if ($especies !== [] && ! in_array($a->especie_codigo, $especies, true)) {
+                throw new EventoRechazado('regla_bloqueante', 'La prueba no corresponde a la especie.', ['payload.prueba' => [$a->especie_codigo]]);
+            }
+        }
+        $conLecturas = isset($p->lectura_0h_mm) || isset($p->lectura_72h_mm);
+        if ($conLecturas && count($ctx->sujetosExistentes) !== 1) {
+            throw new EventoRechazado('regla_bloqueante', 'Las lecturas en mm son de un solo animal.', ['sujetos.animal_ids' => ['Un animal por lectura.']]);
+        }
+        if ($p->resultado_origen === 'calculado') {
+            $calc = $this->calcular($ctx, $p);
+            if ($calc === null) {
+                throw new EventoRechazado('esquema_invalido', 'Un resultado calculado lleva las lecturas de 0 h y 72 h de una prueba con umbrales.', ['payload.resultado_origen' => ['Sin lecturas o sin umbrales.']]);
+            }
+            if ($ctx->canal === 'web' && $calc['resultado'] !== $p->resultado) {
+                throw new EventoRechazado('regla_bloqueante', "Con los umbrales vigentes (Δ {$calc['diferencia_mm']} mm) el resultado es «{$calc['resultado']}».", ['payload.resultado' => [$calc['resultado']]]);
+            }
+            $ctx->extra['prueba_calculada'] = $calc;
+        }
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function observacionesPrueba(ContextoEvento $ctx, stdClass $p): array
+    {
+        $obs = [];
+        if (isset($p->lectura_0h_mm, $p->lectura_72h_mm) && bccomp($p->lectura_72h_mm, $p->lectura_0h_mm, 1) < 0) {
+            $obs[] = ['codigo' => 'lectura_72h_menor', 'mensaje' => 'La lectura a las 72 h es menor que la inicial: revisá la carga.', 'interna' => false];
+        }
+        $calc = $ctx->extra['prueba_calculada'] ?? $this->calcular($ctx, $p);
+        if ($calc !== null && $calc['resultado'] !== $p->resultado) {
+            $calculado = $p->resultado_origen === 'calculado';
+            $obs[] = ['codigo' => $calculado ? 'resultado_prueba_discrepante' : 'resultado_distinto_al_calculado',
+                'mensaje' => "Con los umbrales vigentes (Δ {$calc['diferencia_mm']} mm) el resultado es «{$calc['resultado']}».",
+                'interna' => $calculado, 'revision' => $calculado, 'detalle' => $calc + ['declarado' => $p->resultado]];
+        }
+        if ($p->resultado === 'positivo') {
+            $obs[] = ['codigo' => 'marca_reactor', 'mensaje' => 'Resultado positivo: el animal queda marcado como reactor (dato privado).', 'interna' => false];
+        }
+
+        return $obs;
+    }
+
+    /** @return array<string, mixed>|null */
+    private function calcular(ContextoEvento $ctx, stdClass $p): ?array
+    {
+        $a = array_values($ctx->sujetosExistentes)[0] ?? null;
+        if ($a === null || count($ctx->sujetosExistentes) !== 1) {
+            return null;
+        }
+
+        return ResultadoPrueba::calcular($p->prueba, $a->especie_codigo, $a->raza_codigo, $ctx->est->id, $p->lectura_0h_mm ?? null, $p->lectura_72h_mm ?? null);
     }
 
     private function producto(ContextoEvento $ctx, string $id): ?object

@@ -25,6 +25,12 @@ final class ContextoEvento
     /** @var list<string> animales que el servidor resuelve para sujetos no individuales (potrero en sanidad, TPA-32) */
     public array $animalesResueltos = [];
 
+    /** Canal de carga (`web` | `push`): algunas reglas bloquean online y solo observan offline. */
+    public string $canal = 'web';
+
+    /** @var array<string, mixed> datos calculados por las reglas de dominio durante la validación */
+    public array $extra = [];
+
     public function __construct(
         public readonly Establecimiento $est,
         public readonly stdClass $sobre,

@@ -596,6 +596,24 @@ retiro en la ficha (`retiro_carne_hasta`/`retiro_leche_hasta`) y en el timeline 
 - Verificado: 4 tests (aviso/condiciones/ventanas/relativa por evento/zona/idempotencia/cierre y reapertura/snapshot; refuerzo + periódico
   hasta destete; reprogramar/409/omitir/filtros/archivo; ítem manual, 422 ×7, 403 lectura, 404 ajeno) + demo. Suite verde.
 
+## TPA-34 · Pruebas diagnósticas y laboratorio · ✅ (parte API)
+
+**Endpoints:** vía `POST …/eventos` / push (`sanidad.prueba_diagnostica`, `sanidad.analisis_laboratorio` con `adjuntos`); umbrales
+editables por establecimiento con `PUT …/parametros/tuberculina_<tipo>_{negativo_lt|positivo_gte}_mm`; reactor en la ficha.
+
+**Comentario del dev:**
+- `ResultadoPrueba` (método `diferencia_mm` de `tipos_prueba`): Δ = 72 h − 0 h; negativo si Δ < umbral, positivo si Δ ≥ umbral, si no
+  sospechoso (cervical simple 3/3 → sin sospechoso). Umbrales = **parámetros por especie** (seed BOV/BUB iguales, `validado_por_vet=false`;
+  duda 16) con respaldo en `tipos_prueba.umbrales`. Aritmética con `bcmath` (decimales string, sin floats).
+- Web: con las dos lecturas y sin resultado, el servidor lo calcula antes de hashear. `calculado` incoherente → 422 en la web; por sync se
+  acepta con revisión `resultado_prueba_discrepante` (umbrales cambiados offline; migración aditiva que amplía el CHECK de `revisiones`).
+- Positivo → reactor (proyector de TPA-22) con confirmación previa en la web (`marca_reactor`, duda 16). Lecturas → un solo animal;
+  prueba fuera de catálogo o de otra especie → 422. `ContextoEvento` ahora sabe el canal (`web`/`push`) para reglas así.
+- Análisis (coprológico, IFD, MAT, serología…) con `resultado_texto` y archivo en `adjuntos` (SHA-256; queda `pendiente` hasta que la
+  subida diferida lo complete, TPA-44). `documento_ids` se valida cuando exista la carpeta documental (TPA-36).
+- Verificado: 4 tests (anocaudal negativo/sospechoso/positivo→reactor + override por especie del establecimiento, cervical simple,
+  declarado≠calculado, calculado incoherente/sin lecturas/prueba inexistente/varios animales, análisis con adjunto, 403/404, push con revisión).
+
 ---
 
 ## Desvíos del contrato
@@ -611,3 +629,4 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-31: `ProductoSanitario.id` nullable + `codigo` en la base sugerida; `sugerido_codigo` en el input; filtro `especie`.
 - TPA-32: la web expande sanidad a lote no anónimo y completa el snapshot del producto en el payload; sujeto potrero resuelto a animales presentes.
 - TPA-33: `PlanItem` + `nota`, `aplica`, `requiere_configuracion`, `archivado_en`; `Tarea.reprogramada`; filtro `estado=abiertas`; formato de `disparador` documentado.
+- TPA-34: parámetros `tuberculina_*_mm` por especie; resultado calculado por el servidor en la web; revisión `resultado_prueba_discrepante`.

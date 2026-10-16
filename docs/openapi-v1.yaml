@@ -1817,7 +1817,11 @@ paths:
         422 regla_bloqueante. Sanidad (TPA-32): un evento a un lote **no anónimo** se expande en el servidor a `animales` con
         `lote_id` de contexto; con `producto_id` se copian al payload `producto_nombre`, `principio_activo` (desparasitación),
         `via` (vacunación) y los retiros del producto si no vienen. A un `potrero`, el servidor fija los animales presentes.
-        Advertencias nuevas: `retiro_menor_al_producto`, `envase_vencido`, `producto_otra_especie`.'
+        Advertencias nuevas: `retiro_menor_al_producto`, `envase_vencido`, `producto_otra_especie`. Prueba diagnóstica (TPA-34): con
+        `lectura_0h_mm` y `lectura_72h_mm` y sin `resultado`, el servidor lo calcula (`resultado_origen: calculado`, `umbrales_version`)
+        con los parámetros `<prueba>_negativo_lt_mm` / `<prueba>_positivo_gte_mm`; un `calculado` que no coincide → 422 `regla_bloqueante`
+        (por sync: aceptado + revisión `resultado_prueba_discrepante`); advertencias `marca_reactor`, `resultado_distinto_al_calculado`,
+        `lectura_72h_menor`.'
       parameters:
       - name: establecimiento
         in: path

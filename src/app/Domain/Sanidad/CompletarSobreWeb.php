@@ -13,6 +13,7 @@ use stdClass;
  *   que hace la app al cargar). Así «aplicar a un lote» es un solo paso y cada ficha recibe el evento.
  * - Aplicación sanitaria con `producto_id`: copia al payload el snapshot del producto (nombre, principio activo, vía,
  *   retiros) si el usuario no los mandó. Cambiar el producto después no reescribe lo aplicado.
+ * - Prueba diagnóstica con lecturas 0 h / 72 h y sin resultado: lo calcula con los umbrales vigentes (`ResultadoPrueba`).
  * Por push el sobre viene firmado por el teléfono: no se toca (la app hace lo mismo del lado del cliente).
  */
 final class CompletarSobreWeb
@@ -20,6 +21,9 @@ final class CompletarSobreWeb
     public static function completar(Establecimiento $est, stdClass $s): void
     {
         self::expandirLote($est, $s);
+        if (($s->tipo ?? null) === 'sanidad.prueba_diagnostica' && ($s->payload ?? null) instanceof stdClass) {
+            self::resultadoPrueba($est, $s);
+        }
         if (in_array($s->tipo ?? null, ReglasSanitarias::APLICACIONES, true) && ($s->payload ?? null) instanceof stdClass && isset($s->payload->producto_id) && is_string($s->payload->producto_id)) {
             self::snapshotProducto($est, $s->tipo, $s->payload);
         }
@@ -49,6 +53,24 @@ final class CompletarSobreWeb
         $nuevo->animal_ids = array_values($ids);
         $nuevo->lote_id = $lote->id;
         $s->sujetos = $nuevo;
+    }
+
+    /** Tuberculina cargada en la web con las dos lecturas y sin resultado → resultado calculado con los umbrales vigentes. */
+    private static function resultadoPrueba(Establecimiento $est, stdClass $s): void
+    {
+        $p = $s->payload;
+        $ids = $s->sujetos->animal_ids ?? null;
+        if (isset($p->resultado) || ! isset($p->prueba, $p->lectura_0h_mm, $p->lectura_72h_mm) || ! is_array($ids) || count($ids) !== 1
+            || ! is_string($p->lectura_0h_mm) || ! is_string($p->lectura_72h_mm) || ! is_numeric($p->lectura_0h_mm) || ! is_numeric($p->lectura_72h_mm)) {
+            return;
+        }
+        $a = DB::table('animales_estado')->where('animal_id', $ids[0])->where('establecimiento_id', $est->id)->first(['especie_codigo', 'raza_codigo']);
+        $calc = $a ? ResultadoPrueba::calcular((string) $p->prueba, $a->especie_codigo, $a->raza_codigo, $est->id, $p->lectura_0h_mm, $p->lectura_72h_mm) : null;
+        if ($calc !== null) {
+            $p->resultado = $calc['resultado'];
+            $p->resultado_origen = 'calculado';
+            $p->umbrales_version = $calc['umbrales_version'];
+        }
     }
 
     private static function snapshotProducto(Establecimiento $est, string $tipo, stdClass $p): void

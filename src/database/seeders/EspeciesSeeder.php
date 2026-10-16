@@ -165,6 +165,12 @@ class EspeciesSeeder extends Seeder
             ['pesaje_atipico_pct', 30, 30, 'pct'],
             ['pesaje_atipico_dias', 30, 30, 'dias'],
             ['pesaje_antiguo_dias', 60, 60, 'dias'],
+            // Tuberculina (functional/03 §5): diferencia 72 h − 0 h en mm. Iguales hoy en ambas especies (duda 16: el vet los ajusta
+            // por establecimiento con PUT …/parametros/{clave}); el cálculo lee siempre el parámetro, nunca la especie.
+            ['tuberculina_anocaudal_negativo_lt_mm', '3', '3', 'mm'],
+            ['tuberculina_anocaudal_positivo_gte_mm', '5', '5', 'mm'],
+            ['tuberculina_cervical_simple_negativo_lt_mm', '3', '3', 'mm'],
+            ['tuberculina_cervical_simple_positivo_gte_mm', '3', '3', 'mm'],
         ];
         foreach ($porEspecie as [$clave, $vBov, $vBub, $unidad]) {
             $this->parametro($clave, 'BOV', null, $vBov, $unidad, $bov);
@@ -177,7 +183,7 @@ class EspeciesSeeder extends Seeder
         // Globales.
         foreach ([
             ['token_kg_default', 100, 'kg'], ['toma_vencimiento_horas', 48, 'horas'], ['entrega_tolerancia_pct', '5', 'pct'],
-            ['iva_hacienda_pct', '10.5', 'pct'], ['snapshot_offline_dias', 400, 'dias'],
+            ['iva_hacienda_pct', '10.5', 'pct'], ['snapshot_offline_dias', 400, 'dias'], ['plan_horizonte_dias', 90, 'dias'],
         ] as [$clave, $valor, $unidad]) {
             $this->parametro($clave, null, null, $valor, $unidad, 'TROPILLA');
         }
