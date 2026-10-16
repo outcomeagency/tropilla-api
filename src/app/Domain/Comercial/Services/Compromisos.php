@@ -32,7 +32,7 @@ final class Compromisos
         }
         if (DB::getSchemaBuilder()->hasTable('contrato_animales')) {
             foreach (DB::table('contrato_animales as ca')->join('contratos_futuro as c', 'c.id', '=', 'ca.contrato_id')
-                ->whereIn('ca.animal_id', $animalIds)->whereNotIn('c.estado', ['borrador', 'cancelado', 'liquidado', 'entregado'])->pluck('ca.animal_id') as $id) {
+                ->whereIn('ca.animal_id', $animalIds)->whereNotIn('c.estado', ['borrador', 'cancelado', 'liquidado', 'incumplido'])->pluck('ca.animal_id') as $id) {
                 $out[$id] = 'en_contrato';
             }
         }

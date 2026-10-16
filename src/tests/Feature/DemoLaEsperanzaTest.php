@@ -35,6 +35,9 @@ it('carga el demo de La Esperanza por eventos reales, con las existencias del br
     expect(DB::table('tareas')->where('clave_ocurrencia', 'like', 'refuerzo:%')->where('estado', 'pendiente')->count())->toBe(1)
         ->and(DB::table('productos_sanitarios')->count())->toBe(3);
 
+    // Contrato a futuro de ejemplo (TPA-56): 60 bubillas → 143 tokens, publicado; las bubillas quedan comprometidas.
+    expect(DB::table('contratos_futuro')->where('estado', 'publicado')->value('tokens_totales'))->toBe(143);
+
     $this->artisan('integridad:verificar-cadenas')->assertSuccessful();
 
     // idempotente

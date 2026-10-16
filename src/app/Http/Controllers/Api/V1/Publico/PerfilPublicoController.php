@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Publico;
 
+use App\Domain\Contratos\ConsultasContratos;
 use App\Domain\Perfil\Services\PerfilPublicoBuilder;
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
@@ -32,12 +33,15 @@ class PerfilPublicoController extends Controller
             ->orderByDesc('publicada_en')->get()->map(fn ($o) => OfertaPublicaResource::resumen($o, $locale))->filter()->values()->all()]);
     }
 
-    /** Contratos a futuro abiertos: llegan con TPA-56. */
-    public function contratos(string $slug): JsonResponse
+    /** Contratos a futuro abiertos del perfil (TPA-56). Precios solo para compradores con cuenta. */
+    public function contratos(Request $request, string $slug): JsonResponse
     {
-        $this->perfil($slug);
+        $p = $this->perfil($slug);
+        $locale = Leyenda::locale($request->query('locale'));
+        $comprador = ContratoPublicoController::esComprador();
 
-        return response()->json(['data' => []]);
+        return response()->json(['data' => DB::table('contratos_futuro')->where('establecimiento_id', $p->establecimiento_id)->whereIn('estado', ContratoPublicoController::VISIBLES)
+            ->orderBy('fecha_entrega')->get()->map(fn ($c) => ConsultasContratos::publico($c, $comprador, $locale))->all()], 200, [], JSON_UNESCAPED_UNICODE);
     }
 
     private function perfil(string $slug): object

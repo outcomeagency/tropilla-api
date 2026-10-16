@@ -30,7 +30,8 @@ final class RecibirConsultaPublica
 
         $id = (string) Str::uuid7();
         DB::table('consultas')->insert([
-            'id' => $id, 'establecimiento_id' => $estId, 'origen' => $origen, 'oferta_id' => $ofertaId,
+            'id' => $id, 'establecimiento_id' => $estId, 'origen' => $origen, 'oferta_id' => $origen === 'oferta' ? $ofertaId : null,
+            'contrato_id' => $origen === 'contrato' ? $ofertaId : null,
             'nombre' => $d['nombre'], 'empresa' => $d['empresa'] ?? null, 'pais' => strtoupper($d['pais']), 'email' => $d['email'] ?? null,
             'telefono' => $d['telefono'] ?? null, 'tipo_comprador' => $d['tipo_comprador'], 'volumen' => $d['volumen'] ?? null,
             'mensaje' => $d['mensaje'], 'idioma' => $d['idioma'], 'usuario_id' => $usuario?->id, 'estado' => $spam ? 'spam' : 'nueva',
@@ -69,7 +70,10 @@ final class RecibirConsultaPublica
             return [$p->establecimiento_id, 'perfil', null];
         }
         if (! empty($d['contrato_codigo'])) {
-            throw ApiException::noEncontrado(__('El contrato no existe.')); // contratos a futuro: TPA-56
+            $c = DB::table('contratos_futuro')->where('codigo_publico', strtoupper($d['contrato_codigo']))->whereIn('estado', ['publicado', 'parcialmente_tomado', 'completo'])->first()
+                ?? throw ApiException::noEncontrado(__('El contrato no existe o ya no está abierto.'));
+
+            return [$c->establecimiento_id, 'contrato', $c->id];
         }
         throw ApiException::validacion(__('Indicá a quién va la consulta.'), ['establecimiento_slug' => [__('Falta el destino (perfil u oferta).')]]);
     }

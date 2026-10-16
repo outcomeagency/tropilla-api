@@ -3,6 +3,7 @@
 namespace App\Domain\Perfil\Services;
 
 use App\Domain\Catalogos\Catalogos;
+use App\Domain\Contratos\ConsultasContratos;
 use App\Domain\Documentos\ConsultasDocumentos;
 use App\Domain\Establecimientos\Data\Provincias;
 use App\Domain\Integridad\Confianza;
@@ -44,7 +45,10 @@ final class PerfilPublicoBuilder
         }
         $out['ofertas'] = $out['oferta'];
         unset($out['oferta']);
-        $out['contratos'] = $out['ofertas'] === null ? null : [];
+        // Contratos a futuro abiertos (TPA-56): sin precios (son solo para compradores con cuenta, ver /public/contratos/{codigo}).
+        $out['contratos'] = $out['ofertas'] === null ? null : DB::table('contratos_futuro')->where('establecimiento_id', $perfil->establecimiento_id)
+            ->whereIn('estado', ['publicado', 'parcialmente_tomado', 'completo'])->orderBy('fecha_entrega')->get()
+            ->map(fn ($c) => ConsultasContratos::publico($c, false, $locale))->all();
         $out['contacto'] ??= ['formulario' => true, 'email' => null, 'telefono' => null, 'whatsapp' => null];
 
         $traz = self::seccion('trazabilidad', $perfil, $est, $prod, $t, $locale, []);

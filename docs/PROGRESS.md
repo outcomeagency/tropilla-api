@@ -790,6 +790,33 @@ pull `entidad: anclaje` (estado + `evento_ids` del establecimiento).
 - Verificado: 3 tests (alertas por rol + push solo al dispositivo del encargado + dedupe + vencida al pasar la fecha; preferencias push off +
   resumen por email + bandeja/leída/ajena/422/404; FCM con JWT firmado y token inválido).
 
+## TPA-56 · Contrato a futuro con token (productor) · ✅ (parte API) + seeder DEMO
+
+**Endpoints:** `POST …/contratos/calcular`, `GET|POST …/contratos`, `GET …/contratos/{c}`, `GET …/contratos/{c}/preview`, `POST …/contratos/{c}/publicar`,
+`POST …/contratos/{c}/terminos[?simular=true]`, `POST …/contratos/{c}/cancelar|incumplido`, `POST …/contratos/{c}/tomas/{t}/confirmar-pago|devolucion-informada`,
+`POST …/contratos/{c}/entrega[/confirmar]`, `GET …/apalancamiento`; públicos `GET /public/contratos/{codigo}` y `…/establecimientos/{slug}/contratos`
+(ya reales), filtro `con_contrato` del directorio y consultas con `contrato_codigo`.
+
+**Comentario del dev:**
+- Tablas `contratos_futuro` (cabecera con CHECK `tokens_comprometidos ≤ tokens_totales` y motivo obligatorio en cancelado/incumplido),
+  `contrato_versiones` y `toma_movimientos` (**append-only**, sobres `tropilla.contrato_version/1` y `tropilla.toma_movimiento/1` hasheados y
+  encadenados), `contrato_animales` (compromiso «en contrato»), `tomas` y `entregas` (sobre `tropilla.entrega/1` al liquidar).
+- Cálculo (`Terminos`) exacto del modelo: kg al gancho = floor(cab × peso × rend), tokens de 100 kg hacia abajo (el resto queda del productor),
+  precio especial y anticipo por token redondeados a 2; defaults como parámetros. Ejemplo del modelo verificado: 40 × 480 × 53 % = 10.176 kg → 101
+  tokens, $4.784, $143.520/token. Borrador editable; publicar = versión 1 con huella + PDF (Gotenberg) a Documentos.
+- **Compromiso**: publicar exige la hacienda libre (individuales sin oferta/contrato/venta + cabezas anónimas no comprometidas) → si no 409
+  `comprometido`; cancelar/incumplido liberan. Todo bajo `SELECT … FOR UPDATE` del contrato.
+- **Mortalidad/faltante**: nueva versión con motivo → primero se liberan reservas no confirmadas (de la más nueva), después recorte prorrata de las
+  confirmadas con reparto del resto por mayor fracción y anticipo a devolver; `?simular=true` muestra el plan. Trampa: el recorte va **antes** de
+  bajar los totales (si no, viola el CHECK). Con tomas, la economía del trato queda fija (422).
+- **Entrega**: factor = kg reales / contratados; dentro de ±5 % liquida por toma (kg efectivos, importe, anticipo neto, saldo); fuera → `a_resolver`.
+  Confirman productor y compradores → `liquidado`, sobre de entrega, operación comercial (venta al gancho, PDF del trato). Apalancamiento: cobrados,
+  pendientes, kg comprometidos y % tomado. Asesor ve contratos sin compradores ni montos. Precios públicos solo para compradores con cuenta (TPA-57).
+- Demo: contrato publicado sobre las 60 bubillas (143 tokens).
+- Verificado: 4 tests (cálculo del modelo, borrador → publicar con huella/PDF, precios ocultos sin cuenta, cadena; tomas ≤ libres, propio productor no,
+  «recibí», apalancamiento, economía fija 422, recorte 60/30 → 33/17 con $3.875.040 y $1.865.760 a devolver, devolución informada; entrega a resolver y
+  dentro de tolerancia → liquidación exacta → operación; compromiso 409, cancelar devuelve y libera, 422, asesor sin montos, encargado 403, 404) + demo.
+
 ---
 
 ## Desvíos del contrato
@@ -814,3 +841,4 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-46: `Operacion`/`OperacionInput` + `animal_ids`, `oferta_id` (+ `lote_id`, `contrato_id`, `confirmar_advertencias`, `id`); liquidación calculada por el servidor.
 - TPA-47: query `referencia` (serie por descripción, admite otra especie) en `…/precios/historial`.
 - TPA-53: `GET /me/preferencias-notificacion` aditivo; `meta.no_leidas` en la bandeja.
+- TPA-56: `Contrato.documento_id`; `huella` null en borrador; respuesta de `?simular=true` = {terminos, recorte}; vínculo de documentos `contrato` → tabla `contratos_futuro`.

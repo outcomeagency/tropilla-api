@@ -53,7 +53,7 @@ final class Directorio
             $q->whereExists(fn ($s) => $s->select(DB::raw(1))->from('ofertas as o')->whereColumn('o.establecimiento_id', 'e.id')->whereIn('o.estado', ['publicada', 'reservada']));
         }
         if (filter_var($f['con_contrato'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-            $q->whereRaw('false'); // contratos a futuro: TPA-56
+            $q->whereExists(fn ($s) => $s->select(DB::raw(1))->from('contratos_futuro as cf')->whereColumn('cf.establecimiento_id', 'e.id')->whereIn('cf.estado', ['publicado', 'parcialmente_tomado']));
         }
 
         return $q;
@@ -77,7 +77,7 @@ final class Directorio
             'razas' => DB::table('animales_estado')->where('establecimiento_id', $r->establecimiento_id)->where('estado', 'activo')
                 ->whereNotNull('raza_codigo')->distinct()->orderBy('raza_codigo')->pluck('raza_codigo')->all(),
             'ofertas_activas' => (int) $r->ofertas_activas,
-            'contratos_abiertos' => 0,
+            'contratos_abiertos' => DB::table('contratos_futuro')->where('establecimiento_id', $r->establecimiento_id)->whereIn('estado', ['publicado', 'parcialmente_tomado'])->count(),
             'insignias' => $insignias,
             'foto_url' => null,
             'actualizado_en' => Formato::fechaHora(Carbon::parse($r->ultima_actividad ?? $r->updated_at)),
@@ -101,7 +101,7 @@ final class Directorio
             'categorias' => DB::table('existencias')->whereIn('establecimiento_id', $ids)->where('cabezas', '>', 0)->pipe(fn ($q) => $contar($q, 'categoria_codigo'))
                 ->map(fn ($r) => ['codigo' => $r->codigo, 'nombre' => $nombre('categorias', $r->codigo), 'count' => (int) $r->n])->all(),
             'con_oferta' => DB::table('ofertas')->whereIn('establecimiento_id', $ids)->whereIn('estado', ['publicada', 'reservada'])->distinct()->count('establecimiento_id'),
-            'con_contrato' => 0,
+            'con_contrato' => DB::table('contratos_futuro')->whereIn('establecimiento_id', $ids)->whereIn('estado', ['publicado', 'parcialmente_tomado'])->distinct()->count('establecimiento_id'),
         ];
     }
 

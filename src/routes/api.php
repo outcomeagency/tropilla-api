@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\Comercial\OfertaController;
 use App\Http\Controllers\Api\V1\Comercial\OperacionController;
 use App\Http\Controllers\Api\V1\Comercial\PrecioController;
 use App\Http\Controllers\Api\V1\Comercial\SimulacionController;
+use App\Http\Controllers\Api\V1\Contratos\ContratoController;
 use App\Http\Controllers\Api\V1\Cuenta\NotificacionController;
 use App\Http\Controllers\Api\V1\Documentos\DocumentoController;
 use App\Http\Controllers\Api\V1\Establecimientos\EstablecimientoController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\Api\V1\Hacienda\PotreroController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Perfil\PerfilController;
 use App\Http\Controllers\Api\V1\Publico\ConsultaPublicaController;
+use App\Http\Controllers\Api\V1\Publico\ContratoPublicoController;
 use App\Http\Controllers\Api\V1\Publico\DirectorioController;
 use App\Http\Controllers\Api\V1\Publico\EnlacePublicoController;
 use App\Http\Controllers\Api\V1\Publico\OfertaPublicaController;
@@ -84,6 +86,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('establecimientos/{slug}', [PerfilPublicoController::class, 'show'])->name('establecimientos.show');
         Route::get('establecimientos/{slug}/ofertas', [PerfilPublicoController::class, 'ofertas'])->name('establecimientos.ofertas');
         Route::get('establecimientos/{slug}/contratos', [PerfilPublicoController::class, 'contratos'])->name('establecimientos.contratos');
+        Route::get('contratos/{codigo}', [ContratoPublicoController::class, 'show'])->where('codigo', '[0-9A-Za-z]{10}')->name('contratos.show');
         Route::get('enlaces/{token}', EnlacePublicoController::class)->where('token', '[A-Za-z0-9_-]{20,100}')->name('enlaces.show');
         Route::post('consultas', ConsultaPublicaController::class)->middleware('throttle:consultas')->name('consultas.store');
     });
@@ -226,6 +229,22 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('precios/historial', [PrecioController::class, 'historial'])->name('precios.historial');
             Route::get('precios-referencia', [PrecioController::class, 'referencias'])->name('precios-referencia.index');
             Route::post('precios-referencia', [PrecioController::class, 'crearReferencia'])->name('precios-referencia.store');
+
+            // Contratos a futuro con token (TPA-56)
+            Route::post('contratos/calcular', [ContratoController::class, 'calcular'])->name('contratos.calcular');
+            Route::get('contratos', [ContratoController::class, 'index'])->name('contratos.index');
+            Route::post('contratos', [ContratoController::class, 'store'])->name('contratos.store');
+            Route::get('contratos/{contrato}', [ContratoController::class, 'show'])->name('contratos.show');
+            Route::get('contratos/{contrato}/preview', [ContratoController::class, 'preview'])->name('contratos.preview');
+            Route::post('contratos/{contrato}/publicar', [ContratoController::class, 'publicar'])->name('contratos.publicar');
+            Route::post('contratos/{contrato}/terminos', [ContratoController::class, 'terminos'])->name('contratos.terminos');
+            Route::post('contratos/{contrato}/cancelar', [ContratoController::class, 'cancelar'])->name('contratos.cancelar');
+            Route::post('contratos/{contrato}/incumplido', [ContratoController::class, 'incumplido'])->name('contratos.incumplido');
+            Route::post('contratos/{contrato}/tomas/{toma}/confirmar-pago', [ContratoController::class, 'confirmarPago'])->name('contratos.tomas.confirmar');
+            Route::post('contratos/{contrato}/tomas/{toma}/devolucion-informada', [ContratoController::class, 'devolucionInformada'])->name('contratos.tomas.devolucion');
+            Route::post('contratos/{contrato}/entrega', [ContratoController::class, 'entrega'])->name('contratos.entrega');
+            Route::post('contratos/{contrato}/entrega/confirmar', [ContratoController::class, 'confirmarEntrega'])->name('contratos.entrega.confirmar');
+            Route::get('apalancamiento', [ContratoController::class, 'apalancamiento'])->name('apalancamiento');
 
             // Consultas de compradores (TPA-49)
             Route::get('consultas', [ConsultaController::class, 'index'])->name('consultas.index');

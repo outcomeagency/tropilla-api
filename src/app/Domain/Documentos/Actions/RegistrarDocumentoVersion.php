@@ -38,7 +38,7 @@ final class RegistrarDocumentoVersion
     public const PRIVACIDADES = ['fiscal', 'sanitario', 'comercial', 'general'];
 
     public const VINCULOS = ['establecimiento' => 'establecimientos', 'animal' => 'animales', 'lote' => 'lotes', 'evento' => 'eventos',
-        'potrero' => 'potreros', 'operacion' => 'operaciones', 'contrato' => 'contratos'];
+        'potrero' => 'potreros', 'operacion' => 'operaciones', 'contrato' => 'contratos_futuro'];
 
     public function __construct(
         private readonly RegistrarEnCadena $registrarEnCadena,

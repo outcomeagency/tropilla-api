@@ -8513,7 +8513,16 @@ components:
           oneOf:
           - {$ref: '#/components/schemas/FechaHora'}
           - {type: 'null'}
+        documento_id:
+          oneOf:
+          - {$ref: '#/components/schemas/Uuid'}
+          - {type: 'null'}
+          description: 'Aditivo TPA-56: PDF de los términos en Documentos (nueva versión por cada cambio)'
       additionalProperties: false
+      description: '`huella` null en borrador (los términos se versionan al publicar). Sin `comercial.precios` (asesor) las tomas vienen sin
+        comprador ni montos. `POST …/terminos?simular=true` → `{terminos, recorte: {liberar[], recortes[{toma_id, de, a}]}}` sin guardar; en borrador
+        edita los términos sin versionar; publicado → versión nueva con `motivo` obligatorio y, con tomas vigentes, la economía (precio de referencia,
+        descuento, anticipo, kg por token, moneda) queda fija (422). Publicar exige email verificado y la hacienda libre (409 `comprometido`).'
     Toma:
       type: object
       properties:
