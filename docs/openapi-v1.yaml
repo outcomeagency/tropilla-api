@@ -8015,6 +8015,14 @@ components:
       properties:
         numero: {type: integer}
         datos: {type: object, additionalProperties: true}
+        original:
+          type: [object, 'null']
+          additionalProperties: {type: string}
+          description: >-
+            Desvío aditivo (TPA-21 bugfix): valores tal como vinieron en la planilla, con las columnas de la plantilla como
+            claves (ya aplicado el `mapeo`; columnas desconocidas se omiten). `datos` es lo normalizado y omite lo que no se
+            entendió; `original` permite mostrar y precargar el valor en error. No cambia al corregir la fila (PATCH).
+            `null` en importaciones validadas antes del cambio.
         errores:
           type: array
           items:

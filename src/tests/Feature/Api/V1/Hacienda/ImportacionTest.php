@@ -84,3 +84,24 @@ it('también lee Excel (xlsx)', function () {
     $imp = $this->postJson("{$this->base}/importaciones", ['archivo' => UploadedFile::fake()->createWithContent('stock.xlsx', file_get_contents($tmp))])->json('data.id');
     $this->getJson("{$this->base}/importaciones/{$imp}")->assertJsonPath('data.estado', 'validada')->assertJsonPath('data.filas_validas', 1);
 });
+
+it('cada fila devuelve el valor original de la planilla (mapeado), que no cambia al corregir', function () {
+    $csv = "Especie;Sexo;Cat;Caravana;Fecha nacimiento;Columna rara\n"
+        ."bubalino;hembra;Vaquillona;05-00;2020-02-30;x\n"
+        ."BUB;X;Bubilla;0501;;\n";
+    $imp = $this->postJson("{$this->base}/importaciones", ['archivo' => planilla($csv), 'mapeo' => ['Cat' => 'categoria']])->json('data.id');
+
+    $filas = $this->getJson("{$this->base}/importaciones/{$imp}/filas")->assertOk()->json('data');
+    expect($filas[0]['original'])->toEqual(['especie' => 'bubalino', 'sexo' => 'hembra', 'categoria' => 'Vaquillona', 'caravana' => '05-00', 'fecha_nacimiento' => '2020-02-30'])
+        ->and($filas[0]['datos'])->not->toHaveKey('categoria')
+        ->and($filas[1]['original']['sexo'])->toBe('X');
+
+    $this->patchJson("{$this->base}/importaciones/{$imp}/filas/2", ['datos' => ['especie' => 'BUB', 'sexo' => 'H', 'categoria' => 'Bubilla', 'caravana' => '0501']])
+        ->assertOk()->assertJsonPath('data.errores', [])->assertJsonPath('data.original.sexo', 'X')->assertJsonPath('data.datos.sexo', 'H');
+    $this->patchJson("{$this->base}/importaciones/{$imp}/filas/2", ['accion' => 'borrar'])->assertStatus(422);
+
+    Sanctum::actingAs(miembro($this->est, 'encargado'));
+    $this->getJson("{$this->base}/importaciones/{$imp}/filas")->assertForbidden();
+    Sanctum::actingAs(duenoDe(crearEstablecimiento()));
+    $this->getJson("{$this->base}/importaciones/{$imp}/filas")->assertNotFound();
+});

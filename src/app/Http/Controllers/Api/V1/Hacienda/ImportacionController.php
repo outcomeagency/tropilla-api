@@ -141,7 +141,8 @@ class ImportacionController extends Controller
     /** @return array<string, mixed> */
     private function fila(object $f): array
     {
-        return ['numero' => (int) $f->numero, 'datos' => (object) json_decode($f->datos, true), 'errores' => json_decode($f->errores, true),
+        return ['numero' => (int) $f->numero, 'datos' => (object) json_decode($f->datos, true),
+            'original' => $f->original === null ? null : (object) json_decode($f->original, true), 'errores' => json_decode($f->errores, true),
             'advertencias' => json_decode($f->advertencias, true), 'accion' => $f->accion];
     }
 }

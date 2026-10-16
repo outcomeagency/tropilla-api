@@ -50,8 +50,11 @@ final class ProcesarImportacion
                     }
                 }
                 $r = $validador->validar($fila, $i + 1);
+                // Lo que vino en la planilla (columnas de la plantilla, ya mapeadas): el editor lo muestra y lo precarga.
+                $original = array_intersect_key($fila, array_flip(ValidadorFila::COLUMNAS));
                 DB::table('importacion_filas')->insert([
                     'importacion_id' => $imp->id, 'numero' => $i + 1, 'datos' => json_encode($r['datos'], JSON_UNESCAPED_UNICODE),
+                    'original' => json_encode((object) $original, JSON_UNESCAPED_UNICODE),
                     'errores' => json_encode($r['errores'], JSON_UNESCAPED_UNICODE), 'advertencias' => json_encode($r['advertencias'], JSON_UNESCAPED_UNICODE),
                     'accion' => 'importar', 'animal_id' => (string) Str::uuid7(), 'evento_id' => (string) Str::uuid7(),
                 ]);
