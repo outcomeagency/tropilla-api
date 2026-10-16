@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\V1\Hacienda\PotreroController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Perfil\PerfilController;
 use App\Http\Controllers\Api\V1\Publico\ConsultaPublicaController;
+use App\Http\Controllers\Api\V1\Publico\DirectorioController;
 use App\Http\Controllers\Api\V1\Publico\OfertaPublicaController;
 use App\Http\Controllers\Api\V1\Publico\PerfilPublicoController;
 use App\Http\Controllers\Api\V1\Sistema\AuditoriaController;
@@ -59,6 +60,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::middleware('throttle:publico')->prefix('public')->name('public.')->group(function () {
         Route::get('ofertas/{codigo}', [OfertaPublicaController::class, 'show'])->name('ofertas.show');
         Route::get('ofertas/{codigo}/pdf', [OfertaPublicaController::class, 'pdf'])->name('ofertas.pdf');
+        Route::get('directorio', [DirectorioController::class, 'index'])->name('directorio');
+        Route::get('directorio/facetas', [DirectorioController::class, 'facetas'])->name('directorio.facetas');
+        Route::get('sitemap', [DirectorioController::class, 'sitemap'])->name('sitemap');
         Route::get('establecimientos/{slug}', [PerfilPublicoController::class, 'show'])->name('establecimientos.show');
         Route::get('establecimientos/{slug}/ofertas', [PerfilPublicoController::class, 'ofertas'])->name('establecimientos.ofertas');
         Route::get('establecimientos/{slug}/contratos', [PerfilPublicoController::class, 'contratos'])->name('establecimientos.contratos');

@@ -420,3 +420,18 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
   `integridad_registrada`); SEO por idioma, indexable solo si está publicado **y** en el directorio.
 - Demo: `/p/la-esperanza` publicado y en el directorio, textos es/en/pt, WhatsApp visible.
 - Verificado: 4 tests (flujo completo + snapshot hasheado + ausencia de datos sensibles, exacto/congelar/descongelar, slug/301/409/despublicar, permisos).
+
+## TPA-54 · Directorio público con buscador · ✅ (parte API)
+
+**Endpoints:** `GET /public/directorio?q&provincia&departamento&especie&raza&categoria&con_oferta&con_contrato&locale&limit&cursor`,
+`GET /public/directorio/facetas`, `GET /public/sitemap`.
+
+**Comentario del dev:**
+- Solo perfiles **publicados con el directorio activado** (opt-in; el demo lo activa). Consulta en vivo sobre perfiles,
+  existencias, animales y ofertas (MVP; la proyección `directorio_entradas` + `tsvector` de §11 queda para cuando haya volumen).
+  Búsqueda sin acentos (`unaccent`) por nombre, departamento y textos del perfil.
+- Orden por **última actividad** (último evento registrado o edición del perfil) y completitud, nunca por pago; insignias solo
+  por hechos medibles. Cursor opaco con huella de filtros (cambiar filtros → 400). `con_contrato` devuelve vacío hasta TPA-56.
+- Facetas (provincias, especies, razas, categorías, con oferta) sobre el conjunto filtrado; sitemap solo con lo indexable
+  (perfiles del directorio y sus ofertas activas) con idiomas.
+- Verificado: 3 tests (filtros/búsqueda/oculto fuera, paginado + facetas, sitemap).
