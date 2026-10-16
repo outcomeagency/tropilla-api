@@ -331,3 +331,18 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
 - Alerta de pesaje atípico con `pesaje_atipico_pct`/`pesaje_atipico_dias` (parámetros por especie, editables por establecimiento):
   web → `422 requiere_confirmacion`; app → observación en el evento.
 - Verificado: 3 tests (GDP individual 1,333 y de lote 0,967 = promedio, promedio de lote sin pisar individual + 422 sin cantidad, alerta dentro/fuera del plazo).
+
+## TPA-25 · Recategorización sugerida · ✅ (parte API)
+
+**Endpoints:** `GET …/animales?sugerencia_categoria=true` (lista, con `categoria_sugerida`), `POST …/animales/recategorizar` (201 EventoResumen[]).
+**Comando:** `hacienda:sugerir-categorias` (diario 04:00 ART).
+
+**Comentario del dev:**
+- `SugeridorCategoria` + `CondicionEvaluator` (DSL de §3.2: `todas`/`alguna`/`no`, hojas con `{param}` y hoja-parámetro) sobre
+  `reglas_categoria` por prioridad (las del establecimiento reemplazan a las globales de igual prioridad). Las 9 reglas son las
+  mismas para BOV/BUB; cambian los umbrales por parámetro: a los 17 meses el bubillito ya se sugiere bubillo (16 m) y el
+  novillito todavía no (23 m). Se evalúa al proyectar cada evento y cada noche (la edad cambia sola).
+- No se sugiere volver a una categoría anterior (orden del catálogo) — ver TPA-16.
+- Confirmar en bloque: **un `hacienda.recategorizacion` por animal**, todo o nada; si coincide con la sugerida lleva
+  `sugerida: true`, `regla_id` y el motivo de la regla; si el usuario elige otra, `motivo: manual`.
+- Verificado: 5 tests (destete/castración/dentición/parto por especie, confirmación en bloque, atomicidad + 403, job por edad, evaluador del DSL).

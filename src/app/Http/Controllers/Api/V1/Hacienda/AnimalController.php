@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Hacienda;
 
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Hacienda\Actions\AltaRapida;
+use App\Domain\Hacienda\Actions\ConfirmarRecategorizaciones;
 use App\Domain\Hacienda\ConsultasAnimales;
 use App\Domain\Hacienda\Eventos\ConsultasEventos;
 use App\Domain\Hacienda\Proyecciones\Identificaciones;
@@ -44,6 +45,22 @@ class AnimalController extends Controller
         $id = $alta->handle($establecimiento, $request->user(), EventoController::cuerpo($request));
 
         return AnimalResource::make(ConsultasAnimales::uno($establecimiento->id, $id))->response()->setStatusCode(201);
+    }
+
+    /** Confirmar recategorizaciones sugeridas en bloque (TPA-25): un evento por animal. */
+    public function recategorizar(Request $request, Establecimiento $establecimiento, ConfirmarRecategorizaciones $confirmar): JsonResponse
+    {
+        Gate::authorize('hacienda.crear', $establecimiento);
+        $datos = $request->validate([
+            'items' => ['required', 'array', 'min:1', 'max:500'],
+            'items.*.animal_id' => ['required', 'uuid', 'distinct'],
+            'items.*.categoria' => ['required', 'string', 'max:64'],
+            'ocurrido_en' => ['nullable', 'regex:/^\d{4}-\d{2}-\d{2}$/'],
+        ]);
+        $eventos = $confirmar->handle($establecimiento, $request->user(), $datos['items'], $datos['ocurrido_en'] ?? null);
+        $filas = ConsultasEventos::base()->whereIn('v.id', array_map(fn ($e) => $e->id, $eventos))->get();
+
+        return response()->json(['data' => EventoResumenResource::collection($filas)->resolve($request)], 201);
     }
 
     public function show(Establecimiento $establecimiento, string $animal): AnimalResource

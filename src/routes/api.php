@@ -89,6 +89,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
             // Animales (TPA-16..19)
             Route::get('animales', [AnimalController::class, 'index'])->name('animales.index');
             Route::post('animales', [AnimalController::class, 'store'])->name('animales.store');
+            Route::post('animales/recategorizar', [AnimalController::class, 'recategorizar'])->name('animales.recategorizar');
             Route::get('animales/identificador', [AnimalController::class, 'identificador'])->name('animales.identificador');
             Route::get('animales/{animal}', [AnimalController::class, 'show'])->name('animales.show');
             Route::get('animales/{animal}/eventos', [AnimalController::class, 'eventos'])->name('animales.eventos');
