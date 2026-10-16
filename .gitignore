@@ -1,0 +1,6 @@
+# Raíz del repo. La app Laravel tiene su propio src/.gitignore (vendor, .env, ...).
+.DS_Store
+*.log
+.env
+.idea/
+.vscode/
