@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Domain\Comercial\Actions\GestionarOferta;
 use App\Domain\Comercial\Actions\RecibirConsultaPublica;
+use App\Domain\Contratos\Actions\GestionarContrato;
 use App\Domain\Establecimientos\Actions\RealizarOnboarding;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Hacienda\Actions\GuardarPotrero;
@@ -75,6 +76,7 @@ class DemoLaEsperanzaSeeder extends Seeder
             $this->planSanitario();
             $this->ofertaBubillos();
             $this->perfilPublico();
+            $this->contratoFuturo();
         });
 
         $this->command?->info('Demo La Esperanza cargado: '.self::EMAIL.' / '.self::PASSWORD);
@@ -371,6 +373,18 @@ class DemoLaEsperanzaSeeder extends Seeder
         ] as $c) {
             $recibir->handle([...$c, 'oferta_codigo' => $oferta->codigo_publico, 'captcha_token' => 'demo'], null, 'seeder', null);
         }
+    }
+
+    /**
+     * Contrato a futuro de ejemplo (TPA-56): las 60 bubillas, 450 kg a la entrega (en 8 meses), 53 % de rendimiento → 14.310 kg al gancho
+     * = 143 tokens de 100 kg; referencia $5.200/kg gancho con 8 % de descuento y 30 % de anticipo. Publicado (huella + PDF si hay Gotenberg).
+     */
+    private function contratoFuturo(): void
+    {
+        $g = app(GestionarContrato::class);
+        $id = $g->crear($this->est, $this->dueno, ['lote_id' => $this->lotes['bubillas'], 'peso_vivo_estimado_kg' => '450', 'precio_referencia_kg' => '5200',
+            'descuento_pct' => '8', 'anticipo_pct' => '30', 'fecha_entrega' => now()->addMonths(8)->startOfMonth()->toDateString()]);
+        $g->publicar($this->est, $this->dueno, DB::table('contratos_futuro')->where('id', $id)->first());
     }
 
     /** Perfil público publicado y en el directorio (`/p/la-esperanza`). */
