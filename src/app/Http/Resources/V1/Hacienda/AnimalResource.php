@@ -3,6 +3,7 @@
 namespace App\Http\Resources\V1\Hacienda;
 
 use App\Domain\Integridad\Confianza;
+use App\Domain\Reproduccion\ReglasReproductivas;
 use App\Support\Formato;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -54,6 +55,8 @@ class AnimalResource extends JsonResource
             'servicio_tipo' => $a->servicio_tipo,
             'tacto_fecha' => $a->tacto_fecha,
             'dias_gestacion' => self::diasGestacion($a),
+            'dias_posparto' => $a->ultimo_parto_fecha === null ? null : (int) Carbon::parse($a->ultimo_parto_fecha)->diffInDays(today(), false),
+            'destete' => $a->destete_fecha === null ? null : ['fecha' => $a->destete_fecha, 'peso_kg' => Formato::decimal($a->destete_peso_kg)],
             'fpp_precision' => $a->fpp_precision,
             'retiro_carne_hasta' => $a->retiro_carne_hasta,
             'retiro_leche_hasta' => $a->retiro_leche_hasta,
@@ -74,12 +77,7 @@ class AnimalResource extends JsonResource
      */
     public static function diasGestacion(object $a): ?int
     {
-        if (! in_array($a->estado_reproductivo, ['servida', 'prenada'], true)) {
-            return null;
-        }
-        $concepcion = $a->estado_reproductivo === 'prenada' && $a->tacto_fecha !== null && $a->dias_gestacion_al_tacto !== null
-            ? Carbon::parse($a->tacto_fecha)->subDays((int) $a->dias_gestacion_al_tacto)
-            : ($a->servicio_fecha !== null ? Carbon::parse($a->servicio_fecha) : null);
+        $concepcion = ReglasReproductivas::concepcion($a);
 
         return $concepcion === null ? null : (int) $concepcion->diffInDays(today(), false);
     }

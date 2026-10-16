@@ -487,3 +487,23 @@ y los **campos aditivos** `tacto_fecha` y `dias_gestacion` (hoy − concepción,
 - Modo manga = app (búsqueda por identificador + tactos en lote por `POST /sync/push`, misma `RegistrarEvento`); no requiere endpoint nuevo.
 - Verificado: 5 tests (FPP de las 5 gestaciones + ficha con `dias_gestacion` + timeline, override del establecimiento, preñada sin días 422 /
   tamaño conserva la FPP de la IA, máximo por especie y advertencia, tacto en macho / 403 / 404). Suite completa verde.
+
+## TPA-29 · Parto, nacimiento, aborto y destete · ✅ (parte API)
+
+**Endpoints:** vía `POST …/eventos` / push (`reproduccion.parto`, `hacienda.nacimiento`, `reproduccion.aborto`, `reproduccion.destete`);
+**campos aditivos** en `Animal`: `dias_posparto` y `destete {fecha, peso_kg}` (ya en el YAML); crías en `GET …/animales/{a}/genealogia`.
+
+**Comentario del dev:**
+- El parto ya creaba las crías vivas con `madre_id` = sujeto (TPA-22). Se agregaron reglas en `ReglasReproductivas`: hasta 3 crías (422),
+  cría viva con categoría de cría (`categorias.es_cria`, dato), `madre_id` declarado = la hembra del parto; especie de la cría = madre (ya existía).
+- Gestación mínima por especie/raza (dato `gestacion_min_dias`): el parto **advierte** `gestacion_corta` si desde la concepción (tacto con días o
+  servicio/IA; inicio del servicio natural) pasaron menos de mínimo − 30 d (modelo-datos §3.3: búfala 265, bovino 240), y `parto_reciente` si
+  el parto anterior está más cerca que eso. Web → `422 requiere_confirmacion`; sync → observación. En correcciones no se compara.
+- Aborto → vacía y sin FPP (ya existía); advierte `aborto_sin_prenez` y bloquea días > máxima. Destete: `destetado` + fecha + peso; con
+  `categoria_nueva` recategoriza en el acto (no puede ser categoría de cría); **sin ella queda la sugerencia** de TPA-25 (motivo destete).
+  Decisión: no se recategoriza en la proyección sin evento (rompería la confirmación de TPA-25 y las 8 sugerencias del demo). Lote anónimo:
+  el conteo pasa a la categoría nueva (un destete por sexo, si no 422). Advierte `ya_destetado`.
+- Trampa (bug de TPA-22): un parto con cría muerta (sin `animal`) rompía la proyección (uuid `''` en el `NOT IN` de la madre): corregido.
+- Pendiente fuera de alcance: GDP predestete (no se guarda el peso al nacer aparte del primer peso), padre de la cría desde el servicio.
+- Verificado: 7 tests (mellizos + muerta con madre/peso/existencias/genealogía/días posparto, 5 rechazos del parto, gestación corta y parto
+  reciente con confirmación + bovino sin aviso, aborto, destete individual con/sin categoría, destete de lote anónimo, 403/404). Suite verde.
