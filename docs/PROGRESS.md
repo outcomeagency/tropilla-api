@@ -196,3 +196,18 @@ acá y en la sección «Desvíos del contrato» al final.
   carga), 8 bucerras destetadas con sugerencia a bubilla, bubillos 4 dientes a 468 kg → clase faena «BBO joven pesado».
 - Verificado: 4 tests de alta rápida (201 + identificador normalizado, id del cliente, 409, 422 ×3, 403/404) + test del demo
   (login, totales 1.240/380, U-0142, 8 sugerencias, promedio 468, `integridad:verificar-cadenas` OK, idempotencia).
+
+## TPA-17 · Ficha del animal con timeline · ✅ (parte API)
+
+**Endpoints:** `GET …/animales/{a}` (Animal), `GET …/animales/{a}/eventos?tipo&modulo&incluir_anulados` (cursor),
+`GET …/animales/{a}/genealogia`, `GET …/animales/{a}/documentos`.
+
+**Comentario del dev:**
+- Ficha = `animales_estado` + nombres (lote, potrero efectivo = propio o el de su lote, categoría traducida), identificaciones
+  vigentes y retiradas, madre/padre, edad y retiro vigente calculados al leer, **clase de faena** derivada de `categorias_faena`
+  (categoría + dentición + peso: datos, no código) y `confianza_resumen` (eventos / con integridad registrada).
+- Timeline: eventos vigentes del animal + los grupales del lote anónimo del que se individualizó, anteriores a la
+  individualización (`heredado_de_lote: true`); cada ítem con autor por rol, `confianza`, `corregido`/`anulado`; pestañas
+  Sanidad/Reproducción = filtro `modulo`. Anulados ocultos salvo `incluir_anulados=true`.
+- `documentos` devuelve `[]` hasta la carpeta documental (TPA-36); queda el endpoint y su permiso (`documentos.ver`).
+- Verificado: 5 tests (encabezado completo con clase BBO joven pesado, timeline con filtros, herencia del lote, genealogía madre/crías, 404 ajeno, lectura puede ver).
