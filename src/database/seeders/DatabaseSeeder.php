@@ -23,6 +23,8 @@ class DatabaseSeeder extends Seeder
                 ['email' => 'dev@tropilla.local'],
                 ['nombre' => 'Dev TROPILLA', 'password' => 'password', 'email_verificado_en' => now()],
             );
+            // Demo «La Esperanza» (demo@tropilla.ar / tropilla-demo) para el front y la app. Idempotente.
+            $this->call(DemoLaEsperanzaSeeder::class);
         }
     }
 }

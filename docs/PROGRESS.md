@@ -174,3 +174,25 @@ acá y en la sección «Desvíos del contrato» al final.
 - Verificado: 14 tests de feature (alta + cadena + verificación de huella desde el sobre guardado, lote anónimo + traslado +
   movimientos + ocupación, GDP y advertencia, baja y bloqueo posterior, reglas por especie/sexo, parto con FPP Murrah 303 d,
   422 de schema/sujetos, 409 identificación, 403/404, idempotencia, append-only, reconstrucción, actividad con cursor, interdicción).
+
+## TPA-16 · Alta rápida de animal desde el celular · ✅ (parte API) + seeder DEMO
+
+**Endpoints:** `POST …/animales` (AltaRapidaInput → 201 Animal), `GET …/animales/identificador?valor&tipo`, `GET …/animales/{a}` (ficha, base de TPA-17).
+**Seeder:** `DemoLaEsperanzaSeeder` (corre solo en `local`; `demo@tropilla.ar` / `tropilla-demo`, documentado en el README).
+
+**Comentario del dev:**
+- Alta rápida = atajo que arma un `hacienda.alta` (`motivo: alta_rapida`) con un solo animal y lo pasa por `RegistrarEvento`
+  (mismo sobre/huella/cadena/proyección que el push offline de la app). `animal_id` opcional (si falta lo genera el servidor);
+  campos opcionales en `null` se omiten (el payload no admite null). 409 `identificacion_duplicada` online.
+- El chequeo de duplicado usa el valor normalizado (mayúsculas, sin espacios/guiones/puntos): `05-00` encuentra `0500`; el RFID
+  se valida con 15 dígitos **normalizados** (`032 000123456789` es válido).
+- Sugerencia de categoría (base de TPA-25): un animal que entra con categoría no-cría queda `destetado` (dato `es_cria`) y el
+  sugeridor **nunca sugiere volver a una categoría anterior** (orden del catálogo) — sin esto una vaca de inventario sin partos
+  registrados se sugería «ternera».
+- DEMO: todo por los caminos reales (onboarding, `GuardarPotrero`, eventos): 112 eventos, existencias exactas del brief
+  (BOV 1.240 = vacas 620, vaquillonas 180, terneros/as 310, novillos 110, toros 20; BUB 380 = búfalas 190, bubillas 60,
+  bucerros/as 95, bubillos 30, toros 5). U-0142: tacto 25/09/2026 con 194 días → FPP **12/01/2027** (el brief decía «210 días»:
+  son los días al día de hoy; con 210 al tacto la FPP daría 27/12/2026). 4 búfalas con parto en ≤ 7 días (relativo a la fecha de
+  carga), 8 bucerras destetadas con sugerencia a bubilla, bubillos 4 dientes a 468 kg → clase faena «BBO joven pesado».
+- Verificado: 4 tests de alta rápida (201 + identificador normalizado, id del cliente, 409, 422 ×3, 403/404) + test del demo
+  (login, totales 1.240/380, U-0142, 8 sugerencias, promedio 468, `integridad:verificar-cadenas` OK, idempotencia).
