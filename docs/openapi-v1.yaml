@@ -6114,6 +6114,26 @@ paths:
             application/json:
               schema: {type: object}
         '404': {$ref: '#/components/responses/NoEncontrado'}
+  /public/anclajes/{anclaje}/recibo:
+    get:
+      tags: [Público]
+      summary: Recibo del anclaje (.ots más reciente) — aditivo TPA-40
+      operationId: get_public_anclajes_anclaje_recibo
+      description: 'Para verificar con el cliente `ots` (OpenTimestamps) que la raíz del Merkle existía en la fecha del bloque, sin confiar en
+        TROPILLA. Es el `anclaje.recibo_url` de `IntegridadRegistro`.'
+      security: []
+      parameters:
+      - name: anclaje
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/Uuid'}
+      responses:
+        '200':
+          description: Bytes del recibo
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
   /public/verificaciones/archivo/{sha256}:
     get:
       tags: [Público]

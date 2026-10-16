@@ -8,6 +8,9 @@ use App\Http\Controllers\Controller;
 use App\Support\Leyenda;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /** Verificación pública (TPA-41): `/v/{huella}` y «verificar un archivo» sin guardarlo. */
 class VerificacionController extends Controller
@@ -31,6 +34,16 @@ class VerificacionController extends Controller
             'seq' => $i['seq'], 'registrado_en' => $i['registrado_en'], 'anclaje' => $i['anclaje'], 'prueba_merkle' => $i['prueba'],
             'merkle' => 'RFC 6962 (hoja 0x00 || eslabón, nodo 0x01 || izq || der)', 'sobre' => $v['sobre'],
         ], 200, ['Content-Disposition' => "attachment; filename=\"prueba-{$huella}.json\""]);
+    }
+
+    /** Recibo del anclaje (`.ots` más reciente) para verificar con el cliente `ots` sin confiar en TROPILLA (TPA-40). */
+    public function recibo(string $anclaje): Response
+    {
+        $a = DB::table('anclajes')->where('id', strtolower($anclaje))->whereNotNull('recibo_clave')->first() ?? throw ApiException::noEncontrado();
+        $bytes = Storage::get($a->recibo_clave) ?? throw ApiException::noEncontrado();
+
+        return response($bytes, 200, ['Content-Type' => 'application/octet-stream',
+            'Content-Disposition' => "attachment; filename=\"tropilla-{$a->raiz}.ots\"", 'Cache-Control' => 'public, max-age=300']);
     }
 
     public function archivo(Request $request, string $sha256): JsonResponse

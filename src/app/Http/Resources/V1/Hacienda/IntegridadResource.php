@@ -23,7 +23,8 @@ final class IntegridadResource
                 $prueba = json_decode($inc->prueba, true);
                 $anclaje = ['id' => $inc->id, 'driver' => $inc->driver, 'red' => $inc->red, 'raiz' => $inc->raiz, 'estado' => $inc->estado,
                     'confirmado_en' => $inc->confirmado_en ? Formato::fechaHora(Carbon::parse($inc->confirmado_en)) : null,
-                    'referencia' => $inc->referencia ? json_decode($inc->referencia, true) : null, 'recibo_url' => null];
+                    'referencia' => $inc->referencia ? json_decode($inc->referencia, true) : null,
+                    'recibo_url' => $inc->recibo_clave ? url("/api/v1/public/anclajes/{$inc->id}/recibo") : null];
             }
         }
 

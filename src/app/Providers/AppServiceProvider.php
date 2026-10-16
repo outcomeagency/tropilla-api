@@ -11,6 +11,9 @@ use App\Domain\Establecimientos\Models\Productor;
 use App\Domain\Establecimientos\Policies\EstablecimientoPolicy;
 use App\Domain\Establecimientos\Policies\ProductorPolicy;
 use App\Domain\Hacienda\Proyecciones\SugeridorCategoria;
+use App\Domain\Integridad\Anclaje\AnchorDriver;
+use App\Domain\Integridad\Anclaje\OpenTimestampsDriver;
+use App\Domain\Integridad\Anclaje\StubDriver;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -20,6 +23,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Events\TokenAuthenticated;
+use RuntimeException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +31,11 @@ class AppServiceProvider extends ServiceProvider
     {
         // Almacén de la subida diferida (TPA-44): S3/MinIO o local (dev sin MinIO, tests).
         $this->app->bind(AlmacenObjetos::class, fn () => config('tropilla.archivos.driver') === 's3' ? new S3Almacen : new LocalAlmacen);
+
+        // Anclaje (TPA-40): OpenTimestamps o stub.
+        $this->app->bind(AnchorDriver::class, fn () => config('tropilla.anclaje.driver') === 'opentimestamps'
+            ? new OpenTimestampsDriver(config('tropilla.anclaje.calendarios'), config('tropilla.anclaje.explorador'))
+            : new StubDriver);
 
         // Memoiza reglas de categoría por request/job.
         $this->app->scoped(SugeridorCategoria::class);
@@ -41,6 +50,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // sync §6.3: con el driver stub en producción la app no arranca (sería «integridad registrada» falsa).
+        if ($this->app->environment('production') && config('tropilla.anclaje.driver') === 'stub') {
+            throw new RuntimeException('TROPILLA_ANCLAJE_DRIVER=stub no está permitido en producción.');
+        }
+
         foreach (self::PARAMETROS_UUID as $parametro) {
             Route::pattern($parametro, '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}');
         }

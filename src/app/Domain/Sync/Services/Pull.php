@@ -102,6 +102,13 @@ final class Pull
             'tarea' => ($t = Tarea::query()->where('id', $id)->where('establecimiento_id', $est->id)->first()) ? TareaResource::make($t->setAttribute('zona_horaria', $est->zona_horaria))->resolve($request) : null,
             'documento' => ($d = DB::table('documentos')->where('id', $id)->where('establecimiento_id', $est->id)->first())
                 ? ConsultasDocumentos::documento($d, Carbon::now($est->zona_horaria)->toDateString(), true) : null,
+            'anclaje' => ($a = DB::table('anclajes')->where('id', $id)->first()) ? ['id' => $a->id, 'estado' => $a->estado, 'driver' => $a->driver, 'red' => $a->red,
+                'raiz' => $a->raiz, 'desde_registro_id' => (int) $a->desde_registro_id, 'hasta_registro_id' => (int) $a->hasta_registro_id,
+                'confirmado_en' => $a->confirmado_en ? Formato::fechaHora(Carbon::parse($a->confirmado_en)) : null,
+                // ids de los eventos de este establecimiento que pasan a «Integridad registrada»
+                'evento_ids' => DB::table('anclaje_inclusiones as i')->join('registros_integridad as r', 'r.id', '=', 'i.registro_id')
+                    ->join('cadenas as c', 'c.id', '=', 'r.cadena_id')->where('i.anclaje_id', $a->id)->where('c.establecimiento_id', $est->id)
+                    ->where('r.sujeto_tipo', 'evento')->pluck('r.sujeto_id')->all()] : null,
             'establecimiento' => EstablecimientoResource::make($est->loadMissing('productor'))->resolve($request),
             'membresia' => ($m = Membresia::query()->with('usuario')->where('id', $id)->where('establecimiento_id', $est->id)->first()) ? MembresiaResource::make($m)->resolve($request) : null,
             'revision' => ($r = DB::table('revisiones')->where('id', $id)->where('establecimiento_id', $est->id)->first()) ? RevisionResource::make($r)->resolve($request) : null,

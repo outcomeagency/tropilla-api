@@ -73,6 +73,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::post('verificaciones/archivo', [VerificacionController::class, 'subirArchivo'])->name('verificaciones.archivo.subir');
         Route::get('verificaciones/{huella}', [VerificacionController::class, 'show'])->name('verificaciones.show');
         Route::get('verificaciones/{huella}/prueba', [VerificacionController::class, 'prueba'])->name('verificaciones.prueba');
+        Route::get('anclajes/{anclaje}/recibo', [VerificacionController::class, 'recibo'])->whereUuid('anclaje')->name('anclajes.recibo');
         Route::get('directorio', [DirectorioController::class, 'index'])->name('directorio');
         Route::get('directorio/facetas', [DirectorioController::class, 'facetas'])->name('directorio.facetas');
         Route::get('sitemap', [DirectorioController::class, 'sitemap'])->name('sitemap');
