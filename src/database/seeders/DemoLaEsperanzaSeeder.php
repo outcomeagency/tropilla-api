@@ -3,11 +3,14 @@
 namespace Database\Seeders;
 
 use App\Domain\Comercial\Actions\GestionarOferta;
+use App\Domain\Comercial\Actions\RecibirConsultaPublica;
 use App\Domain\Establecimientos\Actions\RealizarOnboarding;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Hacienda\Actions\GuardarPotrero;
 use App\Domain\Hacienda\Eventos\ArmarSobreWeb;
 use App\Domain\Hacienda\Eventos\RegistrarEvento;
+use App\Domain\Perfil\Actions\GestionarPerfil;
+use App\Domain\Perfil\Services\Perfiles;
 use App\Domain\Sync\Actions\RegistrarCambio;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -64,6 +67,7 @@ class DemoLaEsperanzaSeeder extends Seeder
             $this->bubillosEnVenta();
             $this->sanidadDeLotes();
             $this->ofertaBubillos();
+            $this->perfilPublico();
         });
 
         $this->command?->info('Demo La Esperanza cargado: '.self::EMAIL.' / '.self::PASSWORD);
@@ -291,7 +295,7 @@ class DemoLaEsperanzaSeeder extends Seeder
         $gestionar->publicar($oferta, $this->dueno, true);
 
         // 2 consultas de compradores sin responder (pendientes del inicio).
-        $recibir = app(\App\Domain\Comercial\Actions\RecibirConsultaPublica::class);
+        $recibir = app(RecibirConsultaPublica::class);
         foreach ([
             ['nombre' => 'Li Wei', 'empresa' => 'Shandong Premium Meat', 'pais' => 'CN', 'email' => 'li.wei@example.com', 'tipo_comprador' => 'exportador',
                 'volumen' => '2 contenedores/mes', 'mensaje' => 'Hello, we are interested in buffalo steers for export. Can you share health records and availability?', 'idioma' => 'en'],
@@ -300,6 +304,23 @@ class DemoLaEsperanzaSeeder extends Seeder
         ] as $c) {
             $recibir->handle([...$c, 'oferta_codigo' => $oferta->codigo_publico, 'captcha_token' => 'demo'], null, 'seeder', null);
         }
+    }
+
+    /** Perfil público publicado y en el directorio (`/p/la-esperanza`). */
+    private function perfilPublico(): void
+    {
+        $gestionar = app(GestionarPerfil::class);
+        $p = Perfiles::asegurar($this->est);
+        $gestionar->editar($this->est, $this->dueno, [
+            'row_version' => (int) $p->row_version, 'slug' => 'la-esperanza', 'en_directorio' => true, 'contacto_visible' => ['whatsapp' => true],
+            'textos' => [
+                'es' => ['titulo' => 'La Esperanza — Agropecuaria Don Ramón', 'descripcion' => 'Cría, recría e invernada de bovinos y búfalos Murrah y Mediterráneos en humedales de General Paz, Corrientes.'],
+                'en' => ['titulo' => 'La Esperanza — Agropecuaria Don Ramón', 'descripcion' => 'Cattle and Murrah and Mediterranean buffalo breeding and finishing in the wetlands of General Paz, Corrientes, Argentina.'],
+                'pt' => ['titulo' => 'La Esperanza — Agropecuaria Don Ramón', 'descripcion' => 'Cria, recria e engorda de bovinos e búfalos Murrah e Mediterrâneos nas áreas úmidas de General Paz, Corrientes.'],
+            ],
+        ]);
+        $gestionar->aceptarPreview($this->est, $this->dueno);
+        $gestionar->publicar($this->est, $this->dueno);
     }
 
     /** @param list<array<string, mixed>> $animales */

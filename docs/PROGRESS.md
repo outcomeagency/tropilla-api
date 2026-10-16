@@ -401,3 +401,22 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
 - Aviso por email a dueño/admin (`NuevaConsultaNotification`, en cola) con link a la bandeja; el detalle personal solo en el panel.
 - Demo: 2 consultas sin responder sobre la oferta de bubillos (un exportador chino en inglés y un frigorífico local).
 - Verificado: 5 tests (feliz con idioma y mail, honeypot, captcha inválido, rate limit 429, 422/404).
+
+## TPA-50 · Perfil público del establecimiento · ✅ (parte API)
+
+**Endpoints:** `GET|PATCH …/perfil`, `GET …/perfil/slug-disponible`, `GET …/perfil/preview?locale`, `POST …/perfil/preview/aceptar`,
+`POST …/perfil/publicar`, `POST …/perfil/despublicar`, `POST …/perfil/secciones/{s}/congelar|descongelar`; públicos
+`GET /public/establecimientos/{slug}?locale` (301 si el slug cambió), `…/{slug}/ofertas`, `…/{slug}/contratos` (`[]` hasta TPA-56).
+
+**Comentario del dev:**
+- Secciones activables (portada, actividad, rodeo exacto/rango, sanidad 12 meses, trazabilidad, documentos, oferta, contacto)
+  calculadas **en vivo** desde la hacienda (se actualizan solas) salvo las **congeladas**, que muestran su snapshot.
+  `PerfilPublicoBuilder` es whitelist: nunca CUIT, RENSPA, ubicación exacta (zona según `ubicacion_publica`, máx. localidad),
+  precios, reactores, tratamientos individuales, nombres de empleados ni número de socio; contacto solo los canales que el
+  productor marca visibles (el formulario siempre). Sanidad como hechos («Aftosa: N registros de vacunación»), nunca «al día» (duda 12).
+- Vista previa obligatoria (`422 preview_requerida`) y email verificado; publicar = `perfil_publicaciones` hasheado y encadenado
+  (`tropilla.perfil_publicacion/1`). Slug `^[a-z0-9-]{3,60}$` único; cambiarlo guarda el viejo en `perfil_slugs_historicos` → 301.
+- Completitud 0–100 + `faltantes` (ranking del directorio); insignias solo por hechos medibles (`historial_12_meses`,
+  `integridad_registrada`); SEO por idioma, indexable solo si está publicado **y** en el directorio.
+- Demo: `/p/la-esperanza` publicado y en el directorio, textos es/en/pt, WhatsApp visible.
+- Verificado: 4 tests (flujo completo + snapshot hasheado + ausencia de datos sensibles, exacto/congelar/descongelar, slug/301/409/despublicar, permisos).

@@ -18,8 +18,10 @@ use App\Http\Controllers\Api\V1\Hacienda\ImportacionController;
 use App\Http\Controllers\Api\V1\Hacienda\LoteController;
 use App\Http\Controllers\Api\V1\Hacienda\PotreroController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\Perfil\PerfilController;
 use App\Http\Controllers\Api\V1\Publico\ConsultaPublicaController;
 use App\Http\Controllers\Api\V1\Publico\OfertaPublicaController;
+use App\Http\Controllers\Api\V1\Publico\PerfilPublicoController;
 use App\Http\Controllers\Api\V1\Sistema\AuditoriaController;
 use App\Http\Controllers\Api\V1\Sync\SyncController;
 use Illuminate\Support\Facades\Route;
@@ -57,6 +59,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::middleware('throttle:publico')->prefix('public')->name('public.')->group(function () {
         Route::get('ofertas/{codigo}', [OfertaPublicaController::class, 'show'])->name('ofertas.show');
         Route::get('ofertas/{codigo}/pdf', [OfertaPublicaController::class, 'pdf'])->name('ofertas.pdf');
+        Route::get('establecimientos/{slug}', [PerfilPublicoController::class, 'show'])->name('establecimientos.show');
+        Route::get('establecimientos/{slug}/ofertas', [PerfilPublicoController::class, 'ofertas'])->name('establecimientos.ofertas');
+        Route::get('establecimientos/{slug}/contratos', [PerfilPublicoController::class, 'contratos'])->name('establecimientos.contratos');
         Route::post('consultas', ConsultaPublicaController::class)->middleware('throttle:consultas')->name('consultas.store');
     });
     Route::get('public/invitaciones/{token}', [InvitacionController::class, 'publica'])->middleware('throttle:publico')->name('public.invitaciones.show');
@@ -139,6 +144,17 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('consultas', [ConsultaController::class, 'index'])->name('consultas.index');
             Route::get('consultas/{consulta}', [ConsultaController::class, 'show'])->name('consultas.show');
             Route::post('consultas/{consulta}/estado', [ConsultaController::class, 'estado'])->name('consultas.estado');
+
+            // Perfil público (TPA-50)
+            Route::get('perfil', [PerfilController::class, 'show'])->name('perfil.show');
+            Route::patch('perfil', [PerfilController::class, 'update'])->name('perfil.update');
+            Route::get('perfil/slug-disponible', [PerfilController::class, 'slugDisponible'])->name('perfil.slug');
+            Route::get('perfil/preview', [PerfilController::class, 'preview'])->name('perfil.preview');
+            Route::post('perfil/preview/aceptar', [PerfilController::class, 'aceptarPreview'])->name('perfil.preview.aceptar');
+            Route::post('perfil/publicar', [PerfilController::class, 'publicar'])->name('perfil.publicar');
+            Route::post('perfil/despublicar', [PerfilController::class, 'despublicar'])->name('perfil.despublicar');
+            Route::post('perfil/secciones/{seccion}/congelar', [PerfilController::class, 'congelar'])->name('perfil.congelar');
+            Route::post('perfil/secciones/{seccion}/descongelar', [PerfilController::class, 'descongelar'])->name('perfil.descongelar');
 
             // Lotes (TPA-20)
             Route::get('lotes', [LoteController::class, 'index'])->name('lotes.index');
