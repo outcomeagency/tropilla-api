@@ -840,6 +840,26 @@ pull `entidad: anclaje` (estado + `evento_ids` del establecimiento).
   tokens libres, recorte + devolución informada/confirmada, entrega confirmada por el comprador con liquidación exacta, ajeno 404; seguir/aviso de contrato
   nuevo/dejar, 404 sin perfil, 422 ×5) + demo.
 
+## TPA-58 · «Busco» y perfil de profesional · ✅ (parte API)
+
+**Endpoints:** `GET|POST /comprador/buscos`, `PATCH /comprador/buscos/{b}`, `POST /comprador/buscos/{b}/cerrar`, `GET /comprador/buscos/{b}/respuestas`,
+`GET …/demandas` (cursor), `POST …/demandas/{b}/respuestas`, `GET /public/buscos?especie&provincia`, `GET|PUT /me/profesional`,
+`GET /public/profesionales/{slug}`, `POST …/profesionales` (204). **Comando:** `busco:actualizar` (diario 06:00 ART).
+
+**Comentario del dev:**
+- Tablas `buscos` (categorías/razas `text[]` con GIN, zona jsonb, plazo, estado abierta/cerrada/vencida), `busco_respuestas`, `busco_coincidencias`
+  (proyección) y `profesionales` + `profesional_establecimientos`.
+- Coincidencias contra establecimientos con **perfil publicado**: especie y categoría con cabezas (existencias) obligatorias, zona por provincia/departamento
+  (o cualquiera); puntaje 0–100. Se recalculan al publicar/editar/cerrar y cada día (existencias cambian; vencidos por plazo). Aviso `busco_coincide` una sola
+  vez por establecimiento a dueño/admin.
+- Duda 22 («Busco» anónimo necesita mensajería): el productor **responde dentro de TROPILLA** (mensaje + oferta propia opcional) y el comprador recibe el aviso
+  sin exponer su contacto; el nombre/empresa solo se ven si eligió `mostrar_nombre`. Publicar exige perfil de comprador y email verificado.
+- Profesional: matrícula **declarada** (la leyenda pública lo dice: no verificada), especialidades, zonas, idiomas, bio; público solo con email verificado.
+  «Trabaja con X» solo si dueño/admin del establecimiento lo autoriza y el perfil del establecimiento está publicado.
+- Trampa: el operador jsonb `?` choca con los placeholders de PDO → `jsonb_exists()`.
+- Verificado: 3 tests (publicar → calza 100 / no calza por zona → aviso único → respuesta → lectura del comprador → público anónimo y con nombre → recálculo
+  a 80 → cerrar → sin demandas; profesional público/privado + autorización + 403/422; 403 sin perfil comprador, 422 ×4, 403 encargado, 404 ajeno).
+
 ---
 
 ## Desvíos del contrato
@@ -866,3 +886,4 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-53: `GET /me/preferencias-notificacion` aditivo; `meta.no_leidas` en la bandeja.
 - TPA-56: `Contrato.documento_id`; `huella` null en borrador; respuesta de `?simular=true` = {terminos, recorte}; vínculo de documentos `contrato` → tabla `contratos_futuro`.
 - TPA-57: `Toma.contrato` y `Toma.entrega` (solo la línea del comprador) aditivos; `estado=vigentes` en `/comprador/tomas`; códigos 403 `perfil_comprador_requerido` / `email_no_verificado`.
+- TPA-58: `Busco.zona.provincias_nombres` aditivo; reglas de visibilidad del comprador y puntaje documentados.

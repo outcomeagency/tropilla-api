@@ -27,3 +27,6 @@ Schedule::command('alertas:generar')->dailyAt('07:00')->timezone('America/Argent
 
 // Contratos a futuro (TPA-57): liberar reservas vencidas.
 Schedule::command('contratos:liberar-tomas')->everyFifteenMinutes()->withoutOverlapping();
+
+// «Busco» (TPA-58): vencimientos y coincidencias.
+Schedule::command('busco:actualizar')->dailyAt('06:00')->timezone('America/Argentina/Buenos_Aires')->withoutOverlapping();

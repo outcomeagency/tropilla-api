@@ -8679,6 +8679,9 @@ components:
         respuestas_count: {type: [integer, 'null']}
         created_at: {$ref: '#/components/schemas/FechaHora'}
       additionalProperties: false
+      description: '`comprador` = {tipo, pais} y, solo si `mostrar_nombre` (o es el propio comprador), {nombre, empresa}. `zona` = {cualquiera?, provincias[],
+        departamentos[]} + aditivo `provincias_nombres`. `respuestas_count` solo para el dueño del Busco (TPA-58). Publicar exige perfil de comprador
+        (403 `perfil_comprador_requerido`) y email verificado. `Demanda.puntaje` 0–100 (categoría con cabezas suficientes 50 / parciales 30, zona 25, raza 25).'
     BuscoInput:
       type: object
       properties:
