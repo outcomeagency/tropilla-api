@@ -25,7 +25,9 @@ use App\Http\Controllers\Api\V1\Publico\OfertaPublicaController;
 use App\Http\Controllers\Api\V1\Publico\PerfilPublicoController;
 use App\Http\Controllers\Api\V1\Publico\VerificacionController;
 use App\Http\Controllers\Api\V1\Reproduccion\ReproduccionController;
+use App\Http\Controllers\Api\V1\Sanidad\PlanSanitarioController;
 use App\Http\Controllers\Api\V1\Sanidad\ProductoSanitarioController;
+use App\Http\Controllers\Api\V1\Sanidad\TareaController;
 use App\Http\Controllers\Api\V1\Sistema\AuditoriaController;
 use App\Http\Controllers\Api\V1\Sync\SyncController;
 use Illuminate\Support\Facades\Route;
@@ -131,6 +133,15 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::post('productos-sanitarios', [ProductoSanitarioController::class, 'store'])->name('productos-sanitarios.store');
             Route::patch('productos-sanitarios/{producto}', [ProductoSanitarioController::class, 'update'])->name('productos-sanitarios.update');
             Route::post('productos-sanitarios/{producto}/archivar', [ProductoSanitarioController::class, 'archivar'])->name('productos-sanitarios.archivar');
+            Route::get('plan-sanitario', [PlanSanitarioController::class, 'show'])->name('plan-sanitario.show');
+            Route::post('plan-sanitario/plantillas', [PlanSanitarioController::class, 'plantillas'])->name('plan-sanitario.plantillas');
+            Route::post('plan-sanitario/items', [PlanSanitarioController::class, 'storeItem'])->name('plan-sanitario.items.store');
+            Route::patch('plan-sanitario/items/{item}', [PlanSanitarioController::class, 'updateItem'])->name('plan-sanitario.items.update');
+            Route::post('plan-sanitario/items/{item}/archivar', [PlanSanitarioController::class, 'archivarItem'])->name('plan-sanitario.items.archivar');
+            Route::get('tareas', [TareaController::class, 'index'])->name('tareas.index');
+            Route::post('tareas', [TareaController::class, 'store'])->name('tareas.store');
+            Route::patch('tareas/{tarea}', [TareaController::class, 'update'])->name('tareas.update');
+            Route::post('tareas/{tarea}/omitir', [TareaController::class, 'omitir'])->name('tareas.omitir');
 
             // Eventos (TPA-22, 26)
             Route::get('eventos', [EventoController::class, 'index'])->name('eventos.index');
