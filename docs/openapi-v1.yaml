@@ -1821,7 +1821,7 @@ paths:
         `lectura_0h_mm` y `lectura_72h_mm` y sin `resultado`, el servidor lo calcula (`resultado_origen: calculado`, `umbrales_version`)
         con los parámetros `<prueba>_negativo_lt_mm` / `<prueba>_positivo_gte_mm`; un `calculado` que no coincide → 422 `regla_bloqueante`
         (por sync: aceptado + revisión `resultado_prueba_discrepante`); advertencias `marca_reactor`, `resultado_distinto_al_calculado`,
-        `lectura_72h_menor`.'
+        `lectura_72h_menor`. Venta (TPA-35): `reactor` en `hacienda.egreso` que no va a faena y `retiro_vigente` también para lotes anónimos.'
       parameters:
       - name: establecimiento
         in: path
@@ -2640,6 +2640,18 @@ paths:
                   data:
                     type: array
                     items: {$ref: '#/components/schemas/AnimalResumen'}
+                  lotes:
+                    type: array
+                    description: 'Aditivo TPA-35: lotes anónimos con retiro vigente (no tienen filas por animal)'
+                    items:
+                      type: object
+                      properties:
+                        id: {$ref: '#/components/schemas/Uuid'}
+                        nombre: {type: string}
+                        especie: {type: string}
+                        cabezas: {type: integer}
+                        retiro_carne_hasta: {type: [string, 'null']}
+                        retiro_leche_hasta: {type: [string, 'null']}
                 required: [data]
                 additionalProperties: false
         '401': {$ref: '#/components/responses/NoAutenticado'}
@@ -6869,6 +6881,8 @@ components:
           oneOf:
           - {$ref: '#/components/schemas/Fecha'}
           - {type: 'null'}
+        retiro_carne_hasta: {type: [string, 'null'], description: 'Aditivo TPA-35: mayor entre individuales y aplicaciones al lote anónimo'}
+        retiro_leche_hasta: {type: [string, 'null']}
         gdp_promedio_kg_dia:
           oneOf:
           - {$ref: '#/components/schemas/Decimal'}

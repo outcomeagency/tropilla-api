@@ -18,6 +18,7 @@ use App\Domain\Reproduccion\ReglasReproductivas;
 use App\Domain\Sanidad\Actions\GestionarTarea;
 use App\Domain\Sanidad\GenerarTareasJob;
 use App\Domain\Sanidad\ReglasSanitarias;
+use App\Domain\Sanidad\Retiros;
 use App\Domain\Sync\Actions\RegistrarCambio;
 use App\Exceptions\ApiException;
 use App\Models\User;
@@ -430,7 +431,7 @@ final class RegistrarEvento
         if ($existentes !== []) {
             $filas = DB::table('animales as a')->join('animales_estado as e', 'e.animal_id', '=', 'a.id')
                 ->where('a.establecimiento_id', $est->id)->whereIn('a.id', $existentes)
-                ->get(['a.id', 'a.especie_codigo', 'e.sexo', 'e.estado', 'e.baja_en', 'e.peso_kg', 'e.peso_fecha', 'e.retiro_carne_hasta', 'e.lote_id', 'e.raza_codigo'])
+                ->get(['a.id', 'a.especie_codigo', 'e.sexo', 'e.estado', 'e.baja_en', 'e.peso_kg', 'e.peso_fecha', 'e.retiro_carne_hasta', 'e.lote_id', 'e.raza_codigo', 'e.reactor'])
                 ->keyBy('id');
             if ($filas->count() !== count($existentes)) {
                 throw new EventoRechazado('dependencia_faltante', 'Hay animales que el servidor todavía no tiene.', [
@@ -754,6 +755,14 @@ final class RegistrarEvento
                 if ($a->retiro_carne_hasta !== null && $a->retiro_carne_hasta >= $fecha) {
                     $obs[] = ['codigo' => 'retiro_vigente', 'mensaje' => "Un animal tiene retiro vigente hasta {$a->retiro_carne_hasta}.", 'interna' => false, 'detalle' => ['animal_id' => $a->id]];
                 }
+                // Reactor (TPA-35): advierte en la venta; la faena es justamente la salida sugerida.
+                if ($a->reactor && $s->tipo === 'hacienda.egreso' && ($p->destino ?? null) !== 'faena') {
+                    $obs[] = ['codigo' => 'reactor', 'mensaje' => 'Un animal es reactor: se sugiere la baja por faena.', 'interna' => false, 'detalle' => ['animal_id' => $a->id]];
+                }
+            }
+            if ($ctx->lote !== null && $ctx->lote->anonimo && Retiros::loteVigente($ctx->lote->id, $fecha)) {
+                $r = Retiros::deLote($ctx->lote->id);
+                $obs[] = ['codigo' => 'retiro_vigente', 'mensaje' => 'El lote tiene retiro vigente hasta '.($r['carne'] ?? $r['leche']).'.', 'interna' => false, 'detalle' => ['lote_id' => $ctx->lote->id]];
             }
         }
         if ($s->tipo === 'hacienda.egreso' && ($p->destino ?? null) !== 'faena' && Interdiccion::vigente($ctx->est->id) !== null) {
