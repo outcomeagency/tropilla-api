@@ -289,6 +289,17 @@ class DemoLaEsperanzaSeeder extends Seeder
             ],
         ]);
         $gestionar->publicar($oferta, $this->dueno, true);
+
+        // 2 consultas de compradores sin responder (pendientes del inicio).
+        $recibir = app(\App\Domain\Comercial\Actions\RecibirConsultaPublica::class);
+        foreach ([
+            ['nombre' => 'Li Wei', 'empresa' => 'Shandong Premium Meat', 'pais' => 'CN', 'email' => 'li.wei@example.com', 'tipo_comprador' => 'exportador',
+                'volumen' => '2 contenedores/mes', 'mensaje' => 'Hello, we are interested in buffalo steers for export. Can you share health records and availability?', 'idioma' => 'en'],
+            ['nombre' => 'Marcelo Duarte', 'empresa' => 'Frigorífico del Litoral', 'pais' => 'AR', 'telefono' => '+5493794555123', 'tipo_comprador' => 'frigorifico',
+                'volumen' => '30 cabezas', 'mensaje' => 'Buen día, ¿pueden cargar la semana próxima? ¿Precio al gancho?', 'idioma' => 'es'],
+        ] as $c) {
+            $recibir->handle([...$c, 'oferta_codigo' => $oferta->codigo_publico, 'captcha_token' => 'demo'], null, 'seeder', null);
+        }
     }
 
     /** @param list<array<string, mixed>> $animales */
