@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\Busco\BuscoController;
 use App\Http\Controllers\Api\V1\Busco\ProfesionalController;
 use App\Http\Controllers\Api\V1\Catalogos\CatalogoController;
 use App\Http\Controllers\Api\V1\Catalogos\ParametroController;
+use App\Http\Controllers\Api\V1\Clima\ClimaController;
 use App\Http\Controllers\Api\V1\Comercial\ConsultaController;
 use App\Http\Controllers\Api\V1\Comercial\OfertaController;
 use App\Http\Controllers\Api\V1\Comercial\OperacionController;
@@ -326,6 +327,11 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::patch('lotes/{lote}', [LoteController::class, 'update'])->name('lotes.update');
             Route::post('lotes/{lote}/archivar', [LoteController::class, 'archivar'])->name('lotes.archivar');
             Route::get('lotes/{lote}/eventos', [LoteController::class, 'eventos'])->name('lotes.eventos');
+
+            // Alertas climáticas (TPA-70)
+            Route::get('clima', [ClimaController::class, 'show'])->name('clima.show');
+            Route::get('clima/reglas', [ClimaController::class, 'reglas'])->name('clima.reglas');
+            Route::put('clima/reglas/{codigo}', [ClimaController::class, 'actualizarRegla'])->where('codigo', '[a-z0-9_]+')->name('clima.reglas.update');
 
             // Potreros (TPA-14)
             Route::get('potreros', [PotreroController::class, 'index'])->name('potreros.index');

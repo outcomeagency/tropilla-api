@@ -568,6 +568,91 @@ paths:
         '401': {$ref: '#/components/responses/NoAutenticado'}
         '403': {$ref: '#/components/responses/Prohibido'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
+  /establecimientos/{establecimiento}/clima:
+    get:
+      tags: [Establecimientos]
+      summary: 'Alertas climáticas y pronóstico de la zona'
+      operationId: get_establecimientos_establecimiento_clima
+      description: '**Ability:** `establecimiento.ver`. TPA-70. Pronóstico (Open-Meteo), lluvia observada por reanálisis (ERA5) y ENSO (NOAA CPC ONI). Si el último cálculo tiene más de 6 h se recalcula. Nunca devuelve la ubicación exacta. Es pronóstico, no certeza.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/Clima'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /establecimientos/{establecimiento}/clima/reglas:
+    get:
+      tags: [Establecimientos]
+      summary: 'Reglas climáticas efectivas (umbrales como datos)'
+      operationId: get_establecimientos_establecimiento_clima_reglas
+      description: '**Ability:** `establecimiento.ver`. TPA-70.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/ClimaRegla'}}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /establecimientos/{establecimiento}/clima/reglas/{codigo}:
+    put:
+      tags: [Establecimientos]
+      summary: 'Override por establecimiento de una regla climática'
+      operationId: put_establecimientos_establecimiento_clima_reglas_codigo
+      description: '**Ability:** `establecimiento.editar`. TPA-70. Mezcla los parámetros sobre los globales y recalcula.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: codigo
+        in: path
+        required: true
+        schema: {type: string, enum: [lluvia_extrema, sequia_deficit, helada, calor_estres, incendio, enso_fase]}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                activa: {type: boolean}
+                severidad: {type: string, enum: [info, moderada, alta]}
+                parametros: {type: object, additionalProperties: {type: number}}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ClimaRegla'}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
   /establecimientos/{establecimiento}/existencias:
     get:
       tags: [Establecimientos]
@@ -7008,6 +7093,62 @@ components:
         motivo: {type: [string, 'null']}
         created_at: {$ref: '#/components/schemas/FechaHora'}
       additionalProperties: false
+    ClimaAlerta:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        regla: {type: string}
+        tipo: {type: string, enum: [lluvia, sequia, helada, calor, incendio, enso]}
+        severidad: {type: string, enum: [info, moderada, alta]}
+        titulo: {type: string}
+        detalle: {type: string}
+        recomendacion: {type: string, description: 'Puntos a revisar; no es una indicación de manejo.'}
+        fuente: {type: string}
+        fuente_url: {type: string}
+        zona: {type: string}
+        valor: {type: string, nullable: true}
+        umbral: {type: string, nullable: true}
+        unidad: {type: string, nullable: true}
+        desde: {type: string, format: date}
+        hasta: {type: string, format: date}
+        horizonte_dias: {type: integer}
+        emitida_en: {type: string, format: date-time}
+        calculada_en: {type: string, format: date-time}
+    ClimaRegla:
+      type: object
+      properties:
+        codigo: {type: string}
+        tipo: {type: string}
+        nombre: {type: string}
+        severidad: {type: string}
+        parametros: {type: object, additionalProperties: {type: number}}
+        recomendacion: {type: string}
+        activa: {type: boolean}
+        personalizada: {type: boolean}
+    Clima:
+      type: object
+      properties:
+        zona: {type: string}
+        precision: {type: string, enum: [establecimiento, departamento, provincia, sin_ubicacion]}
+        calculado_en: {type: string, format: date-time}
+        aviso: {type: string}
+        alertas: {type: array, items: {$ref: '#/components/schemas/ClimaAlerta'}}
+        pronostico:
+          type: array
+          items:
+            type: object
+            properties:
+              fecha: {type: string, format: date}
+              tmax: {type: number, nullable: true}
+              tmin: {type: number, nullable: true}
+              lluvia_mm: {type: number, nullable: true}
+              prob_lluvia: {type: integer, nullable: true}
+              hr_min: {type: number, nullable: true}
+              viento_max: {type: number, nullable: true}
+        lluvia: {type: object, nullable: true, description: 'ventana_dias, hasta, acumulada_mm, normal_mm, anomalia_pct, anios_referencia, pronostico_mm, pronostico_dias'}
+        enso: {type: object, nullable: true, description: 'fase (el_nino|la_nina|neutral), oni, temporada, anio, obtenido_en, fuente, fuente_url'}
+        fuentes: {type: array, items: {type: object, properties: {nombre: {type: string}, url: {type: string}, licencia: {type: string}, cadencia: {type: string}}}}
+        errores: {type: array, items: {type: object, properties: {fuente: {type: string}, mensaje: {type: string}}}}
     Inicio:
       type: object
       properties:

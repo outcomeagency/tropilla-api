@@ -30,3 +30,6 @@ Schedule::command('contratos:liberar-tomas')->everyFifteenMinutes()->withoutOver
 
 // «Busco» (TPA-58): vencimientos y coincidencias.
 Schedule::command('busco:actualizar')->dailyAt('06:00')->timezone('America/Argentina/Buenos_Aires')->withoutOverlapping();
+
+// Alertas climáticas (TPA-70): pronóstico y ENSO con cache; recálculo cada 6 h.
+Schedule::command('clima:actualizar')->everySixHours()->withoutOverlapping();
