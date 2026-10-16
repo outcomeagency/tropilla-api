@@ -344,6 +344,14 @@ paths:
         '404': {$ref: '#/components/responses/NoEncontrado'}
         '422': {$ref: '#/components/responses/Validacion'}
   /me/preferencias-notificacion:
+    get:
+      tags: [Cuenta]
+      summary: Preferencias guardadas (aditivo TPA-53)
+      operationId: get_me_preferencias_notificacion
+      description: 'Lista [{establecimiento_id, tipo, push, email, resumen_diario}] + `meta.defaults` (push sí, email y resumen no).'
+      responses:
+        '200': {description: OK}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
     put:
       tags: [Cuenta]
       summary: Preferencias push/email/resumen diario

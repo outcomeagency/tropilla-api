@@ -34,6 +34,12 @@ return [
         'explorador' => env('TROPILLA_BTC_EXPLORADOR', 'https://blockstream.info/api'),
     ],
 
+    // Push (TPA-53): log (local/testing) | fcm (HTTP v1 con la cuenta de servicio de Firebase).
+    'push' => [
+        'driver' => env('TROPILLA_PUSH_DRIVER', 'log'),
+        'fcm_credenciales' => env('TROPILLA_FCM_CREDENCIALES'),
+    ],
+
     // Pepper del HMAC de CUIT (búsqueda exacta / unicidad sin descifrar). modelo-datos §2.3.
     'cuit_pepper' => env('TROPILLA_CUIT_PEPPER', env('APP_KEY')),
 ];

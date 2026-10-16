@@ -14,6 +14,9 @@ use App\Domain\Hacienda\Proyecciones\SugeridorCategoria;
 use App\Domain\Integridad\Anclaje\AnchorDriver;
 use App\Domain\Integridad\Anclaje\OpenTimestampsDriver;
 use App\Domain\Integridad\Anclaje\StubDriver;
+use App\Domain\Notificaciones\Push\FcmPushDriver;
+use App\Domain\Notificaciones\Push\LogPushDriver;
+use App\Domain\Notificaciones\Push\PushDriver;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -36,6 +39,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(AnchorDriver::class, fn () => config('tropilla.anclaje.driver') === 'opentimestamps'
             ? new OpenTimestampsDriver(config('tropilla.anclaje.calendarios'), config('tropilla.anclaje.explorador'))
             : new StubDriver);
+
+        // Push (TPA-53): FCM o log. Singleton para que el log de los tests se pueda inspeccionar.
+        $this->app->singleton(PushDriver::class, fn () => config('tropilla.push.driver') === 'fcm'
+            ? FcmPushDriver::desdeArchivo(config('tropilla.push.fcm_credenciales'))
+            : new LogPushDriver);
 
         // Memoiza reglas de categoría por request/job.
         $this->app->scoped(SugeridorCategoria::class);
