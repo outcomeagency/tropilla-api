@@ -81,6 +81,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::post('animales', [AnimalController::class, 'store'])->name('animales.store');
             Route::get('animales/identificador', [AnimalController::class, 'identificador'])->name('animales.identificador');
             Route::get('animales/{animal}', [AnimalController::class, 'show'])->name('animales.show');
+            Route::get('animales/{animal}/eventos', [AnimalController::class, 'eventos'])->name('animales.eventos');
+            Route::get('animales/{animal}/genealogia', [AnimalController::class, 'genealogia'])->name('animales.genealogia');
+            Route::get('animales/{animal}/documentos', [AnimalController::class, 'documentos'])->name('animales.documentos');
 
             // Eventos (TPA-22, 26)
             Route::get('eventos', [EventoController::class, 'index'])->name('eventos.index');
