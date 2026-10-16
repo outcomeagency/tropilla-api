@@ -10,6 +10,7 @@ use App\Domain\Hacienda\Models\Evento;
 use App\Domain\Hacienda\Models\Lote;
 use App\Domain\Hacienda\Models\Potrero;
 use App\Domain\Hacienda\Services\OcupacionPotreros;
+use App\Domain\Sanidad\Models\ProductoSanitario;
 use App\Http\Resources\V1\Establecimientos\EstablecimientoResource;
 use App\Http\Resources\V1\Establecimientos\MembresiaResource;
 use App\Http\Resources\V1\Hacienda\AnimalResource;
@@ -17,6 +18,7 @@ use App\Http\Resources\V1\Hacienda\EventoResource;
 use App\Http\Resources\V1\Hacienda\LoteResource;
 use App\Http\Resources\V1\Hacienda\PotreroResource;
 use App\Http\Resources\V1\Hacienda\RevisionResource;
+use App\Http\Resources\V1\Sanidad\ProductoSanitarioResource;
 use App\Support\Formato;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -53,7 +55,8 @@ final class Snapshot
                 'animales' => $animales->map(fn ($a) => AnimalResource::make($a)->resolve($request))->all(),
                 'eventos' => $eventos->map(fn ($e) => EventoResource::make($e)->resolve($request))->all(),
                 'documentos' => [],
-                'productos_sanitarios' => [],
+                'productos_sanitarios' => ProductoSanitario::query()->where('establecimiento_id', $est->id)->orderBy('nombre_comercial')->get()
+                    ->map(fn ($p) => ProductoSanitarioResource::make($p)->resolve($request))->all(),
                 'tareas' => [],
                 'revisiones' => DB::table('revisiones')->where('establecimiento_id', $est->id)->where('estado', 'abierta')->get()
                     ->map(fn ($r) => RevisionResource::make($r)->resolve($request))->all(),

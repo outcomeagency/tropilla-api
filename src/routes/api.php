@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\V1\Publico\OfertaPublicaController;
 use App\Http\Controllers\Api\V1\Publico\PerfilPublicoController;
 use App\Http\Controllers\Api\V1\Publico\VerificacionController;
 use App\Http\Controllers\Api\V1\Reproduccion\ReproduccionController;
+use App\Http\Controllers\Api\V1\Sanidad\ProductoSanitarioController;
 use App\Http\Controllers\Api\V1\Sistema\AuditoriaController;
 use App\Http\Controllers\Api\V1\Sync\SyncController;
 use Illuminate\Support\Facades\Route;
@@ -87,6 +88,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::patch('establecimientos/{establecimiento}', [EstablecimientoController::class, 'update'])->name('establecimientos.update');
 
         Route::get('sync/catalogos', CatalogoController::class)->name('sync.catalogos');
+        Route::get('catalogos/productos-sugeridos', [ProductoSanitarioController::class, 'sugeridos'])->name('catalogos.productos-sugeridos');
         Route::get('importaciones/plantilla', [ImportacionController::class, 'plantilla'])->name('importaciones.plantilla');
         // Sync offline (TPA-43)
         Route::post('sync/push', [SyncController::class, 'push'])->middleware('throttle:sync-push')->name('sync.push');
@@ -123,6 +125,12 @@ Route::prefix('v1')->name('v1.')->group(function () {
             // Reproducción (TPA-30)
             Route::get('reproduccion/tablero', [ReproduccionController::class, 'tablero'])->name('reproduccion.tablero');
             Route::get('reproduccion/partos', [ReproduccionController::class, 'partos'])->name('reproduccion.partos');
+
+            // Sanidad (TPA-31..35)
+            Route::get('productos-sanitarios', [ProductoSanitarioController::class, 'index'])->name('productos-sanitarios.index');
+            Route::post('productos-sanitarios', [ProductoSanitarioController::class, 'store'])->name('productos-sanitarios.store');
+            Route::patch('productos-sanitarios/{producto}', [ProductoSanitarioController::class, 'update'])->name('productos-sanitarios.update');
+            Route::post('productos-sanitarios/{producto}/archivar', [ProductoSanitarioController::class, 'archivar'])->name('productos-sanitarios.archivar');
 
             // Eventos (TPA-22, 26)
             Route::get('eventos', [EventoController::class, 'index'])->name('eventos.index');
