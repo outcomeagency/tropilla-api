@@ -71,14 +71,17 @@ class AnimalController extends Controller
         return AnimalResource::make($fila);
     }
 
-    /** Identificador exacto (chequeo de duplicado antes del alta): vigentes del establecimiento. */
+    /**
+     * Identificador exacto (chequeo de duplicado antes del alta): vigentes del establecimiento. Tolera ceros a la izquierda
+     * (bugfix TPA-43, pedido por la app: el bastón/teclado no siempre los carga): «142» encuentra «0142».
+     */
     public function identificador(Request $request, Establecimiento $establecimiento): AnonymousResourceCollection
     {
         Gate::authorize('hacienda.ver', $establecimiento);
         $valor = Identificaciones::normalizar((string) $request->query('valor', ''));
 
         $ids = $valor === '' ? [] : DB::table('animal_identificaciones')->where('establecimiento_id', $establecimiento->id)
-            ->where('valor_normalizado', $valor)->where('vigente', true)
+            ->whereRaw(Identificaciones::SQL_SIN_CEROS.' = ?', [Identificaciones::sinCeros($valor)])->where('vigente', true)
             ->when($request->query('tipo'), fn ($q, $t) => $q->where('tipo', $t))
             ->distinct()->pluck('animal_id')->all();
 

@@ -23,6 +23,11 @@ it('alta rápida: especie → sexo → identificador → categoría; devuelve la
     $this->getJson("{$this->url}/identificador?valor=0500")->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $res->json('data.id'));
     $this->getJson("{$this->url}/identificador?valor=05-00&tipo=caravana_visual")->assertJsonCount(1, 'data'); // normaliza guiones
     $this->getJson("{$this->url}/identificador?valor=9999")->assertJsonCount(0, 'data');
+    // bugfix TPA-43 (app): tolera ceros a la izquierda en cada tramo numérico, pero no inventa coincidencias.
+    $this->getJson("{$this->url}/identificador?valor=500")->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $res->json('data.id'));
+    $this->getJson("{$this->url}/identificador?valor=000500")->assertJsonCount(1, 'data');
+    $this->getJson("{$this->url}/identificador?valor=50")->assertJsonCount(0, 'data');
+    $this->getJson("{$this->url}/identificador?valor=5000")->assertJsonCount(0, 'data');
 });
 
 it('con id de animal del cliente; 409 si la identificación ya está vigente en otro', function () {

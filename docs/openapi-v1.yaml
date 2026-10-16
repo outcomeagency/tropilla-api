@@ -1537,7 +1537,8 @@ paths:
       tags: [Hacienda]
       summary: Buscar por identificador exacto (chequeo de duplicado)
       operationId: get_establecimientos_establecimiento_animales_identificador
-      description: '**Ability:** `hacienda.ver` (modelo-datos.md §13).'
+      description: '**Ability:** `hacienda.ver` (modelo-datos.md §13). Compara normalizado (mayúsculas, sin espacios/guiones/puntos)
+        y tolera ceros a la izquierda en cada tramo numérico: «142» encuentra «0142», «U142» encuentra «U-0142».'
       parameters:
       - name: establecimiento
         in: path
@@ -3116,7 +3117,7 @@ paths:
         in: query
         required: false
         schema: {type: string}
-        description: Cursor opaco devuelto en meta.next_cursor
+        description: Cursor opaco devuelto en data.cursor (pull o snapshot)
       - name: limite
         in: query
         required: false
@@ -3165,7 +3166,7 @@ paths:
       tags: [Sync]
       summary: Catálogos si cambió la versión
       operationId: get_sync_catalogos
-      description: 304 si está al día
+      description: '304 (sin cuerpo) si `version` es la vigente (también acepta `If-None-Match` con el ETag). `Cache-Control: private, no-cache`.'
       parameters:
       - name: version
         in: query
@@ -6677,6 +6678,8 @@ components:
       additionalProperties: false
     Catalogos:
       type: object
+      description: 'Las filas por especie (razas, categorias, categorias_faena, reglas_categoria, parametros, plantillas_sanitarias)
+        traen `especie_codigo` (BOV | BUB | null); `especie` se mantiene como alias con el mismo valor por compatibilidad.'
       properties:
         version: {type: integer}
         especies:

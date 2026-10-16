@@ -44,9 +44,9 @@ it('push idempotente: el mismo lote dos veces → aceptado y después duplicado,
     $alta = sobreApp($this, 'hacienda.alta', ['tipo' => 'animales', 'animal_ids' => [$a['animal_id']]], ['motivo' => 'alta_rapida', 'animales' => [$a]]);
     $pesaje = sobreApp($this, 'hacienda.pesaje', ['tipo' => 'animales', 'animal_ids' => [$a['animal_id']]], ['modo' => 'individual', 'peso_kg' => '412.5', 'desbaste' => false, 'metodo' => 'balanza']);
 
-    $r1 = push($this, [item($alta), item($pesaje)])->assertOk()->json('resultados');
+    $r1 = push($this, [item($alta), item($pesaje)])->assertOk()->json('data.resultados');
     expect(array_column($r1, 'estado'))->toBe(['aceptado', 'aceptado'])->and(array_column($r1, 'seq'))->toBe([1, 2]);
-    $r2 = push($this, [item($alta), item($pesaje)])->assertOk()->json('resultados');
+    $r2 = push($this, [item($alta), item($pesaje)])->assertOk()->json('data.resultados');
     expect(array_column($r2, 'estado'))->toBe(['duplicado', 'duplicado'])->and(array_column($r2, 'seq'))->toBe([1, 2]);
 
     expect(DB::table('eventos')->count())->toBe(2)
@@ -62,17 +62,17 @@ it('rechazos por ítem: huella inválida, float, mismo id con otra huella, depen
     $pesajeHuerfano = sobreApp($this, 'hacienda.pesaje', ['tipo' => 'animales', 'animal_ids' => [(string) Str::uuid7()]], ['modo' => 'individual', 'peso_kg' => '400', 'metodo' => 'balanza']);
 
     $raw = '{"establecimiento_id":"'.$this->est->id.'","dispositivo_id":"'.$this->disp.'","items":[{"clase":"evento","huella":"'.str_repeat('b', 64).'","sobre":{"esquema":"tropilla.evento/1","payload":{"peso_kg":412.5}}}]}';
-    $float = $this->call('POST', '/api/v1/sync/push', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json'], $raw)->assertOk()->json('resultados.0');
+    $float = $this->call('POST', '/api/v1/sync/push', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json'], $raw)->assertOk()->json('data.resultados.0');
     expect($float['codigo'])->toBe('canonicalizacion')->and($float['reintentable'])->toBeFalse();
 
-    $r = push($this, [$malHuella, item($alta), item($pesajeHuerfano)])->assertOk()->json('resultados');
+    $r = push($this, [$malHuella, item($alta), item($pesajeHuerfano)])->assertOk()->json('data.resultados');
     expect($r[0])->toMatchArray(['estado' => 'rechazado', 'codigo' => 'huella_invalida', 'reintentable' => false])
         ->and($r[1]['estado'])->toBe('aceptado')
         ->and($r[2])->toMatchArray(['estado' => 'rechazado', 'codigo' => 'dependencia_faltante', 'reintentable' => true]);
 
     $otro = clone $alta;
     $otro->observaciones = 'cambiado';
-    expect(push($this, [item($otro)])->json('resultados.0.codigo'))->toBe('id_reutilizado');
+    expect(push($this, [item($otro)])->json('data.resultados.0.codigo'))->toBe('id_reutilizado');
 });
 
 it('dos correcciones de la misma versión: una vigente y la otra en revisión (gana el servidor)', function () {
@@ -84,7 +84,7 @@ it('dos correcciones de la misma versión: una vigente y la otra en revisión (g
     $c1 = sobreApp($this, 'hacienda.pesaje', (array) $p1->sujetos, ['modo' => 'individual', 'peso_kg' => '421.5', 'metodo' => 'balanza'], [...$base, 'motivo' => 'Teléfono A']);
     $c2 = sobreApp($this, 'hacienda.pesaje', (array) $p1->sujetos, ['modo' => 'individual', 'peso_kg' => '430', 'metodo' => 'balanza'], [...$base, 'motivo' => 'Teléfono B']);
 
-    $r = push($this, [item($c1), item($c2)])->assertOk()->json('resultados');
+    $r = push($this, [item($c1), item($c2)])->assertOk()->json('data.resultados');
     expect($r[0]['estado'])->toBe('aceptado')
         ->and($r[1])->toMatchArray(['estado' => 'en_revision', 'codigo' => 'conflicto_version'])
         ->and($r[1]['version_vigente']['id'])->toBe($c1->id)
@@ -106,7 +106,7 @@ it('push por sync acepta un evento posterior a la baja con observación y revisi
     $muerte = sobreApp($this, 'hacienda.muerte', ['tipo' => 'animales', 'animal_ids' => [$a['animal_id']]], ['causa' => 'rayo'], ['ocurrido_en' => '2026-05-01']);
     $pesaje = sobreApp($this, 'hacienda.pesaje', ['tipo' => 'animales', 'animal_ids' => [$a['animal_id']]], ['modo' => 'individual', 'peso_kg' => '400', 'metodo' => 'balanza'], ['ocurrido_en' => '2026-05-10']);
 
-    $r = push($this, [item($alta), item($muerte), item($pesaje)])->json('resultados');
+    $r = push($this, [item($alta), item($muerte), item($pesaje)])->json('data.resultados');
     expect($r[2]['estado'])->toBe('aceptado')->and($r[2]['observaciones'])->toBe(['evento_posterior_a_baja'])
         ->and(DB::table('revisiones')->where('tipo', 'evento_posterior_a_baja')->count())->toBe(1);
 });
@@ -119,7 +119,7 @@ it('maestros: alta offline de potrero/lote (base 0), edición con row_version y 
         ['clase' => 'maestro', 'entidad' => 'lote', 'id' => $lid, 'base_row_version' => 0, 'datos' => ['nombre' => 'Recría 2026', 'especie' => 'BUB', 'anonimo' => true]],
         ['clase' => 'maestro', 'entidad' => 'potrero', 'id' => $pid, 'base_row_version' => 1, 'datos' => ['notas' => 'Se inunda en otoño']],
         ['clase' => 'maestro', 'entidad' => 'potrero', 'id' => $pid, 'base_row_version' => 1, 'datos' => ['notas' => 'Otra nota']],
-    ])->assertOk()->json('resultados');
+    ])->assertOk()->json('data.resultados');
 
     expect(array_column($r, 'estado'))->toBe(['aceptado', 'aceptado', 'aceptado', 'en_revision'])
         ->and($r[3]['row_version'])->toBe(2)
@@ -131,16 +131,16 @@ it('pull: cambios desde el cursor, hidratados y deduplicados; cursor de otro est
     $a = animalNuevo();
     push($this, [item(sobreApp($this, 'hacienda.alta', ['tipo' => 'animales', 'animal_ids' => [$a['animal_id']]], ['motivo' => 'alta_rapida', 'animales' => [$a]]))]);
 
-    $p = $this->getJson("/api/v1/sync/pull?establecimiento_id={$this->est->id}")->assertOk()->assertJsonPath('hay_mas', false);
-    $entidades = collect($p->json('cambios'))->pluck('entidad')->all();
+    $p = $this->getJson("/api/v1/sync/pull?establecimiento_id={$this->est->id}")->assertOk()->assertJsonPath('data.hay_mas', false);
+    $entidades = collect($p->json('data.cambios'))->pluck('entidad')->all();
     expect($entidades)->toContain('establecimiento', 'membresia', 'evento', 'animal')
-        ->and(collect($p->json('cambios'))->firstWhere('entidad', 'animal')['datos']['id'])->toBe($a['animal_id']);
+        ->and(collect($p->json('data.cambios'))->firstWhere('entidad', 'animal')['datos']['id'])->toBe($a['animal_id']);
 
-    $p2 = $this->getJson("/api/v1/sync/pull?establecimiento_id={$this->est->id}&cursor={$p->json('cursor')}")->assertOk();
-    expect($p2->json('cambios'))->toBe([]);
+    $p2 = $this->getJson("/api/v1/sync/pull?establecimiento_id={$this->est->id}&cursor={$p->json('data.cursor')}")->assertOk();
+    expect($p2->json('data.cambios'))->toBe([]);
 
-    $chico = $this->getJson("/api/v1/sync/pull?establecimiento_id={$this->est->id}&limite=2")->assertJsonPath('hay_mas', true);
-    $this->getJson("/api/v1/sync/pull?establecimiento_id={$this->est->id}&cursor={$chico->json('cursor')}")->assertOk();
+    $chico = $this->getJson("/api/v1/sync/pull?establecimiento_id={$this->est->id}&limite=2")->assertJsonPath('data.hay_mas', true);
+    $this->getJson("/api/v1/sync/pull?establecimiento_id={$this->est->id}&cursor={$chico->json('data.cursor')}")->assertOk();
 
     $otro = crearEstablecimiento();
     $this->getJson("/api/v1/sync/pull?establecimiento_id={$this->est->id}&cursor=".rtrim(strtr(base64_encode("v1:{$otro->id}:1"), '+/', '-_'), '='))
@@ -152,7 +152,7 @@ it('el encargado no recibe cambios comerciales ni fiscales por pull', function (
     $seq = DB::table('cadenas')->where('establecimiento_id', $this->est->id)->value('ultimo_seq_cambios');
     DB::table('cambios')->insert(['establecimiento_id' => $this->est->id, 'seq' => $seq, 'entidad' => 'documento', 'entidad_id' => (string) Str::uuid7(), 'op' => 'upsert', 'visibilidad' => 'fiscal', 'created_at' => now()]);
 
-    $cambios = $this->getJson("/api/v1/sync/pull?establecimiento_id={$this->est->id}")->json('cambios');
+    $cambios = $this->getJson("/api/v1/sync/pull?establecimiento_id={$this->est->id}")->json('data.cambios');
     expect(collect($cambios)->pluck('entidad')->all())->not->toContain('documento');
 });
 
@@ -161,9 +161,9 @@ it('snapshot: estado completo + cursor para seguir con pull', function () {
     push($this, [item(sobreApp($this, 'hacienda.alta', ['tipo' => 'animales', 'animal_ids' => [$a['animal_id']]], ['motivo' => 'alta_rapida', 'animales' => [$a]], ['ocurrido_en' => now()->toDateString()]))]);
 
     $s = $this->getJson("/api/v1/sync/snapshot?establecimiento_id={$this->est->id}")->assertOk()
-        ->assertJsonPath('establecimiento.id', $this->est->id)->assertJsonCount(1, 'animales')->assertJsonCount(1, 'eventos')
-        ->assertJsonStructure(['potreros', 'lotes', 'usuarios', 'cursor', 'catalogos_version', 'generado_en']);
-    $this->getJson("/api/v1/sync/pull?establecimiento_id={$this->est->id}&cursor={$s->json('cursor')}")->assertOk()->assertJsonPath('cambios', []);
+        ->assertJsonPath('data.establecimiento.id', $this->est->id)->assertJsonCount(1, 'data.animales')->assertJsonCount(1, 'data.eventos')
+        ->assertJsonStructure(['data' => ['potreros', 'lotes', 'usuarios', 'cursor', 'catalogos_version', 'generado_en']]);
+    $this->getJson("/api/v1/sync/pull?establecimiento_id={$this->est->id}&cursor={$s->json('data.cursor')}")->assertOk()->assertJsonPath('data.cambios', []);
 });
 
 it('lectura no puede pushear eventos; otro establecimiento 404; membresía revocada: 403 en pull y ventana de 72 h en push', function () {
@@ -173,7 +173,7 @@ it('lectura no puede pushear eventos; otro establecimiento 404; membresía revoc
 
     Membresia::query()->where('usuario_id', $this->user->id)->update(['estado' => 'revocada', 'revocada_en' => now()]);
     $this->getJson("/api/v1/sync/pull?establecimiento_id={$this->est->id}")->assertForbidden()->assertJsonPath('code', 'membresia_revocada');
-    $r = push($this, [item($alta)])->assertOk()->json('resultados.0');
+    $r = push($this, [item($alta)])->assertOk()->json('data.resultados.0');
     expect($r['estado'])->toBe('aceptado')->and($r['observaciones'])->toContain('carga_post_revocacion');
 
     $this->travel(73)->hours();
