@@ -68,9 +68,6 @@ final class ReproductorExternoController extends Controller
                 throw ValidationException::withMessages([$k => ['Reproductor externo inexistente.']]);
             }
         }
-        if (($d['madre_externa_id'] ?? null) || ($d['padre_externa_id'] ?? null)) {
-            throw ValidationException::withMessages(['genealogia' => ['No se permiten ciclos directos.']]);
-        }
 
         return $d;
     }

@@ -22,3 +22,9 @@ it('no expone reproductores de otro establecimiento', function () {
     $otro = crearEstablecimiento();
     $this->getJson("/api/v1/establecimientos/{$otro->id}/reproductores-externos")->assertNotFound();
 });
+
+it('permite encadenar reproductores externos como progenitores', function () {
+    $madre = $this->postJson($this->url, ['nombre' => 'Madre externa', 'especie_codigo' => 'BOV'])->assertCreated()->json('data.id');
+    $this->postJson($this->url, ['nombre' => 'Hijo comprado', 'especie_codigo' => 'BOV', 'madre_externa_id' => $madre])
+        ->assertCreated()->assertJsonPath('data.madre_externa_id', $madre);
+});
