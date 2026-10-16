@@ -2,6 +2,7 @@
 
 namespace App\Domain\Sync\Actions;
 
+use App\Domain\Documentos\Actions\RegistrarDocumentoVersion;
 use App\Domain\Establecimientos\Enums\Rol;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Hacienda\Actions\GuardarLote;
@@ -47,7 +48,7 @@ final class ProcesarPush
                 $resultados[] = match ($item->clase ?? null) {
                     'evento' => $this->evento($est, $usuario, $item, $acceso),
                     'maestro' => $this->maestro($est, $usuario, $item, $acceso['rol']),
-                    'documento_version' => throw new EventoRechazado('tipo_desconocido', 'Las versiones de documentos llegan con la carpeta documental (TPA-36).'),
+                    'documento_version' => $this->documento($est, $usuario, $item, $acceso),
                     default => throw new EventoRechazado('esquema_invalido', 'Clase de ítem desconocida.'),
                 };
             } catch (EventoRechazado $e) {
@@ -91,6 +92,21 @@ final class ProcesarPush
             'revision_id' => $r->revisionId,
             'version_vigente' => $r->versionVigente,
         ];
+    }
+
+    /** Versión de documento (TPA-36): misma puerta que la web (`RegistrarDocumentoVersion`). @param array{rol: Rol, post_revocacion: bool, revocada_en: ?Carbon} $acceso */
+    private function documento(Establecimiento $est, User $usuario, stdClass $item, array $acceso): array
+    {
+        if (! isset($item->sobre) || ! $item->sobre instanceof stdClass || ! isset($item->huella)) {
+            throw new EventoRechazado('esquema_invalido', 'El ítem de documento lleva sobre y huella.');
+        }
+        if ($acceso['post_revocacion'] && Carbon::parse((string) ($item->sobre->creado_en ?? 'now'))->gt($acceso['revocada_en'])) {
+            throw new EventoRechazado('establecimiento_cerrado', 'El acceso al establecimiento fue revocado antes de cargar esto.');
+        }
+        $r = app(RegistrarDocumentoVersion::class)->handle($est, $usuario, $item->sobre, ['canal' => 'push', 'huella' => (string) $item->huella, 'rol' => $acceso['rol']]);
+
+        return ['id' => $r->versionId, 'estado' => $r->estado, 'seq' => $r->seq, 'eslabon' => $r->eslabon, 'registrado_en' => $r->registradoEn,
+            'codigo' => $r->estado === 'en_revision' ? 'conflicto_version' : null, 'revision_id' => $r->revisionId];
     }
 
     /**

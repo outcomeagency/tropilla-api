@@ -81,6 +81,17 @@ final class Verificacion
 
                 return [$txt['perfil_publicacion'][$locale]." (v{$p->version})", (int) $max, (int) $max === (int) $p->version, $p->publicado_por, $sobre];
             })(),
+            // Documento: tipo y versión; el contenido (título, archivos) solo si está publicado en el perfil.
+            'documento_version' => (function () use ($r, $locale) {
+                $v = DB::table('documento_versiones')->where('id', $r->sujeto_id)->first();
+                $d = DB::table('documentos')->where('id', $v->documento_id)->first();
+                $tipo = Catalogos::nombre(DB::table('tipos_documento')->where('codigo', $v->tipo_codigo)->value('nombres'), $locale) ?? $v->tipo_codigo;
+                $txt = ['es' => 'Documento', 'en' => 'Document', 'pt' => 'Documento'][$locale];
+                $titulo = $d->visibilidad === 'perfil' ? ': '.$v->titulo : '';
+
+                return ["{$txt} ({$tipo}){$titulo} · v{$v->version}", (int) DB::table('documento_versiones')->where('documento_id', $d->id)->count(),
+                    ! $v->en_revision && (int) $d->version_vigente === (int) $v->version, $v->autor_id, null];
+            })(),
             default => [$r->sujeto_tipo, 1, true, null, null],
         };
     }

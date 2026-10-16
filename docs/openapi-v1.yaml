@@ -7636,6 +7636,7 @@ components:
         tipo_nombre: {type: string}
         privacidad: {type: string, enum: [fiscal, sanitario, comercial, general]}
         titulo: {type: string}
+        emisor_nombre: {type: [string, 'null'], description: 'Aditivo TPA-36 (declarado)'}
         emitido_en:
           oneOf:
           - {$ref: '#/components/schemas/Fecha'}
@@ -7660,6 +7661,7 @@ components:
             additionalProperties: false
         versiones:
           type: array
+          description: 'Solo en la ficha, en la respuesta de alta/versión y en sync (no en el listado). TPA-36'
           items: {$ref: '#/components/schemas/DocumentoVersion'}
         verificacion_url: {type: [string, 'null']}
         row_version: {type: integer}
@@ -7697,8 +7699,11 @@ components:
         archivos:
           type: array
           items: {$ref: '#/components/schemas/ArchivoRef'}
-      required: [tipo, privacidad, titulo, archivos]
+      required: [tipo, titulo, archivos]
       additionalProperties: false
+      description: '`privacidad` opcional (default del tipo; un tipo fiscal es siempre fiscal). `archivos` referencia SHA-256: si el
+        archivo todavía no subió queda `pendiente` (subida diferida, TPA-44). `vence_en` default = emisión + `vence_por_defecto_dias`
+        del tipo. Desvío TPA-36: `privacidad` deja de ser obligatoria.'
     DocumentoVersionInput:
       type: object
       properties:

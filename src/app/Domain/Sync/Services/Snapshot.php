@@ -4,6 +4,7 @@ namespace App\Domain\Sync\Services;
 
 use App\Domain\Catalogos\Catalogos;
 use App\Domain\Catalogos\Parametros;
+use App\Domain\Documentos\ConsultasDocumentos;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Hacienda\ConsultasAnimales;
 use App\Domain\Hacienda\Models\Evento;
@@ -24,6 +25,7 @@ use App\Http\Resources\V1\Sanidad\TareaResource;
 use App\Support\Formato;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * GET /sync/snapshot (§7.7): bootstrap del establecimiento activo — estado actual completo + eventos vigentes de los
@@ -56,7 +58,9 @@ final class Snapshot
                 'lotes' => Lote::query()->where('establecimiento_id', $est->id)->get()->map(fn ($l) => LoteResource::make($l)->resolve($request))->all(),
                 'animales' => $animales->map(fn ($a) => AnimalResource::make($a)->resolve($request))->all(),
                 'eventos' => $eventos->map(fn ($e) => EventoResource::make($e)->resolve($request))->all(),
-                'documentos' => [],
+                'documentos' => ConsultasDocumentos::base($est->id, Gate::forUser($request->user())->allows('documentos.fiscal', $est))
+                    ->when(! Gate::forUser($request->user())->allows('comercial.precios', $est), fn ($q) => $q->where('d.privacidad', '<>', 'comercial'))
+                    ->orderBy('d.created_at')->get(['d.*'])->map(fn ($d) => ConsultasDocumentos::documento($d, now($est->zona_horaria)->toDateString(), true))->all(),
                 'productos_sanitarios' => ProductoSanitario::query()->where('establecimiento_id', $est->id)->orderBy('nombre_comercial')->get()
                     ->map(fn ($p) => ProductoSanitarioResource::make($p)->resolve($request))->all(),
                 'tareas' => Tarea::query()->where('establecimiento_id', $est->id)->where('estado', 'pendiente')->orderBy('vence_en')->get()

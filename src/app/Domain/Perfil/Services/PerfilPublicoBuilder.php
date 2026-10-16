@@ -3,7 +3,9 @@
 namespace App\Domain\Perfil\Services;
 
 use App\Domain\Catalogos\Catalogos;
+use App\Domain\Documentos\ConsultasDocumentos;
 use App\Domain\Establecimientos\Data\Provincias;
+use App\Domain\Integridad\Confianza;
 use App\Http\Resources\V1\Publico\OfertaPublicaResource;
 use App\Support\Formato;
 use App\Support\Leyenda;
@@ -115,7 +117,13 @@ final class PerfilPublicoBuilder
                 ->map(fn ($r) => ['enfermedad' => (string) $r->enfermedad, 'registros' => (int) $r->n,
                     'texto' => $item('enfermedades', (string) $r->enfermedad).': '.$r->n.' '.(['es' => 'registros de vacunación', 'en' => 'vaccination records', 'pt' => 'registros de vacinação'][$locale])])->all()],
             'trazabilidad' => self::trazabilidad($est->id),
-            'documentos' => [],
+            // Solo lo que el productor publicó explícitamente (visibilidad perfil); fiscal nunca (CHECK + trigger + no_publicable).
+            'documentos' => DB::table('documentos as d')->join('documento_versiones as v', fn ($j) => $j->on('v.documento_id', '=', 'd.id')->on('v.version', '=', 'd.version_vigente')->where('v.en_revision', false))
+                ->where('d.establecimiento_id', $est->id)->where('d.visibilidad', 'perfil')->where('d.estado', 'vigente')->where('d.privacidad', '<>', 'fiscal')
+                ->orderBy('d.tipo_codigo')->orderByDesc('d.emitido_en')->get(['d.*', 'v.hash', 'v.registro_integridad_id'])
+                ->map(fn ($d) => ['titulo' => $d->titulo, 'tipo' => $nombre('tipos_documento', $d->tipo_codigo), 'emisor_declarado' => $d->emisor_nombre,
+                    'emitido_en' => $d->emitido_en, 'vence_en' => $d->vence_en, 'estado' => ConsultasDocumentos::estado($d, now()->toDateString()),
+                    'confianza' => Confianza::deRegistro((int) $d->registro_integridad_id), 'verificacion_url' => config('tropilla.web_url').'/v/'.$d->hash])->all(),
             'oferta' => DB::table('ofertas')->where('establecimiento_id', $est->id)->whereIn('estado', ['publicada', 'reservada'])->orderByDesc('publicada_en')->get()
                 ->map(fn ($o) => OfertaPublicaResource::resumen($o, $locale))->filter()->values()->all(),
             'contacto' => (function () use ($perfil, $prod) {
