@@ -540,6 +540,21 @@ y los **campos aditivos** `tacto_fecha` y `dias_gestacion` (hoy − concepción,
 - Verificado: 4 tests (tablero BUB/BOV con mes de parto y alertas, calendario orden/días/vencido/filtros y parto registrado sale, tolerancia
   por parámetro del establecimiento, 422 ×4 / lectura ve / revocada 403 / ajeno 404) + demo. Suite completa verde.
 
+## TPA-31 · Catálogo de productos sanitarios · ✅ (parte API)
+
+**Endpoints:** `GET|POST …/productos-sanitarios` (`?archivados&tipo&especie`), `PATCH …/productos-sanitarios/{p}`,
+`POST …/productos-sanitarios/{p}/archivar`, `GET /catalogos/productos-sugeridos?especie`.
+
+**Comentario del dev:**
+- Tabla `productos_sanitarios` (maestro: id del cliente idempotente, `row_version`/409, archivado en vez de borrado, nombre único
+  case-insensitive entre activos, CHECK de tipo y retiros ≥ 0). `GuardarProductoSanitario` con auditoría y `cambios`: viaja por
+  pull (`producto_sanitario`) y el snapshot ya lo trae (la app lo necesita offline para copiar el retiro al aplicar, TPA-32).
+- **Sin dosis prescriptas:** `dosis_declarada` es texto libre del usuario. La base sugerida (`ProductosSugeridos`, genéricos por
+  principio activo) no trae dosis **ni retiro**: el retiro depende del marbete del producto comprado; se copia con `sugerido_codigo`.
+- Desvío aditivo: los sugeridos salen con `id: null` + `codigo`; filtro `especie` en el listado (incluye los sin especie declarada).
+- Trampa: la autorización va en el FormRequest (`authorize()`) para que un no-miembro reciba 404 aunque mande un cuerpo inválido.
+- Verificado: 3 tests (ciclo alta/idempotencia/filtros/409/archivo/pull/snapshot, sugeridos sin dosis, 422 ×6 + nombre repetido, 403 lectura, 404 ajeno).
+
 ---
 
 ## Desvíos del contrato
@@ -552,4 +567,4 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-30: `sin_estado`, `partos_proximos`, `partos_vencidos` en `TableroVientres`.
 - TPA-48: `compromiso` en `AnimalResumen`; PDF público de oferta como `200 application/pdf` en vez de `302` a URL prefirmada.
 - TPA-43 (bugfix): catálogos con `especie_codigo` (+ alias `especie`); `/sync/catalogos` `private, no-cache`; identificador tolerante a ceros.
-
+- TPA-31: `ProductoSanitario.id` nullable + `codigo` en la base sugerida; `sugerido_codigo` en el input; filtro `especie`.

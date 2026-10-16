@@ -11,6 +11,7 @@ use App\Domain\Hacienda\Models\Evento;
 use App\Domain\Hacienda\Models\Lote;
 use App\Domain\Hacienda\Models\Potrero;
 use App\Domain\Hacienda\Services\OcupacionPotreros;
+use App\Domain\Sanidad\Models\ProductoSanitario;
 use App\Exceptions\ApiException;
 use App\Http\Resources\V1\Establecimientos\EstablecimientoResource;
 use App\Http\Resources\V1\Establecimientos\MembresiaResource;
@@ -19,6 +20,7 @@ use App\Http\Resources\V1\Hacienda\EventoResource;
 use App\Http\Resources\V1\Hacienda\LoteResource;
 use App\Http\Resources\V1\Hacienda\PotreroResource;
 use App\Http\Resources\V1\Hacienda\RevisionResource;
+use App\Http\Resources\V1\Sanidad\ProductoSanitarioResource;
 use App\Support\Formato;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -92,6 +94,7 @@ final class Pull
             'lote' => ($l = Lote::query()->where('id', $id)->where('establecimiento_id', $est->id)->first()) ? LoteResource::make($l)->resolve($request) : null,
             'potrero' => ($p = Potrero::query()->where('id', $id)->where('establecimiento_id', $est->id)->first())
                 ? PotreroResource::make($p->setAttribute('ocupacion', OcupacionPotreros::de($est->id, [$p->id])[$p->id]))->resolve($request) : null,
+            'producto_sanitario' => ($ps = ProductoSanitario::query()->where('id', $id)->where('establecimiento_id', $est->id)->first()) ? ProductoSanitarioResource::make($ps)->resolve($request) : null,
             'establecimiento' => EstablecimientoResource::make($est->loadMissing('productor'))->resolve($request),
             'membresia' => ($m = Membresia::query()->with('usuario')->where('id', $id)->where('establecimiento_id', $est->id)->first()) ? MembresiaResource::make($m)->resolve($request) : null,
             'revision' => ($r = DB::table('revisiones')->where('id', $id)->where('establecimiento_id', $est->id)->first()) ? RevisionResource::make($r)->resolve($request) : null,

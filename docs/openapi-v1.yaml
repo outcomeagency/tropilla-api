@@ -934,6 +934,9 @@ paths:
       tags: [Catálogos]
       summary: Base sugerida de productos sanitarios (sin dosis)
       operationId: get_catalogos_productos_sugeridos
+      description: 'Genéricos por principio activo, sin dosis **ni retiro** (la dosis la indica el veterinario y el retiro sale
+        del marbete). Cada ítem trae `id: null` y `codigo` (desvío aditivo TPA-31); para copiarlo al catálogo se hace
+        `POST …/productos-sanitarios` con `sugerido_codigo`.'
       parameters:
       - name: especie
         in: query
@@ -2172,6 +2175,11 @@ paths:
         in: query
         required: false
         schema: {type: string}
+      - name: especie
+        in: query
+        required: false
+        schema: {type: string}
+        description: 'BOV | BUB: productos de esa especie o sin especies declaradas (aditivo TPA-31)'
       responses:
         '200':
           description: OK
@@ -7356,7 +7364,12 @@ components:
     ProductoSanitario:
       type: object
       properties:
-        id: {$ref: '#/components/schemas/Uuid'}
+        id:
+          oneOf:
+          - {$ref: '#/components/schemas/Uuid'}
+          - {type: 'null'}
+          description: null solo en la base sugerida
+        codigo: {type: [string, 'null'], description: 'Solo en la base sugerida (TPA-31)'}
         nombre_comercial: {type: string}
         principio_activo: {type: [string, 'null']}
         tipo: {type: string}
@@ -7395,6 +7408,7 @@ components:
           type: array
           items: {type: string}
         notas: {type: [string, 'null']}
+        sugerido_codigo: {type: [string, 'null'], description: 'Código de la base sugerida de la que se copió (TPA-31)'}
         row_version: {type: integer}
       additionalProperties: false
     PlanSanitario:
