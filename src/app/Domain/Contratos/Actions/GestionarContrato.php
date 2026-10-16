@@ -3,6 +3,7 @@
 namespace App\Domain\Contratos\Actions;
 
 use App\Domain\Comercial\Services\Compromisos;
+use App\Domain\Contratos\Seguidores;
 use App\Domain\Contratos\Sobres;
 use App\Domain\Contratos\Terminos;
 use App\Domain\Documentos\Actions\GuardarArchivo;
@@ -74,6 +75,8 @@ final class GestionarContrato
             DB::table('contratos_futuro')->where('id', $c->id)->update(['estado' => 'publicado', 'publicado_en' => now(), 'updated_at' => now()]);
             $this->documento($est, $u, $c->id, $pdf, 1, null);
             $this->auditoria->handle($est->id, $u->id, 'contrato', $c->id, 'publicar', null, ['codigo' => $c->codigo_publico]);
+            Seguidores::avisar($est, 'contrato_nuevo', "{$est->nombre} publicó un contrato a futuro", "{$t['tokens_totales']} tokens de {$t['kg_por_token']} kg al gancho, entrega {$t['fecha_entrega']}.",
+                ['contrato_codigo' => $c->codigo_publico, 'ruta' => '/c/'.$c->codigo_publico], "contrato:{$c->id}:publicado");
         });
     }
 
@@ -157,7 +160,7 @@ final class GestionarContrato
             $actual = DB::table('contratos_futuro')->where('id', $c->id)->lockForUpdate()->first();
             // Reservas sin confirmar se liberan; los anticipos confirmados quedan a devolver (fuera de la app, confirmado por ambos).
             foreach (DB::table('tomas')->where('contrato_id', $c->id)->whereIn('estado', GestionarTomas::ACTIVAS)->get() as $t) {
-                if ($t->estado === 'confirmada') {
+                if (in_array($t->estado, GestionarTomas::CONFIRMADAS, true)) {
                     DB::table('tomas')->where('id', $t->id)->update(['anticipo_a_devolver' => $t->anticipo_monto, 'updated_at' => now()]);
                     $this->tomas->movimiento($cadena, $t->id, $estado, ['motivo' => $motivo, 'anticipo_a_devolver' => (string) $t->anticipo_monto], $u->id, 'productor');
                 } else {

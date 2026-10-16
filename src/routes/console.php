@@ -24,3 +24,6 @@ Schedule::command('integridad:actualizar-anclajes')->everySixHours()->withoutOve
 
 // Alertas y resumen diario (TPA-53).
 Schedule::command('alertas:generar')->dailyAt('07:00')->timezone('America/Argentina/Buenos_Aires')->withoutOverlapping();
+
+// Contratos a futuro (TPA-57): liberar reservas vencidas.
+Schedule::command('contratos:liberar-tomas')->everyFifteenMinutes()->withoutOverlapping();

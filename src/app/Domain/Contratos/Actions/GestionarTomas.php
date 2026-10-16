@@ -19,14 +19,17 @@ use Illuminate\Support\Str;
  */
 final class GestionarTomas
 {
-    public const ACTIVAS = ['reservada', 'pago_informado', 'confirmada'];
+    public const ACTIVAS = ['reservada', 'pago_informado', 'confirmada', 'devuelta_parcial'];
 
-    public function tomar(string $codigo, User $comprador, int $tokens, ?string $id = null): string
+    /** Con el anticipo recibido (una devuelta parcial sigue confirmada por los tokens que le quedan). */
+    public const CONFIRMADAS = ['confirmada', 'devuelta_parcial'];
+
+    public function tomar(string $codigo, User $comprador, int $tokens, ?string $idempotencia = null): string
     {
-        return DB::transaction(function () use ($codigo, $comprador, $tokens, $id) {
+        return DB::transaction(function () use ($codigo, $comprador, $tokens, $idempotencia) {
             $c = DB::table('contratos_futuro')->where('codigo_publico', strtoupper($codigo))->lockForUpdate()->first() ?? throw ApiException::noEncontrado();
-            if ($id && ($t = DB::table('tomas')->where('id', $id)->first())) {
-                return $t->comprador_id === $comprador->id ? $t->id : throw new ApiException(409, 'id_reutilizado', __('Ese id ya existe.'));
+            if ($idempotencia && ($t = DB::table('tomas')->where('comprador_id', $comprador->id)->where('idempotency_key', $idempotencia)->first())) {
+                return $t->id; // reintento del mismo POST (Idempotency-Key)
             }
             if (! in_array($c->estado, ['publicado', 'parcialmente_tomado'], true)) {
                 throw new ApiException(409, 'tokens_insuficientes', __('El contrato no tiene tokens libres.'));
@@ -39,8 +42,8 @@ final class GestionarTomas
                 throw new ApiException(409, 'tokens_insuficientes', __('Quedan :n tokens libres.', ['n' => $libres]), ['tokens' => [(string) $libres]]);
             }
             $cadena = Cadena::bloquearDeEstablecimiento($c->establecimiento_id);
-            $id ??= (string) Str::uuid7();
-            DB::table('tomas')->insert([
+            $id = (string) Str::uuid7();
+            DB::table('tomas')->insert(['idempotency_key' => $idempotencia,
                 'id' => $id, 'contrato_id' => $c->id, 'establecimiento_id' => $c->establecimiento_id, 'comprador_id' => $comprador->id,
                 'contrato_version' => $c->version_vigente, 'tokens' => $tokens, 'tokens_vigentes' => $tokens, 'kg' => $tokens * $c->kg_por_token,
                 'precio_especial_kg' => $c->precio_especial_kg, 'anticipo_monto' => D::redondear(D::mul((string) $tokens, (string) $c->anticipo_por_token), 2),
@@ -75,7 +78,7 @@ final class GestionarTomas
         if (D::cmp((string) $toma->anticipo_a_devolver, '0') <= 0) {
             throw ApiException::reglaBloqueante(__('Esta toma no tiene anticipo a devolver.'));
         }
-        $this->transicion($toma, ['confirmada', 'liberada'], null, 'devolucion_informada', array_filter($d) + ['monto' => (string) $toma->anticipo_a_devolver], $productor->id, 'productor');
+        $this->transicion($toma, ['confirmada', 'devuelta_parcial', 'liberada'], null, 'devolucion_informada', array_filter($d) + ['monto' => (string) $toma->anticipo_a_devolver], $productor->id, 'productor');
     }
 
     public function devolucionConfirmada(object $toma, User $comprador): void
