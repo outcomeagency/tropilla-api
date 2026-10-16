@@ -27,6 +27,13 @@ rm -f "$READY_FILE"
 
 mkdir -p storage/framework/{cache/data,sessions,views,testing} storage/logs storage/app/public bootstrap/cache
 
+# .env ANTES de composer: los scripts de composer (package:discover) bootean Laravel y, sin .env,
+# APP_ENV cae en «production» y el guard del anclaje stub (AppServiceProvider) aborta en una máquina limpia.
+if [ ! -f .env ]; then
+    log "creando .env desde .env.example"
+    cp .env.example .env
+fi
+
 # Dependencias: si falta vendor o composer.lock cambió (git pull con deps nuevas).
 if [ ! -f vendor/autoload.php ] || [ composer.lock -nt vendor/autoload.php ]; then
     log "composer install..."
@@ -37,11 +44,7 @@ else
     composer dump-autoload --optimize --no-interaction --quiet
 fi
 
-# .env + APP_KEY (solo si faltan).
-if [ ! -f .env ]; then
-    log "creando .env desde .env.example"
-    cp .env.example .env
-fi
+# APP_KEY (solo si falta; necesita vendor para correr artisan).
 if ! grep -q '^APP_KEY=base64:' .env; then
     log "generando APP_KEY"
     php artisan key:generate --force --no-interaction

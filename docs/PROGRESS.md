@@ -16,6 +16,17 @@ acá y en la sección «Desvíos del contrato» al final.
 
 ---
 
+## TPA-2 · bugfix: arranque en máquina limpia e imágenes de MinIO · ✅
+
+**Comentario del dev:**
+- `docker/php/entrypoint.sh` copia `.env` desde `.env.example` **antes** de `composer install`/`dump-autoload`: el
+  `package:discover` del post-autoload-dump bootea Laravel y sin `.env` caía en `APP_ENV=production` → el guard del anclaje stub abortaba.
+  `key:generate` sigue después de composer (necesita `vendor`).
+- `compose.yaml` pasa a `pgsty/minio` / `pgsty/mc` (MinIO retiró sus imágenes): `mc ready local` y `minio-init` (bucket + versionado) andan igual.
+- Trampa: el entrypoint se copia en la imagen `tropilla/php`; tras cambiarlo hace falta `docker compose up -d --build` (anotado en el README).
+- Verificado: entrypoint viejo vs nuevo sobre una copia limpia de `src/` (sin `vendor` ni `.env`): el viejo reproduce el `RuntimeException`,
+  el nuevo llega a esperar la base; stack de dev ya corriendo con las imágenes pgsty (healthy, init exit 0, versionado activo); suite verde.
+
 ## TPA-9 · Registro e inicio de sesión · ✅
 
 **Endpoints:** `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET|PATCH /auth/me`,

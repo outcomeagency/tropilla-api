@@ -110,7 +110,7 @@ services:
       - tropilla
 
   minio:
-    image: minio/minio:latest
+    image: pgsty/minio:latest  # fork comunitario: MinIO retiró sus imágenes de Docker Hub/quay
     container_name: tropilla_minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -132,7 +132,7 @@ services:
 
   # Crea el bucket (con versionado: los documentos nunca se sobrescriben) y termina.
   minio-init:
-    image: minio/mc:latest
+    image: pgsty/mc:latest
     container_name: tropilla_minio_init
     depends_on:
       minio:
