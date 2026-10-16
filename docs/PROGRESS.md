@@ -669,6 +669,21 @@ push `clase: documento_version`; `GET …/animales/{a}/documentos` ya real; secc
 - Verificado: 3 tests (simple + dedupe + descarga; multipart 4 partes con reintento de una parte, partes faltantes 422, corrupto descartado;
   firma obligatoria, vencimiento, 422/403/404) + **smoke real contra MinIO**: multipart 12 MB y simple con PUT prefirmado, verificación y descarga.
 
+## TPA-38 · Compartir documento por enlace temporal · ✅ (parte API)
+
+**Endpoints:** `GET|POST …/documentos/{d}/enlaces`, `POST …/documentos/{d}/enlaces/{e}/revocar` (204), público `GET /public/enlaces/{token}?locale`.
+
+**Comentario del dev:**
+- Tablas `enlaces_compartidos` (token de 256 bits solo en la URL `{web}/e/{token}`; se guarda su SHA-256; vencimiento obligatorio ≤ 90 días,
+  revocable, opcionalmente fijo a una versión) y `enlace_accesos` (append-only, IP como HMAC). Compartir no publica: el documento sigue `privado`
+  y la cabecera muestra `enlaces_activos`.
+- Público: documento con **confianza** y `verificacion_url` (huella de la versión), archivos con URL firmada de 5 min, nombre del establecimiento
+  y leyenda (declarado + integridad); `Cache-Control: private, no-store` y `noindex`. Vencido o revocado → 410 `enlace_vencido`; token desconocido → 404.
+- Fiscal: se puede compartir (dueño/admin, `documentos.compartir`) con `aviso` en la respuesta; nunca publicar (TPA-36). Enlace a versión fija
+  muestra `estado: reemplazado` si ya hay una vigente más nueva. Auditoría de crear/revocar.
+- Verificado: 3 tests (crear → abrir sin sesión con confianza/verificación/archivo → acceso contado → vencimiento 410; versión fija, revocación,
+  token inexistente, fiscal con aviso, 4 validaciones; encargado 403, admin puede, ajeno 404).
+
 ---
 
 ## Desvíos del contrato
@@ -687,3 +702,4 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-34: parámetros `tuberculina_*_mm` por especie; resultado calculado por el servidor en la web; revisión `resultado_prueba_discrepante`.
 - TPA-35: `lotes[]` aditivo en `…/sanidad/retiros`; `retiro_*_hasta` en `Lote`; advertencia `reactor` en egreso.
 - TPA-36: `DocumentoInput.privacidad` opcional (default del tipo); `emisor_nombre` en `Documento`; `versiones` solo en ficha/alta/sync.
+- TPA-38: `Enlace.aviso` para fiscales; URL pública `{web}/e/{token}`; `estado: reemplazado` en enlaces a versión fija.

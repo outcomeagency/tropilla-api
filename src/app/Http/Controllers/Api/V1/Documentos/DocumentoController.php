@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Documentos;
 
+use App\Domain\Documentos\Actions\GestionarEnlace;
 use App\Domain\Documentos\Actions\GestionarVisibilidad;
 use App\Domain\Documentos\Actions\RegistrarDocumentoVersion;
 use App\Domain\Documentos\ArmarSobreDocumentoWeb;
@@ -106,6 +107,34 @@ class DocumentoController extends Controller
         $gestionar->handle($establecimiento, $doc, $request->user(), $d['visibilidad'], (int) $d['row_version']);
 
         return $this->respuesta($request, $establecimiento, $doc->id, 200);
+    }
+
+    public function enlaces(Request $request, Establecimiento $establecimiento, string $documento): JsonResponse
+    {
+        Gate::authorize('documentos.compartir', $establecimiento);
+        $doc = $this->buscar($request, $establecimiento, $documento);
+        $enlaces = DB::table('enlaces_compartidos')->where('documento_id', $doc->id)->orderByDesc('created_at')->get();
+
+        return response()->json(['data' => $enlaces->map(fn ($e) => GestionarEnlace::enlace($e))->all()]);
+    }
+
+    public function crearEnlace(Request $request, Establecimiento $establecimiento, string $documento, GestionarEnlace $gestionar): JsonResponse
+    {
+        Gate::authorize('documentos.compartir', $establecimiento);
+        $d = $request->validate(['expira_en' => ['required', 'date_format:Y-m-d\TH:i:s.v\Z'], 'version' => ['sometimes', 'nullable', 'integer', 'min:1']]);
+        $doc = $this->buscar($request, $establecimiento, $documento);
+
+        return response()->json(['data' => $gestionar->crear($doc, $request->user(), Carbon::parse($d['expira_en']), $d['version'] ?? null)], 201, [], JSON_UNESCAPED_UNICODE);
+    }
+
+    public function revocarEnlace(Request $request, Establecimiento $establecimiento, string $documento, string $enlace, GestionarEnlace $gestionar): JsonResponse
+    {
+        Gate::authorize('documentos.compartir', $establecimiento);
+        $doc = $this->buscar($request, $establecimiento, $documento);
+        $e = DB::table('enlaces_compartidos')->where('id', strtolower($enlace))->where('documento_id', $doc->id)->first() ?? throw ApiException::noEncontrado();
+        $gestionar->revocar($e, $request->user());
+
+        return response()->json(null, 204);
     }
 
     private function respuesta(Request $request, Establecimiento $est, string $id, int $status): JsonResponse

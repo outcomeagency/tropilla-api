@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Perfil\PerfilController;
 use App\Http\Controllers\Api\V1\Publico\ConsultaPublicaController;
 use App\Http\Controllers\Api\V1\Publico\DirectorioController;
+use App\Http\Controllers\Api\V1\Publico\EnlacePublicoController;
 use App\Http\Controllers\Api\V1\Publico\OfertaPublicaController;
 use App\Http\Controllers\Api\V1\Publico\PerfilPublicoController;
 use App\Http\Controllers\Api\V1\Publico\VerificacionController;
@@ -78,6 +79,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('establecimientos/{slug}', [PerfilPublicoController::class, 'show'])->name('establecimientos.show');
         Route::get('establecimientos/{slug}/ofertas', [PerfilPublicoController::class, 'ofertas'])->name('establecimientos.ofertas');
         Route::get('establecimientos/{slug}/contratos', [PerfilPublicoController::class, 'contratos'])->name('establecimientos.contratos');
+        Route::get('enlaces/{token}', EnlacePublicoController::class)->where('token', '[A-Za-z0-9_-]{20,100}')->name('enlaces.show');
         Route::post('consultas', ConsultaPublicaController::class)->middleware('throttle:consultas')->name('consultas.store');
     });
     // Subida diferida con almacén local (dev/tests): la URL firmada es la credencial (como una URL prefirmada de S3).
@@ -162,6 +164,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('documentos/{documento}', [DocumentoController::class, 'show'])->name('documentos.show');
             Route::post('documentos/{documento}/versiones', [DocumentoController::class, 'versiones'])->name('documentos.versiones');
             Route::post('documentos/{documento}/visibilidad', [DocumentoController::class, 'visibilidad'])->name('documentos.visibilidad');
+            Route::get('documentos/{documento}/enlaces', [DocumentoController::class, 'enlaces'])->name('documentos.enlaces.index');
+            Route::post('documentos/{documento}/enlaces', [DocumentoController::class, 'crearEnlace'])->name('documentos.enlaces.store');
+            Route::post('documentos/{documento}/enlaces/{enlace}/revocar', [DocumentoController::class, 'revocarEnlace'])->name('documentos.enlaces.revocar');
 
             // Eventos (TPA-22, 26)
             Route::get('eventos', [EventoController::class, 'index'])->name('eventos.index');
