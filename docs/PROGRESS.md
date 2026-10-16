@@ -284,3 +284,16 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
 - Verificado: 10 tests (idempotencia y seq sin huecos, 4 rechazos incl. float crudo, correcciones concurrentes → una en revisión
   y resolución «reaplicada», evento posterior a baja aceptado con revisión, maestros + conflicto, pull/cursor/422, filtro por
   visibilidad, snapshot → pull vacío, revocación 72 h / lectura 403 / 404, 422 del envío).
+
+## TPA-20 · Lotes de manejo y lotes anónimos · ✅ (parte API)
+
+**Endpoints:** `GET|POST …/lotes` (`?especie&archivados`), `GET|PATCH …/lotes/{l}`, `POST …/lotes/{l}/archivar`, `GET …/lotes/{l}/eventos` (cursor).
+
+**Comentario del dev:**
+- Maestro `lotes` (de TPA-22) con `GuardarLote` (de TPA-43): id del cliente idempotente, `row_version`, especie inmutable
+  (un lote no mezcla especies: bloquea altas/cambios de lote de otra especie) y archivo solo sin cabezas.
+- `Lote` devuelve la composición derivada de eventos: `conteo` por categoría (lote anónimo), `cabezas_individuales`/`anonimas`,
+  potrero del último traslado, peso promedio + fecha y GDP promedio entre pesajes promedio.
+- Lote anónimo recibe eventos grupales con `sujetos.tipo = lote` (+ `conteo` parcial); individualizar
+  (`hacienda.individualizacion`) descuenta del conteo y el animal hereda en su timeline los eventos grupales previos.
+- Verificado: 4 tests (ciclo completo de lote anónimo con muerte e individualización, especies, edición/archivo, 422/idempotencia/403/404).

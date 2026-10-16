@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\Establecimientos\ProductorController;
 use App\Http\Controllers\Api\V1\Hacienda\AnimalController;
 use App\Http\Controllers\Api\V1\Hacienda\CorreccionController;
 use App\Http\Controllers\Api\V1\Hacienda\EventoController;
+use App\Http\Controllers\Api\V1\Hacienda\LoteController;
 use App\Http\Controllers\Api\V1\Hacienda\PotreroController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Sistema\AuditoriaController;
@@ -102,6 +103,14 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('revisiones', [CorreccionController::class, 'revisiones'])->name('revisiones.index');
             Route::get('revisiones/{revision}', [CorreccionController::class, 'revision'])->name('revisiones.show');
             Route::post('revisiones/{revision}/resolver', [CorreccionController::class, 'resolver'])->name('revisiones.resolver');
+
+            // Lotes (TPA-20)
+            Route::get('lotes', [LoteController::class, 'index'])->name('lotes.index');
+            Route::post('lotes', [LoteController::class, 'store'])->name('lotes.store');
+            Route::get('lotes/{lote}', [LoteController::class, 'show'])->name('lotes.show');
+            Route::patch('lotes/{lote}', [LoteController::class, 'update'])->name('lotes.update');
+            Route::post('lotes/{lote}/archivar', [LoteController::class, 'archivar'])->name('lotes.archivar');
+            Route::get('lotes/{lote}/eventos', [LoteController::class, 'eventos'])->name('lotes.eventos');
 
             // Potreros (TPA-14)
             Route::get('potreros', [PotreroController::class, 'index'])->name('potreros.index');
