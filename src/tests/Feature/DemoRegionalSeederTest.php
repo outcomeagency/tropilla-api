@@ -13,6 +13,10 @@ it('siembra la región en modo aditivo e idempotente sin alterar prueba@tropilla
     $antes = DB::table('usuarios')->where('id', $protegido->id)->value('password');
 
     $this->seed(DemoRegionalSeeder::class);
+    $estId = DB::table('perfiles_publicos')->where('slug', 'la-esperanza')->value('establecimiento_id');
+    $visibilidad = json_decode(DB::table('establecimientos')->where('id', $estId)->value('visibilidad_ficha'), true);
+    $visibilidad['sanidad_renspa'] = true;
+    DB::table('establecimientos')->where('id', $estId)->update(['visibilidad_ficha' => json_encode($visibilidad)]);
     $this->seed(DemoRegionalSeeder::class);
 
     expect(DB::table('perfiles_publicos')->whereIn('slug', ['la-esperanza', 'el-timbo', 'don-anselmo', 'los-caranday', 'la-paloma', 'santa-rita'])->count())->toBe(6)
@@ -27,8 +31,9 @@ it('siembra la región en modo aditivo e idempotente sin alterar prueba@tropilla
 
     $publico = $this->getJson('/api/v1/public/establecimientos/la-esperanza')->assertOk();
     $publico->assertJsonPath('data.secciones.ficha_establecimiento.clima.precipitacion_media_mm', '1350')
-        ->assertJsonPath('data.secciones.ficha_establecimiento.personal.equipo', '7')
-        ->assertJsonMissingPath('data.secciones.ficha_establecimiento.sanidad_renspa');
+        ->assertJsonPath('data.secciones.ficha_establecimiento.sanidad_renspa.renspa_vencimiento', '2027-06-30')
+        ->assertJsonMissingPath('data.secciones.ficha_establecimiento.sanidad_renspa.renspa')
+        ->assertJsonPath('data.secciones.ficha_establecimiento.personal.equipo', '7');
 
     $ramaA = DB::table('reproductores_externos')->where('rp', 'TPA76-BOV-G3-01')->value('madre_externa_id');
     $ramaB = DB::table('reproductores_externos')->where('rp', 'TPA76-BOV-G3-03')->value('padre_externa_id');

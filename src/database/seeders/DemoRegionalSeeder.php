@@ -78,7 +78,6 @@ class DemoRegionalSeeder extends Seeder
                 $visibilidad = $est->visibilidad_ficha ?? [];
                 $siguiente = array_replace_recursive($bloques, $actual);
                 $visibles = array_replace($slug === 'la-esperanza' ? ['potreros_aguadas' => true, 'sanidad' => true, 'personal' => true, 'marcas_senales' => true, 'capacidad_carga' => true, 'clima' => true, 'certificaciones' => true] : ['potreros_aguadas' => true, 'sanidad' => true, 'personal' => true, 'marcas_senales' => true, 'capacidad_carga' => true, 'clima' => true], $visibilidad);
-                $visibles['sanidad_renspa'] = false;
                 if ($siguiente === $actual && $visibles === $visibilidad) {
                     return;
                 }

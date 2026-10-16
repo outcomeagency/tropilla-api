@@ -16,7 +16,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Perfil público (functional/05 §3) — **whitelist explícita**: nunca CUIT, RENSPA, fiscal, precios de operaciones,
+ * Perfil público (functional/05 §3) — **whitelist explícita**: nunca CUIT, identificador RENSPA, fiscal, precios de operaciones,
  * ubicación exacta, reactores, tratamientos individuales ni nombres de empleados. Las secciones derivadas se calculan
  * en vivo (se actualizan solas) salvo las **congeladas**, que muestran su snapshot.
  */
@@ -93,6 +93,7 @@ final class PerfilPublicoBuilder
         $ficha = json_decode((string) $row->ficha_ampliada, true) ?: [];
         $visibilidad = json_decode((string) $row->visibilidad_ficha, true) ?: [];
         $permitidos = [
+            'sanidad_renspa' => ['renspa_vencimiento', 'senasa_vencimiento', 'plan_sanitario'],
             'potreros_aguadas' => ['potreros', 'aguadas', 'rotacion', 'fuentes_agua'],
             'sanidad' => ['manejo', 'vacunaciones_actualizadas', 'fecha'],
             'personal' => ['equipo'],
