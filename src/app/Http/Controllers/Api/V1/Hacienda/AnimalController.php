@@ -10,6 +10,7 @@ use App\Domain\Hacienda\Proyecciones\Identificaciones;
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Hacienda\AltaRapidaRequest;
+use App\Http\Resources\V1\CursorOffset;
 use App\Http\Resources\V1\CursorRespuesta;
 use App\Http\Resources\V1\Hacienda\AnimalResource;
 use App\Http\Resources\V1\Hacienda\AnimalResumenResource;
@@ -23,6 +24,20 @@ use Illuminate\Support\Facades\Gate;
 /** Animales (TPA-16 alta rápida, TPA-17 ficha, TPA-18 listado, TPA-19 identificador). */
 class AnimalController extends Controller
 {
+    /**
+     * Listado (TPA-18): búsqueda por cualquier identificador (parcial, normalizado, índice trigram) y filtros
+     * especie, categoria, lote_id, potrero_id, estado (default activo; `todos`), estado_reproductivo, sexo,
+     * sanidad (retiro|reactor), sugerencia_categoria; orden: identificacion|categoria|peso|edad|reciente.
+     */
+    public function index(Request $request, Establecimiento $establecimiento): JsonResponse
+    {
+        Gate::authorize('hacienda.ver', $establecimiento);
+        $f = $request->only(['q', 'especie', 'categoria', 'lote_id', 'potrero_id', 'estado', 'estado_reproductivo', 'sexo', 'sanidad', 'sugerencia_categoria', 'orden']);
+        $q = ConsultasAnimales::listado($establecimiento->id, $f);
+
+        return CursorOffset::responder($q, $request, $f, fn ($fila) => AnimalResumenResource::campos($fila));
+    }
+
     public function store(AltaRapidaRequest $request, Establecimiento $establecimiento, AltaRapida $alta): JsonResponse
     {
         Gate::authorize('hacienda.crear', $establecimiento);
