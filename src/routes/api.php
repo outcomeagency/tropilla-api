@@ -131,6 +131,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::post('organizaciones', [OrganizacionController::class, 'store'])->name('organizaciones.store');
         Route::get('organizaciones/{organizacion}', [OrganizacionController::class, 'show'])->name('organizaciones.show');
         Route::post('organizaciones/{organizacion}/miembros', [OrganizacionController::class, 'miembro'])->name('organizaciones.miembros');
+        Route::get('organizaciones/{organizacion}/miembros', [OrganizacionController::class, 'miembros'])->name('organizaciones.miembros.index');
+        Route::patch('organizaciones/{organizacion}/miembros/{usuario}', [OrganizacionController::class, 'cambiarRol'])->name('organizaciones.miembros.update');
+        Route::delete('organizaciones/{organizacion}/miembros/{usuario}', [OrganizacionController::class, 'quitarMiembro'])->name('organizaciones.miembros.destroy');
         Route::get('organizaciones/{organizacion}/adheridos', [OrganizacionController::class, 'adheridos'])->name('organizaciones.adheridos');
         Route::get('productores/{productor}/adhesiones', [OrganizacionController::class, 'adhesiones'])->name('productores.adhesiones');
         Route::post('productores/{productor}/adhesiones', [OrganizacionController::class, 'adherir'])->name('productores.adhesiones.store');

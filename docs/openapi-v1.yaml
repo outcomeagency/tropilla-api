@@ -5569,6 +5569,38 @@ paths:
         '404': {$ref: '#/components/responses/NoEncontrado'}
         '422': {$ref: '#/components/responses/Validacion'}
   /organizaciones:
+    post:
+      tags: [Organizaciones]
+      summary: Crear organización (solo staff)
+      operationId: post_organizaciones
+      description: Alta controlada por el equipo TROPILLA (`es_staff`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre: {type: string, minLength: 3, maxLength: 200}
+                slug: {type: string, pattern: '^[a-z0-9-]{3,60}$'}
+                tipo: {type: string, enum: [asociacion, programa_provincial, cooperativa, consejo_regulador, otra]}
+                ambito: {type: object, additionalProperties: true}
+                especies: {type: array, items: {type: string, enum: [BOV, BUB]}}
+                descripcion: {type: [string, 'null'], maxLength: 2000}
+              required: [nombre, slug, tipo]
+              additionalProperties: false
+      responses:
+        '201':
+          description: Organización creada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {data: {$ref: '#/components/schemas/Organizacion'}}
+                required: [data]
+                additionalProperties: false
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '422': {$ref: '#/components/responses/Validacion'}
     get:
       tags: [Organizaciones]
       summary: Buscar organizaciones
@@ -5610,6 +5642,25 @@ paths:
                 additionalProperties: false
         '401': {$ref: '#/components/responses/NoAutenticado'}
   /organizaciones/{organizacion}/miembros:
+    get:
+      tags: [Organizaciones]
+      summary: Listar integrantes activos
+      operationId: get_organizaciones_organizacion_miembros
+      description: Solo staff o un admin activo de la organización.
+      parameters:
+      - {name: organizacion, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+      responses:
+        '200':
+          description: Integrantes activos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/OrganizacionMiembro'}}
+                required: [data]
+                additionalProperties: false
+        '404': {$ref: '#/components/responses/NoEncontrado'}
     post:
       tags: [Organizaciones]
       summary: Designar admin/operador de la organización (aditivo TPA-51)
@@ -5621,10 +5672,48 @@ paths:
         in: path
         required: true
         schema: {$ref: '#/components/schemas/Uuid'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/OrganizacionMiembroInput'}
       responses:
         '204': {description: OK}
         '404': {$ref: '#/components/responses/NoEncontrado'}
         '422': {$ref: '#/components/responses/Validacion'}
+  /organizaciones/{organizacion}/miembros/{usuario}:
+    patch:
+      tags: [Organizaciones]
+      summary: Cambiar rol de integrante
+      operationId: patch_organizaciones_organizacion_miembros_usuario
+      description: Solo staff o un admin activo de la organización. Conserva las versiones anteriores de membresía.
+      parameters:
+      - {name: organizacion, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+      - {name: usuario, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {rol: {type: string, enum: [admin, operador]}}
+              required: [rol]
+              additionalProperties: false
+      responses:
+        '204': {description: Rol actualizado}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+    delete:
+      tags: [Organizaciones]
+      summary: Dar de baja a un integrante
+      operationId: delete_organizaciones_organizacion_miembros_usuario
+      description: Solo staff o un admin activo de la organización. Revoca la membresía sin borrar historial.
+      parameters:
+      - {name: organizacion, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+      - {name: usuario, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+      responses:
+        '204': {description: Integrante dado de baja}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
   /organizaciones/{organizacion}:
     get:
       tags: [Organizaciones]
@@ -9470,6 +9559,27 @@ components:
           items: {type: string, enum: [BOV, BUB]}
         logo_url: {type: [string, 'null']}
         descripcion: {type: [string, 'null']}
+      additionalProperties: false
+    OrganizacionMiembro:
+      type: object
+      properties:
+        usuario:
+          type: object
+          properties:
+            id: {$ref: '#/components/schemas/Uuid'}
+            nombre: {type: string}
+            email: {type: string, format: email}
+          required: [id, nombre, email]
+          additionalProperties: false
+        rol: {type: string, enum: [admin, operador]}
+      required: [usuario, rol]
+      additionalProperties: false
+    OrganizacionMiembroInput:
+      type: object
+      properties:
+        email: {type: string, format: email}
+        rol: {type: string, enum: [admin, operador]}
+      required: [email, rol]
       additionalProperties: false
     Adhesion:
       type: object

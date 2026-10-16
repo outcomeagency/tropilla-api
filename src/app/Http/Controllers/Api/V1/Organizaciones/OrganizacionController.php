@@ -7,6 +7,7 @@ use App\Domain\Establecimientos\Models\Productor;
 use App\Domain\Establecimientos\Policies\ProductorPolicy;
 use App\Domain\Integridad\Confianza;
 use App\Domain\Organizaciones\Actions\GestionarAdhesion;
+use App\Domain\Organizaciones\Policies\OrganizacionPolicy;
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\MotivoRequest;
@@ -56,14 +57,51 @@ class OrganizacionController extends Controller
     }
 
     /** Aditivo: designar administradores/operadores de la organización (equipo TROPILLA o un admin de la organización). */
-    public function miembro(Request $request, string $organizacion): JsonResponse
+    public function miembros(Request $request, string $organizacion, OrganizacionPolicy $policy): JsonResponse
+    {
+        $o = $this->org($organizacion);
+        $policy->administrarIntegrantes($request->user(), $o->id) || throw ApiException::noEncontrado();
+        $data = DB::table('organizacion_miembros as m')->join('usuarios as u', 'u.id', '=', 'm.usuario_id')
+            ->where('m.organizacion_id', $o->id)->where('m.estado', 'activa')->orderBy('u.nombre')->orderBy('u.id')
+            ->get(['u.id', 'u.nombre', 'u.email', 'm.rol'])->map(fn ($m) => ['usuario' => ['id' => $m->id, 'nombre' => $m->nombre, 'email' => $m->email], 'rol' => $m->rol]);
+
+        return response()->json(['data' => $data]);
+    }
+
+    public function miembro(Request $request, string $organizacion, OrganizacionPolicy $policy): JsonResponse
     {
         $o = $this->org($organizacion);
         $d = $request->validate(['email' => ['required', 'email'], 'rol' => ['required', 'in:admin,operador']]);
-        $request->user()->es_staff || $this->rolEn($request->user(), $o->id) === 'admin' || throw ApiException::noEncontrado();
+        $policy->administrarIntegrantes($request->user(), $o->id) || throw ApiException::noEncontrado();
         $u = User::query()->whereRaw('lower(email) = lower(?)', [$d['email']])->first() ?? throw ApiException::validacion(__('No hay un usuario con ese email.'), ['email' => [__('Inexistente.')]]);
         DB::table('organizacion_miembros')->where('organizacion_id', $o->id)->where('usuario_id', $u->id)->where('estado', 'activa')->update(['estado' => 'reemplazada', 'updated_at' => now()]);
         DB::table('organizacion_miembros')->insert(['id' => (string) Str::uuid7(), 'organizacion_id' => $o->id, 'usuario_id' => $u->id, 'rol' => $d['rol'], 'estado' => 'activa', 'created_at' => now(), 'updated_at' => now()]);
+
+        return response()->json(null, 204);
+    }
+
+    public function cambiarRol(Request $request, string $organizacion, string $usuario, OrganizacionPolicy $policy): JsonResponse
+    {
+        $o = $this->org($organizacion);
+        $policy->administrarIntegrantes($request->user(), $o->id) || throw ApiException::noEncontrado();
+        $d = $request->validate(['rol' => ['required', 'in:admin,operador']]);
+        $m = DB::table('organizacion_miembros')->where('organizacion_id', $o->id)->where('usuario_id', strtolower($usuario))->where('estado', 'activa')->first() ?? throw ApiException::noEncontrado();
+        if ($m->rol !== $d['rol']) {
+            DB::transaction(function () use ($m, $o, $d) {
+                DB::table('organizacion_miembros')->where('id', $m->id)->update(['estado' => 'reemplazada', 'updated_at' => now()]);
+                DB::table('organizacion_miembros')->insert(['id' => (string) Str::uuid7(), 'organizacion_id' => $o->id, 'usuario_id' => $m->usuario_id, 'rol' => $d['rol'], 'estado' => 'activa', 'created_at' => now(), 'updated_at' => now()]);
+            });
+        }
+
+        return response()->json(null, 204);
+    }
+
+    public function quitarMiembro(Request $request, string $organizacion, string $usuario, OrganizacionPolicy $policy): JsonResponse
+    {
+        $o = $this->org($organizacion);
+        $policy->administrarIntegrantes($request->user(), $o->id) || throw ApiException::noEncontrado();
+        $count = DB::table('organizacion_miembros')->where('organizacion_id', $o->id)->where('usuario_id', strtolower($usuario))->where('estado', 'activa')->update(['estado' => 'revocada', 'updated_at' => now()]);
+        $count || throw ApiException::noEncontrado();
 
         return response()->json(null, 204);
     }
