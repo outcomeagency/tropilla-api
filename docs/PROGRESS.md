@@ -860,6 +860,24 @@ pull `entidad: anclaje` (estado + `evento_ids` del establecimiento).
 - Verificado: 3 tests (publicar → calza 100 / no calza por zona → aviso único → respuesta → lectura del comprador → público anónimo y con nombre → recálculo
   a 80 → cerrar → sin demandas; profesional público/privado + autorización + 403/422; 403 sin perfil comprador, 422 ×4, 403 encargado, 404 ajeno).
 
+## TPA-51 · Organizaciones y adhesión con consentimiento · ✅ (parte API)
+
+**Endpoints:** `GET /organizaciones?q&especie` (cursor), `GET /organizaciones/{o}`, `GET|POST /productores/{p}/adhesiones`,
+`POST /productores/{p}/adhesiones/{a}/consentimiento`, `POST /productores/{p}/adhesiones/{a}/revocar`, `GET /organizaciones/{o}/adheridos` (padrón);
+aditivos `POST /organizaciones` (solo staff) y `POST /organizaciones/{o}/miembros`.
+
+**Comentario del dev:**
+- Tablas `organizaciones` (alta controlada por el equipo en el MVP: `es_staff`), `organizacion_miembros` (admin/operador), `adhesiones` (proyección; única por
+  productor + organización) y `consentimientos` (**append-only**). Cada otorgamiento, cambio o revocación es una versión con sobre `tropilla.consentimiento/1`
+  (alcances, versión del texto legal, quién otorgó, `hash_anterior`) hasheada y encadenada en la **cadena del productor** (se crea la primera vez).
+- Granular: existencias agregadas, cobertura sanitaria, lotes postulados, precios agregados — todo `false` por defecto. El padrón (solo admin/operador de la
+  organización) devuelve únicamente lo consentido; revocar = deja de compartir datos nuevos y lo anterior queda con fecha (duda 26). Re-adherirse sigue la
+  numeración de versiones. Lotes postulados y precios agregados quedan como alcance registrado sin datos (fase 2: sello/protocolos).
+- Permisos a nivel productor: dueño/admin de **algún** establecimiento del productor (`organizaciones.adherir`, `consentimientos.gestionar`); sin membresía → 404.
+- Trampa: jsonb reordena claves → los alcances se devuelven en el orden del contrato.
+- Verificado: 2 tests (búsqueda, adhesión con huella recalculable desde el sobre y cadena del productor, 409, padrón con solo existencias, cambio → solo sanidad,
+  revocación → fuera del padrón, re-adhesión v4, append-only, cadenas verificadas; encargado 403, ajeno 404, padrón ajeno 404, alta solo staff, 422, org inexistente 404).
+
 ---
 
 ## Desvíos del contrato
@@ -887,3 +905,4 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-56: `Contrato.documento_id`; `huella` null en borrador; respuesta de `?simular=true` = {terminos, recorte}; vínculo de documentos `contrato` → tabla `contratos_futuro`.
 - TPA-57: `Toma.contrato` y `Toma.entrega` (solo la línea del comprador) aditivos; `estado=vigentes` en `/comprador/tomas`; códigos 403 `perfil_comprador_requerido` / `email_no_verificado`.
 - TPA-58: `Busco.zona.provincias_nombres` aditivo; reglas de visibilidad del comprador y puntaje documentados.
+- TPA-51: `POST /organizaciones` (staff) y `POST /organizaciones/{o}/miembros` aditivos; `Adherido.datos` con solo lo consentido; 409 `ya_adherido`.

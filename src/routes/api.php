@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\V1\Hacienda\ImportacionController;
 use App\Http\Controllers\Api\V1\Hacienda\LoteController;
 use App\Http\Controllers\Api\V1\Hacienda\PotreroController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\Organizaciones\OrganizacionController;
 use App\Http\Controllers\Api\V1\Perfil\PerfilController;
 use App\Http\Controllers\Api\V1\Publico\ConsultaPublicaController;
 use App\Http\Controllers\Api\V1\Publico\ContratoPublicoController;
@@ -120,6 +121,17 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('comprador/buscos/{busco}/respuestas', [BuscoController::class, 'respuestas'])->name('comprador.buscos.respuestas');
         Route::get('me/profesional', [ProfesionalController::class, 'show'])->name('me.profesional');
         Route::put('me/profesional', [ProfesionalController::class, 'update'])->name('me.profesional.guardar');
+
+        // Organizaciones y adhesión con consentimiento (TPA-51)
+        Route::get('organizaciones', [OrganizacionController::class, 'index'])->name('organizaciones.index');
+        Route::post('organizaciones', [OrganizacionController::class, 'store'])->name('organizaciones.store');
+        Route::get('organizaciones/{organizacion}', [OrganizacionController::class, 'show'])->name('organizaciones.show');
+        Route::post('organizaciones/{organizacion}/miembros', [OrganizacionController::class, 'miembro'])->name('organizaciones.miembros');
+        Route::get('organizaciones/{organizacion}/adheridos', [OrganizacionController::class, 'adheridos'])->name('organizaciones.adheridos');
+        Route::get('productores/{productor}/adhesiones', [OrganizacionController::class, 'adhesiones'])->name('productores.adhesiones');
+        Route::post('productores/{productor}/adhesiones', [OrganizacionController::class, 'adherir'])->name('productores.adhesiones.store');
+        Route::post('productores/{productor}/adhesiones/{adhesion}/consentimiento', [OrganizacionController::class, 'consentimiento'])->name('productores.adhesiones.consentimiento');
+        Route::post('productores/{productor}/adhesiones/{adhesion}/revocar', [OrganizacionController::class, 'revocar'])->name('productores.adhesiones.revocar');
 
         // Notificaciones (TPA-53)
         Route::get('me/notificaciones', [NotificacionController::class, 'index'])->name('me.notificaciones');

@@ -4,6 +4,8 @@ namespace App\Domain\Integridad\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Cadena de integridad (una por establecimiento o productor). Es la fila que se bloquea
@@ -36,5 +38,16 @@ class Cadena extends Model
     {
         /** @var self */
         return self::query()->where('establecimiento_id', $establecimientoId)->lockForUpdate()->firstOrFail();
+    }
+
+    /** Cadena del **productor** (consentimientos a organizaciones, TPA-51): se crea la primera vez y se bloquea. */
+    public static function bloquearDeProductor(string $productorId): self
+    {
+        if (! self::query()->where('productor_id', $productorId)->exists()) {
+            DB::table('cadenas')->insertOrIgnore(['id' => (string) Str::uuid7(), 'productor_id' => $productorId, 'created_at' => now()]);
+        }
+
+        /** @var self */
+        return self::query()->where('productor_id', $productorId)->lockForUpdate()->firstOrFail();
     }
 }
