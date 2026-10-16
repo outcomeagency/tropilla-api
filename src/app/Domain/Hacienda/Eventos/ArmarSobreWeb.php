@@ -36,7 +36,7 @@ final class ArmarSobreWeb
         $sobreBase = CanonicalJson::decode($base->sobreCrudo());
         $s = new stdClass;
         $s->esquema = 'tropilla.evento/1';
-        $s->id = (string) Str::uuid7();
+        $s->id = isset($in->id) && is_string($in->id) ? strtolower($in->id) : (string) Str::uuid7();
         $s->establecimiento_id = $est->id;
         $s->evento_raiz_id = $base->evento_raiz_id;
         $s->version = $base->version + 1;
@@ -56,9 +56,12 @@ final class ArmarSobreWeb
         $s->origen = 'web';
         foreach (['responsable', 'observaciones'] as $c) {
             $v = property_exists($in, $c) ? $in->{$c} : ($sobreBase->{$c} ?? null);
-            if ($v !== null) {
+            if ($v !== null && ! $anulacion) {
                 $s->{$c} = $v;
             }
+        }
+        if (! $anulacion && ! empty($in->adjuntos ?? $sobreBase->adjuntos ?? null)) {
+            $s->adjuntos = $in->adjuntos ?? $sobreBase->adjuntos;
         }
 
         return $s;
