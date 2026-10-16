@@ -25,6 +25,9 @@ final class ContextoEvento
     /** @var list<string> animales que el servidor resuelve para sujetos no individuales (potrero en sanidad, TPA-32) */
     public array $animalesResueltos = [];
 
+    /** @var list<string> lotes anónimos que el servidor resuelve (potrero en sanidad, bugfix TPA-35) → `evento_lotes` */
+    public array $lotesResueltos = [];
+
     /** Canal de carga (`web` | `push`): algunas reglas bloquean online y solo observan offline. */
     public string $canal = 'web';
 
@@ -75,7 +78,7 @@ final class ContextoEvento
     public function lotesAfectados(): array
     {
         $p = $this->sobre->payload ?? new stdClass;
-        $ids = array_filter([$this->sobre->sujetos->lote_id ?? null, $p->lote_destino_id ?? null]);
+        $ids = array_filter([$this->sobre->sujetos->lote_id ?? null, $p->lote_destino_id ?? null, ...$this->lotesResueltos]);
         foreach ($this->nuevos as $n) {
             if (isset($n->lote_id)) {
                 $ids[] = $n->lote_id;
@@ -86,6 +89,8 @@ final class ContextoEvento
                 $ids[] = $v->lote_id;
                 $ids[] = json_decode($v->payload, true)['lote_destino_id'] ?? null;
             }
+            $ids = [...$ids, ...DB::table('evento_lotes as el')->join('eventos as e', 'e.id', '=', 'el.evento_id')
+                ->where('e.evento_raiz_id', $this->base->evento_raiz_id)->pluck('el.lote_id')->all()];
         }
 
         return array_values(array_unique(array_filter($ids)));

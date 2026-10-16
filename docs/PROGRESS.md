@@ -678,8 +678,21 @@ aditivo `retiro_carne_hasta`/`retiro_leche_hasta` en `Lote`.
   La operación con trato (TPA-46) reutiliza los mismos chequeos.
 - Privacidad: listas solo para miembros (`sanidad.ver`); perfil y ofertas públicas siguen con su whitelist (reactor nunca sale; el retiro
   solo como hecho agregado si el productor muestra el bloque sanidad). Autoriza antes de validar (ajeno → 404 con filtro inválido).
-- Pendiente: animales individualizados desde un lote anónimo no heredan el retiro del lote (heredan el timeline, no la proyección).
+- Pendiente (resuelto en el bugfix de abajo): animales individualizados desde un lote anónimo no heredaban el retiro del lote.
 - Verificado: 3 tests (listas por especie + lote + vencimiento al pasar la fecha, advertencias de venta/faena/lote/oferta, 422/lectura/404).
+
+### TPA-35 · bugfix: herencia del retiro al individualizar y potrero → lotes anónimos · ✅
+
+**Comentario del dev:**
+- Individualizar: `ProyectorAnimal` arranca al animal con el retiro del lote de origen (`Retiros::deLote` con tope = instante de la
+  individualización, inclusive: ante la duda, conservador); las aplicaciones propias posteriores lo extienden con `max`. Reconstruir da lo mismo.
+- Potrero: tabla nueva `evento_lotes` (gemela append-only de `evento_animales`, con trigger): al registrar una aplicación a un potrero,
+  `ReglasSanitarias` fija también los lotes anónimos presentes con cabezas. `Retiros::deLote`, el timeline del lote y la historia heredada del
+  animal la incluyen; el lote recibe su `cambio` para el pull. El sobre no se toca (se resuelve al registrar, igual que los animales).
+- Decisión: la resolución es la foto del momento de registrar (como en TPA-32); un lote que llega al potrero después no hereda. Base de dev: solo `migrate`.
+- Verificado: 2 tests nuevos (herencia 16/10 en ficha, lista de retiros y venta con advertencia; individualización previa sin herencia; reconstrucción;
+  vencimiento; potrero → lote presente 31/10 y el de otro potrero intacto, timeline del lote, herencia por individualización, append-only, 403 lectura,
+  422 payload, 404 ajeno) + suite verde.
 
 ## TPA-36 · Carpeta documental con versiones y vencimientos · ✅ (parte API)
 
@@ -947,7 +960,7 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-32: la web expande sanidad a lote no anónimo y completa el snapshot del producto en el payload; sujeto potrero resuelto a animales presentes.
 - TPA-33: `PlanItem` + `nota`, `aplica`, `requiere_configuracion`, `archivado_en`; `Tarea.reprogramada`; filtro `estado=abiertas`; formato de `disparador` documentado.
 - TPA-34: parámetros `tuberculina_*_mm` por especie; resultado calculado por el servidor en la web; revisión `resultado_prueba_discrepante`.
-- TPA-35: `lotes[]` aditivo en `…/sanidad/retiros`; `retiro_*_hasta` en `Lote`; advertencia `reactor` en egreso.
+- TPA-35: `lotes[]` aditivo en `…/sanidad/retiros`; `retiro_*_hasta` en `Lote`; advertencia `reactor` en egreso. (bugfix) aplicación a potrero alcanza lotes anónimos presentes (`evento_lotes`); herencia del retiro al individualizar.
 - TPA-36: `DocumentoInput.privacidad` opcional (default del tipo); `emisor_nombre` en `Documento`; `versiones` solo en ficha/alta/sync.
 - TPA-38: `Enlace.aviso` para fiscales; URL pública `{web}/e/{token}`; `estado: reemplazado` en enlaces a versión fija.
 - TPA-40: `GET /public/anclajes/{a}/recibo` (.ots); pull `anclaje` con `evento_ids`; verificación de archivo también por enlace vigente.
