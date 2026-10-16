@@ -20,7 +20,9 @@ class EstablecimientoResource extends JsonResource
     public function toArray(Request $request): array
     {
         $e = $this->resource;
-        $rol = EstablecimientoPolicy::rol($request->user(), $e);
+        $rol = $e->relationLoaded('membresiaActual')
+            ? $e->getRelation('membresiaActual')?->rol
+            : EstablecimientoPolicy::rol($request->user(), $e);
         $privados = $rol?->puede('establecimiento.ver_privados') ?? false;
 
         return [

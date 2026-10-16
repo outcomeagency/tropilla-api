@@ -41,6 +41,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::post('onboarding', OnboardingController::class)->name('onboarding');
         Route::get('productores/{productor}', [ProductorController::class, 'show'])->name('productores.show');
         Route::patch('productores/{productor}', [ProductorController::class, 'update'])->name('productores.update');
+        Route::get('establecimientos', [EstablecimientoController::class, 'index'])->name('establecimientos.index');
         Route::post('establecimientos', [EstablecimientoController::class, 'store'])->name('establecimientos.store');
         Route::get('establecimientos/{establecimiento}', [EstablecimientoController::class, 'show'])->name('establecimientos.show');
     });
