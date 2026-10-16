@@ -31,6 +31,6 @@ final class FuentesSobre
             return null;
         }
 
-        return DB::table($tabla)->where('id', $sujetoId)->value(DB::raw("{$columna}::text"));
+        return DB::table($tabla)->where('id', $sujetoId)->selectRaw("{$columna}::text as s")->value('s');
     }
 }

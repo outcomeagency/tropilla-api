@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
  */
 class EspeciesSeeder extends Seeder
 {
-    private const VIGENCIA = '2026-01-01';
+    private const VIGENCIA = '2000-01-01';
 
     public static function nombres(string $es, ?string $en = null, ?string $pt = null): string
     {

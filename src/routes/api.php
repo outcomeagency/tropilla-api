@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Establecimientos\InvitacionController;
 use App\Http\Controllers\Api\V1\Establecimientos\MembresiaController;
 use App\Http\Controllers\Api\V1\Establecimientos\OnboardingController;
 use App\Http\Controllers\Api\V1\Establecimientos\ProductorController;
+use App\Http\Controllers\Api\V1\Hacienda\EventoController;
 use App\Http\Controllers\Api\V1\Hacienda\PotreroController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Sistema\AuditoriaController;
@@ -74,6 +75,10 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('parametros', [ParametroController::class, 'index'])->name('parametros.index');
             Route::put('parametros/{clave}', [ParametroController::class, 'update'])->where('clave', '[a-z0-9_]+')->name('parametros.update');
             Route::post('catalogo-propio', [ParametroController::class, 'catalogoPropio'])->name('catalogo-propio');
+
+            // Eventos (TPA-22, 26)
+            Route::get('eventos', [EventoController::class, 'index'])->name('eventos.index');
+            Route::post('eventos', [EventoController::class, 'store'])->name('eventos.store');
 
             // Potreros (TPA-14)
             Route::get('potreros', [PotreroController::class, 'index'])->name('potreros.index');

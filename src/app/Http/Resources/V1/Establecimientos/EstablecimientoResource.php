@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\V1\Establecimientos;
 
+use App\Domain\Establecimientos\Interdiccion;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Establecimientos\Policies\EstablecimientoPolicy;
 use App\Support\Formato;
@@ -43,7 +44,7 @@ class EstablecimientoResource extends JsonResource
                 'rabia_endemica' => (bool) ($e->zonas_sanitarias['rabia_endemica'] ?? false),
                 'fasciola_endemica' => (bool) ($e->zonas_sanitarias['fasciola_endemica'] ?? false),
             ],
-            'interdiccion_vigente' => $e->getAttribute('interdiccion_vigente'), // derivado de eventos (TPA-22)
+            'interdiccion_vigente' => Interdiccion::vigente($e->id), // derivado de eventos
             'instalaciones' => $e->instalaciones,
             'historia' => $e->historia,
             'mi_rol' => $rol?->value,
