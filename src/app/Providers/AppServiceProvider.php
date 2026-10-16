@@ -9,6 +9,7 @@ use App\Domain\Documentos\Borradores\Extraccion\ClaudeExtractor;
 use App\Domain\Documentos\Borradores\Extraccion\Extractor;
 use App\Domain\Documentos\Borradores\Extraccion\ExtractorDeshabilitado;
 use App\Domain\Documentos\Borradores\Extraccion\FakeExtractor;
+use App\Domain\Documentos\Borradores\Extraccion\GeminiExtractor;
 use App\Domain\Establecimientos\Enums\Rol;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Establecimientos\Models\Productor;
@@ -44,8 +45,9 @@ class AppServiceProvider extends ServiceProvider
             ? new OpenTimestampsDriver(config('tropilla.anclaje.calendarios'), config('tropilla.anclaje.explorador'))
             : new StubDriver);
 
-        // Lectura asistida de planillas (TPA-61): claude | fake (tests) | deshabilitado (sin key).
+        // Lectura asistida de planillas (TPA-61/62): gemini | claude | fake (tests) | deshabilitado (sin key).
         $this->app->bind(Extractor::class, fn () => match (config('tropilla.extraccion.driver')) {
+            'gemini' => new GeminiExtractor((string) config('tropilla.extraccion.gemini_key'), (string) config('tropilla.extraccion.gemini_modelo'), (int) config('tropilla.extraccion.gemini_max_tokens'), (int) config('tropilla.extraccion.timeout_segundos'), razonamiento: config('tropilla.extraccion.gemini_razonamiento')),
             'claude' => new ClaudeExtractor((string) config('tropilla.extraccion.anthropic_key'), (string) config('tropilla.extraccion.modelo'), (int) config('tropilla.extraccion.max_tokens')),
             'fake' => new FakeExtractor,
             default => new ExtractorDeshabilitado,

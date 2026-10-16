@@ -4,11 +4,17 @@ use Anthropic\Client;
 use App\Domain\Documentos\Actions\GuardarArchivo;
 use App\Domain\Documentos\Borradores\Extraccion\ClaudeExtractor;
 use App\Domain\Documentos\Borradores\Extraccion\ExtraccionFallida;
+use App\Domain\Documentos\Borradores\Extraccion\Extractor;
 use App\Domain\Documentos\Borradores\Extraccion\FakeExtractor;
+use App\Domain\Documentos\Borradores\Extraccion\GeminiExtractor;
 use App\Domain\Documentos\Borradores\Familias\ActaVacunacion;
 use GuzzleHttp\Psr7\Response;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 
@@ -297,4 +303,166 @@ it('driver Claude: manda las páginas como imagen/PDF base64 con salida estructu
         expect($e->reintentable)->toBeTrue();
     }
     expect(fn () => $caido->extraer([['mime' => 'text/plain', 'bytes' => 'x']], 'i', []))->toThrow(ExtraccionFallida::class);
+});
+
+/** Respuesta de `generateContent` con el texto dado. */
+function respuestaGemini(string $texto, string $fin = 'STOP'): array
+{
+    return ['candidates' => [['content' => ['role' => 'model', 'parts' => [['text' => 'pensando…', 'thought' => true], ['text' => $texto]]], 'finishReason' => $fin]],
+        'usageMetadata' => ['promptTokenCount' => 1500, 'candidatesTokenCount' => 420], 'modelVersion' => 'gemini-2.5-flash-preview'];
+}
+
+it('driver Gemini: manda todas las páginas inline con su mime, salida JSON con responseSchema derivado del esquema y lee la respuesta', function () {
+    Http::preventStrayRequests();
+    Http::fake(['generativelanguage.googleapis.com/*' => Http::response(respuestaGemini(json_encode(salidaActa())))]);
+    $familia = new ActaVacunacion;
+
+    $r = (new GeminiExtractor('g-test', 'gemini-flash-latest'))->extraer(
+        [['mime' => 'image/jpeg', 'bytes' => 'JPEG'], ['mime' => 'image/png', 'bytes' => 'PNG'], ['mime' => 'application/pdf', 'bytes' => '%PDF']],
+        $familia->instrucciones(), $familia->esquemaSalida());
+
+    expect($r->salida)->toBe(salidaActa())->and($r->proveedor)->toBe('google')->and($r->modelo)->toBe('gemini-2.5-flash-preview')
+        ->and($r->tokensEntrada)->toBe(1500)->and($r->tokensSalida)->toBe(420);
+    Http::assertSentCount(1);
+    Http::assertSent(function (Request $req) use ($familia) {
+        $b = $req->data();
+        $partes = $b['contents'][0]['parts'];
+        $esq = $b['generationConfig']['responseSchema'];
+        $campo = $esq['properties']['campos']['properties']['numero_acta'];
+
+        return $req->url() === 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent'
+            && $req->method() === 'POST' && $req->header('x-goog-api-key') === ['g-test'] && ! str_contains($req->url(), 'key=')
+            && $partes[1] === ['inlineData' => ['mimeType' => 'image/jpeg', 'data' => base64_encode('JPEG')]]
+            && $partes[3]['inlineData']['mimeType'] === 'image/png' && $partes[5]['inlineData']['mimeType'] === 'application/pdf'
+            && $partes[0]['text'] === 'Página 1:' && end($partes)['text'] === $familia->instrucciones()
+            && str_contains($b['systemInstruction']['parts'][0]['text'], 'Nunca completás')
+            && $b['generationConfig']['responseMimeType'] === 'application/json' && $b['generationConfig']['temperature'] === 0
+            && $b['generationConfig']['thinkingConfig'] === ['thinkingLevel' => 'low']
+            && $esq['type'] === 'OBJECT' && $esq['required'] === ['variante', 'problemas', 'campos', 'vacunas', 'categorias', 'totales']
+            && $esq['properties']['variante'] === ['type' => 'STRING', 'enum' => ['711_2025', '879_2002', 'desconocida']]
+            && $esq['properties']['vacunas']['type'] === 'ARRAY' && $esq['properties']['vacunas']['items']['propertyOrdering'] === ['enfermedad', 'producto', 'serie', 'vencimiento']
+            && $campo['properties']['valor'] === ['type' => 'STRING', 'nullable' => true]
+            && $campo['properties']['pagina'] === ['type' => 'INTEGER', 'nullable' => true]
+            && ! str_contains(json_encode($esq), 'additionalProperties');
+    });
+});
+
+it('driver Gemini: con un esquema que Gemini no representa lo manda como instrucción y valida la respuesta igual', function () {
+    Http::preventStrayRequests();
+    $esquema = ['type' => 'object', 'required' => ['x'], 'properties' => ['x' => ['anyOf' => [['type' => 'string'], ['type' => 'integer']]]]];
+    Http::fakeSequence()->push(respuestaGemini('{"x": "1"}'))->push(respuestaGemini('no es json'))->push(respuestaGemini('[1, 2]'));
+    $ext = new GeminiExtractor('g-test', 'gemini-2.5-flash', razonamiento: '');
+
+    expect($ext->extraer([['mime' => 'image/webp', 'bytes' => 'W']], 'Leé.', $esquema)->salida)->toBe(['x' => '1']);
+    Http::assertSent(fn (Request $req) => ! isset($req['generationConfig']['responseSchema']) && ! isset($req['generationConfig']['thinkingConfig'])
+        && $req['generationConfig']['responseMimeType'] === 'application/json'
+        && str_contains(Arr::last($req['contents'][0]['parts'])['text'], '"anyOf"'));
+    expect(fn () => $ext->extraer([['mime' => 'image/webp', 'bytes' => 'W']], 'Leé.', $esquema))->toThrow(ExtraccionFallida::class, 'La lectura no devolvió datos válidos.')
+        ->and(fn () => $ext->extraer([['mime' => 'image/webp', 'bytes' => 'W']], 'Leé.', $esquema))->toThrow(ExtraccionFallida::class, 'La lectura no devolvió datos válidos.');
+    expect(fn () => GeminiExtractor::esquemaGemini(['type' => ['string', 'integer']]))->toThrow(InvalidArgumentException::class)
+        ->and(fn () => GeminiExtractor::esquemaGemini(['type' => 'object', '$ref' => '#/x']))->toThrow(InvalidArgumentException::class);
+});
+
+it('driver Gemini: errores, cortes y timeouts terminan en ExtraccionFallida (sin datos), reintentando solo lo transitorio', function () {
+    Http::preventStrayRequests();
+    Sleep::fake();
+    $ext = new GeminiExtractor('g-test', 'gemini-flash-latest', reintentos: 2);
+    $pagina = [['mime' => 'image/jpeg', 'bytes' => 'J']];
+    // Un solo fake (los stubs de Http::fake se acumulan): cada caso cambia `$responder`.
+    $responder = null;
+    Http::fake(function ($req) use (&$responder) {
+        return $responder($req);
+    });
+    $falla = function (callable $fn): ExtraccionFallida {
+        try {
+            $fn();
+        } catch (ExtraccionFallida $e) {
+            return $e;
+        }
+        throw new RuntimeException('Tenía que fallar');
+    };
+
+    // 503 persistente: 3 intentos (1 + 2 reintentos con espera) y queda reintentable para el job.
+    $responder = fn () => Http::response(['error' => ['code' => 503, 'message' => 'overloaded']], 503);
+    expect($falla(fn () => $ext->extraer($pagina, 'i', ['type' => 'object']))->reintentable)->toBeTrue();
+    Http::assertSentCount(3);
+    Sleep::assertSleptTimes(2);
+
+    // 429 seguido de éxito: se recupera solo.
+    $secuencia = Http::sequence()->push(['error' => ['code' => 429]], 429)->push(respuestaGemini('{"a": 1}'));
+    $responder = $secuencia;
+    expect($ext->extraer($pagina, 'i', ['type' => 'object'])->salida)->toBe(['a' => 1]);
+
+    // 400 (key/modelo/pedido inválido): no se reintenta.
+    $responder = fn () => Http::response(['error' => ['code' => 400, 'message' => 'API key not valid']], 400);
+    $e = $falla(fn () => $ext->extraer($pagina, 'i', ['type' => 'object']));
+    expect($e->reintentable)->toBeFalse()->and($e->getMessage())->toContain('400');
+    Http::assertSentCount(6);
+
+    // Timeout / conexión caída.
+    $responder = Http::failedConnection('cURL error 28: Operation timed out');
+    expect($falla(fn () => $ext->extraer($pagina, 'i', ['type' => 'object']))->reintentable)->toBeTrue();
+
+    // Respuesta cortada, bloqueada o sin candidatos.
+    $responder = fn () => Http::response(respuestaGemini('{"variante": "711', 'MAX_TOKENS'));
+    expect($falla(fn () => $ext->extraer($pagina, 'i', ['type' => 'object']))->getMessage())->toContain('demasiado largo');
+    $responder = fn () => Http::response(respuestaGemini('{}', 'SAFETY'));
+    expect($falla(fn () => $ext->extraer($pagina, 'i', ['type' => 'object']))->reintentable)->toBeFalse();
+    $responder = fn () => Http::response(['promptFeedback' => ['blockReason' => 'OTHER']]);
+    expect($falla(fn () => $ext->extraer($pagina, 'i', ['type' => 'object']))->reintentable)->toBeFalse();
+
+    // Formato no soportado: ni siquiera se llama.
+    $enviados = count(Http::recorded());
+    expect(fn () => $ext->extraer([['mime' => 'image/gif', 'bytes' => 'G']], 'i', ['type' => 'object']))->toThrow(ExtraccionFallida::class)
+        ->and(Http::recorded())->toHaveCount($enviados);
+});
+
+it('driver Gemini de punta a punta: el borrador guarda proveedor, modelo y salida cruda; si Gemini falla queda fallido sin campos', function () {
+    Http::preventStrayRequests();
+    Sleep::fake();
+    config(['tropilla.extraccion.driver' => 'gemini', 'tropilla.extraccion.gemini_key' => 'g-test', 'tropilla.extraccion.gemini_modelo' => 'gemini-flash-latest']);
+    expect(app(Extractor::class))->toBeInstanceOf(GeminiExtractor::class);
+    [$docId] = documentoCapturado($this, [paginaJpeg('g1'), paginaJpeg('g2')]);
+
+    $responder = fn () => Http::response(respuestaGemini(json_encode(salidaActa())));
+    Http::fake(function () use (&$responder) {
+        return $responder();
+    });
+    $id = (string) Str::uuid7();
+    $this->postJson("{$this->base}/borradores", ['id' => $id, 'documento_id' => $docId, 'familia' => 'acta_vacunacion'])->assertStatus(202)
+        ->assertJsonPath('data.estado', 'para_revisar')->assertJsonPath('data.extraccion.proveedor', 'google')
+        ->assertJsonPath('data.extraccion.modelo', 'gemini-2.5-flash-preview');
+    Http::assertSent(fn (Request $req) => count(array_filter($req['contents'][0]['parts'], fn ($p) => isset($p['inlineData']))) === 2);
+    $ext = DB::table('borrador_extracciones')->where('borrador_id', $id)->first();
+    expect(json_decode($ext->salida, true))->toEqual(salidaActa())->and($ext->tokens_entrada)->toBe(1500);
+
+    $responder = fn () => Http::response(['error' => ['code' => 500]], 500);
+    $otro = (string) Str::uuid7();
+    $this->postJson("{$this->base}/borradores", ['id' => $otro, 'documento_id' => $docId, 'familia' => 'acta_vacunacion'])->assertStatus(202)
+        ->assertJsonPath('data.estado', 'fallido')->assertJsonPath('data.campos', []);
+    expect(DB::table('borrador_extracciones')->where('borrador_id', $otro)->count())->toBe(0);
+});
+
+it('driver por defecto: gemini si hay GEMINI_API_KEY, si no claude si hay ANTHROPIC_API_KEY, si no deshabilitado', function () {
+    $driver = function (array $env): string {
+        foreach (['TROPILLA_EXTRACCION_DRIVER', 'GEMINI_API_KEY', 'ANTHROPIC_API_KEY'] as $k) {
+            $v = $env[$k] ?? null;
+            $v === null ? putenv($k) : putenv("{$k}={$v}");
+            if ($v === null) {
+                unset($_ENV[$k], $_SERVER[$k]);
+            } else {
+                $_ENV[$k] = $_SERVER[$k] = $v;
+            }
+        }
+
+        return (require config_path('tropilla.php'))['extraccion']['driver'];
+    };
+    try {
+        expect($driver(['GEMINI_API_KEY' => 'g', 'ANTHROPIC_API_KEY' => 'a']))->toBe('gemini')
+            ->and($driver(['ANTHROPIC_API_KEY' => 'a']))->toBe('claude')
+            ->and($driver([]))->toBe('deshabilitado')
+            ->and($driver(['TROPILLA_EXTRACCION_DRIVER' => 'claude', 'GEMINI_API_KEY' => 'g']))->toBe('claude');
+    } finally {
+        $driver(['TROPILLA_EXTRACCION_DRIVER' => 'fake']);
+    }
 });
