@@ -5509,6 +5509,22 @@ paths:
                 required: [data, meta]
                 additionalProperties: false
         '401': {$ref: '#/components/responses/NoAutenticado'}
+  /organizaciones/{organizacion}/miembros:
+    post:
+      tags: [Organizaciones]
+      summary: Designar admin/operador de la organización (aditivo TPA-51)
+      operationId: post_organizaciones_organizacion_miembros
+      description: 'Equipo TROPILLA (`es_staff`) o un admin de la organización. Body {email, rol: admin|operador} → 204. El alta de organizaciones
+        (`POST /organizaciones`, aditivo, solo staff: {nombre, slug, tipo, ambito, especies[], descripcion}) es controlada en el MVP.'
+      parameters:
+      - name: organizacion
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/Uuid'}
+      responses:
+        '204': {description: OK}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
   /organizaciones/{organizacion}:
     get:
       tags: [Organizaciones]
@@ -9323,6 +9339,11 @@ components:
         numero_socio: {type: [string, 'null']}
         alcances: {$ref: '#/components/schemas/Alcances'}
         desde: {$ref: '#/components/schemas/FechaHora'}
+        datos:
+          type: object
+          description: 'Aditivo TPA-51: solo lo consentido — `existencias` [{especie, cabezas}] si existencias_agregadas, `cobertura_sanitaria`
+            [{enfermedad, registros}] (12 meses) si cobertura_sanitaria; null si no. Lotes postulados y precios agregados: fase 2.'
+          additionalProperties: true
       additionalProperties: false
     ProfesionalEstablecimientoInput:
       type: object
