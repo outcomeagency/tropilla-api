@@ -103,7 +103,9 @@ final class Verificacion
         if (DB::getSchemaBuilder()->hasTable('documento_version_archivos')) {
             $doc = DB::table('documento_version_archivos as a')->join('documento_versiones as v', 'v.id', '=', 'a.documento_version_id')
                 ->join('documentos as d', 'd.id', '=', 'v.documento_id')->where('a.archivo_sha256', $sha256)
-                ->where('d.visibilidad', 'perfil')->orderByDesc('v.version')->first(['v.*']);
+                ->where(fn ($q) => $q->where('d.visibilidad', 'perfil')->orWhereExists(fn ($e) => $e->from('enlaces_compartidos as e')->whereColumn('e.documento_id', 'd.id')
+                    ->whereNull('e.revocado_en')->where('e.expira_en', '>', now())))
+                ->orderByDesc('v.version')->first(['v.*']);
         }
         $msg = [
             'si' => ['es' => 'Coincide con una versión registrada en TROPILLA.', 'en' => 'It matches a version registered in TROPILLA.', 'pt' => 'Coincide com uma versão registrada na TROPILLA.'],

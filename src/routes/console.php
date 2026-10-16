@@ -17,3 +17,7 @@ Schedule::command('sanidad:generar-tareas')->dailyAt('04:30')->timezone('America
 
 // Subida diferida (TPA-44): limpiar subidas vencidas.
 Schedule::command('archivos:expirar-subidas')->hourly()->withoutOverlapping();
+
+// Anclaje de integridad (TPA-40): diario 03:00 ART + actualización cada 6 h.
+Schedule::command('integridad:anclar')->dailyAt('03:00')->timezone('America/Argentina/Buenos_Aires')->withoutOverlapping();
+Schedule::command('integridad:actualizar-anclajes')->everySixHours()->withoutOverlapping();

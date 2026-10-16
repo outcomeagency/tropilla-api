@@ -26,6 +26,14 @@ return [
         'subida_horas' => 24,
     ],
 
+    // Anclaje diario (TPA-40). `stub` confirma al instante (local/testing); en producción la app no arranca con stub.
+    'anclaje' => [
+        'driver' => env('TROPILLA_ANCLAJE_DRIVER', 'stub'),
+        'calendarios' => array_values(array_filter(explode(',', (string) env('TROPILLA_OTS_CALENDARIOS',
+            'https://a.pool.opentimestamps.org,https://b.pool.opentimestamps.org,https://a.pool.eternitywall.com')))),
+        'explorador' => env('TROPILLA_BTC_EXPLORADOR', 'https://blockstream.info/api'),
+    ],
+
     // Pepper del HMAC de CUIT (búsqueda exacta / unicidad sin descifrar). modelo-datos §2.3.
     'cuit_pepper' => env('TROPILLA_CUIT_PEPPER', env('APP_KEY')),
 ];

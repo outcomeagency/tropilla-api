@@ -684,6 +684,27 @@ push `clase: documento_version`; `GET …/animales/{a}/documentos` ya real; secc
 - Verificado: 3 tests (crear → abrir sin sesión con confianza/verificación/archivo → acceso contado → vencimiento 410; versión fija, revocación,
   token inexistente, fiscal con aviso, 4 validaciones; encargado 403, admin puede, ajeno 404).
 
+## TPA-40 · Anclaje diario de integridad · ✅
+
+**Comandos:** `integridad:anclar` (diario 03:00 ART), `integridad:actualizar-anclajes` (cada 6 h). **Endpoints:** `IntegridadRegistro.anclaje`
+y `.prueba` ya completos (`…/eventos/{e}/integridad`, `/public/verificaciones/{huella}[/prueba]`); aditivo `GET /public/anclajes/{a}/recibo` (.ots);
+pull `entidad: anclaje` (estado + `evento_ids` del establecimiento).
+
+**Comentario del dev:**
+- Tablas `anclajes` y `anclaje_inclusiones` (append-only). El job toma los registros sin inclusión en un anclaje vivo (≤ 2^20), arma el Merkle
+  RFC 6962 sobre los eslabones y guarda **una prueba por registro**, todo en una transacción; después sella. `Merkle::arbol` calcula raíz + todas
+  las pruebas en O(n log n) (bottom-up, el impar sube sin hermano) y da idéntico a la recursión de referencia (cotejado n = 1..70).
+- `AnchorDriver`: `StubDriver` (confirma al instante; **con stub en producción la app no arranca**) y `OpenTimestampsDriver` (digest a ≥ 2
+  calendarios, `.ots` propio con una rama por calendario; `actualizar` pide la versión de cada compromiso pendiente y confirma con la altura
+  del bloque de Bitcoin). Codec `.ots` propio (`Ots`): **el archivo generado lo lee la librería de referencia `opentimestamps`** (smoke real
+  contra a/b.pool.opentimestamps.org y eternitywall: 3 atestaciones pendientes). Polygon: no implementado (fase posterior).
+- Recibos como objetos nuevos (`anclajes/{id}.ots`, `.v2.ots`…; nada se pisa). 5 fallos de sello → `fallido` + log critical, y esos registros
+  se re-anclan en el próximo lote. Al confirmar: «Integridad registrada» (derivado) y un cambio `anclaje` por establecimiento afectado.
+- Verificación de archivo (§6.5): coincide también con documentos compartidos por **enlace vigente**, no solo publicados.
+- Verificado: 4 tests (stub: 5 eventos → raíz = referencia, todas las pruebas verifican, confianza, prueba.json recalculable, recibo, pull,
+  incremental, append-only; fallido ×5 y re-anclaje; OpenTimestamps con calendarios falsos verificando el commitment calculado y la
+  confirmación en v2; stub + producción no arranca) + smoke real contra los calendarios públicos.
+
 ---
 
 ## Desvíos del contrato
@@ -703,3 +724,4 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-35: `lotes[]` aditivo en `…/sanidad/retiros`; `retiro_*_hasta` en `Lote`; advertencia `reactor` en egreso.
 - TPA-36: `DocumentoInput.privacidad` opcional (default del tipo); `emisor_nombre` en `Documento`; `versiones` solo en ficha/alta/sync.
 - TPA-38: `Enlace.aviso` para fiscales; URL pública `{web}/e/{token}`; `estado: reemplazado` en enlaces a versión fija.
+- TPA-40: `GET /public/anclajes/{a}/recibo` (.ots); pull `anclaje` con `evento_ids`; verificación de archivo también por enlace vigente.
