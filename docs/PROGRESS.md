@@ -211,3 +211,17 @@ acá y en la sección «Desvíos del contrato» al final.
   Sanidad/Reproducción = filtro `modulo`. Anulados ocultos salvo `incluir_anulados=true`.
 - `documentos` devuelve `[]` hasta la carpeta documental (TPA-36); queda el endpoint y su permiso (`documentos.ver`).
 - Verificado: 5 tests (encabezado completo con clase BBO joven pesado, timeline con filtros, herencia del lote, genealogía madre/crías, 404 ajeno, lectura puede ver).
+
+## TPA-18 · Listado de hacienda con búsqueda y filtros · ✅ (parte API)
+
+**Endpoints:** `GET …/animales?q&especie&categoria&lote_id&potrero_id&estado&estado_reproductivo&sexo&sanidad&sugerencia_categoria&orden&limit&cursor`.
+
+**Comentario del dev:**
+- Búsqueda por **cualquier** identificador vigente o no (caravana, RFID, tatuaje, marca, registro), parcial y normalizada
+  (mayúsculas, sin espacios/guiones/puntos) sobre `animal_identificaciones.valor_normalizado` (índice GIN trigram).
+- Filtros persistentes (los guarda el cliente): especie, categoría, lote, potrero efectivo (propio o el del lote), sexo, estado
+  (default `activo`; `todos`), estado reproductivo, `sanidad=retiro|reactor` (`pendiente` llega con tareas, TPA-33), sugerencia de categoría.
+- Paginado server-side con orden elegible (`identificacion`, `categoria`, `peso`, `edad`, `reciente`): como el orden es por
+  columnas nulas, el cursor opaco es posición + huella de filtros (`CursorOffset`); un cursor con otros filtros/orden → 400
+  `request_invalido` (api-v1 §4). Selección múltiple para eventos grupales = del lado del cliente (`animal_ids`).
+- Verificado: 5 tests (búsqueda caravana/RFID parcial, 8 filtros, orden + paginado + cursor inválido, estados, lectura/404).
