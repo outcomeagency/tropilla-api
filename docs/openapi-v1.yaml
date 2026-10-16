@@ -6871,6 +6871,8 @@ components:
           type: array
           items: {type: string}
         historia: {type: [string, 'null']}
+        ficha_ampliada: {type: object, additionalProperties: true, description: 'Bloques de ficha extendida; lectura pública filtrada por visibilidad_ficha; clima incluye fuente y fecha.'}
+        visibilidad_ficha: {type: object, additionalProperties: {type: boolean}, description: 'Visibilidad por bloque. Privado por defecto.'}
         mi_rol: {type: string, enum: [dueno, admin, encargado, asesor, lectura]}
         abilities:
           type: array
@@ -6909,6 +6911,8 @@ components:
           type: array
           items: {type: string}
         historia: {type: [string, 'null']}
+        ficha_ampliada: {type: object, additionalProperties: true, description: 'Datos extendidos por bloques (sanidad, superficies, potreros, infraestructura, personal, rodeo, clima y logística).'}
+        visibilidad_ficha: {type: object, additionalProperties: {type: boolean}, description: 'Opt-in público por bloque; los campos no marcados permanecen privados.'}
         row_version: {type: string, description: Obligatorio en PATCH}
       additionalProperties: false
     OnboardingInput:

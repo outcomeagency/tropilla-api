@@ -46,6 +46,7 @@ class Establecimiento extends Model
         'productor_id', 'nombre', 'provincia_codigo', 'departamento_codigo', 'localidad', 'ubicacion',
         'renspa', 'superficie_ha', 'actividades', 'especies', 'zonas_sanitarias', 'instalaciones',
         'historia', 'zona_horaria',
+        'ficha_ampliada', 'visibilidad_ficha',
     ];
 
     protected $attributes = ['zonas_sanitarias' => '{}', 'row_version' => 1, 'zona_horaria' => 'America/Argentina/Buenos_Aires'];
@@ -58,6 +59,8 @@ class Establecimiento extends Model
             'especies' => PgTextArray::class,
             'instalaciones' => PgTextArray::class,
             'zonas_sanitarias' => 'array',
+            'ficha_ampliada' => 'array',
+            'visibilidad_ficha' => 'array',
             'row_version' => 'integer',
             'archivado_en' => 'datetime',
         ];

@@ -991,3 +991,7 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-54 (bugfix): schema `Foto`; `fotos` de `Perfil`/`Oferta` pasan de `Archivo[]` a `Foto[]` y las públicas de `string[]` a `Foto[]`; `foto` aditivo junto a cada `foto_url`; rutas `/public/fotos/{sha}` y `/fotos/{sha}`; `Profesional.foto_sha256`.
 - TPA-58: `Busco.zona.provincias_nombres` aditivo; reglas de visibilidad del comprador y puntaje documentados.
 - TPA-51: `POST /organizaciones` (staff) y `POST /organizaciones/{o}/miembros` aditivos; `Adherido.datos` con solo lo consentido; 409 `ya_adherido`.
+
+### TPA-76 · Ficha completa del establecimiento (en curso)
+
+Se agregaron `ficha_ampliada` y `visibilidad_ficha` como JSONB en establecimientos. El PATCH usa la fila versionada existente, auditoría y cursor de sync; lectura por roles sin `establecimiento.ver_privados` filtra cada bloque y solo entrega los opt-in. El panel permite editar los bloques como JSON y el mapa de visibilidad; los formularios visuales por dominio, lectura offline Flutter, geometría de lindero PostGIS, seeder regional completo y producción quedan pendientes. Decisión: no inventar polígonos a partir del punto GPS; exigir geometría declarada por el productor con fuente/fecha cuando se implemente. Validado Pest de datos de establecimiento (7/44), Pint 421 archivos; Next typegen, tsc y lint.
