@@ -3,6 +3,7 @@
 namespace App\Domain\Comercial\Actions;
 
 use App\Domain\Comercial\Notifications\NuevaConsultaNotification;
+use App\Domain\Notificaciones\Notificador;
 use App\Exceptions\ApiException;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +44,9 @@ final class RecibirConsultaPublica
         $destinatarios = User::query()->whereIn('id', DB::table('membresias')->where('establecimiento_id', $estId)->where('estado', 'activa')
             ->whereIn('rol', ['dueno', 'admin'])->pluck('usuario_id'))->whereNotNull('email')->get();
         Notification::send($destinatarios, new NuevaConsultaNotification($estId, $id, $d['nombre'], $d['pais'], $d['idioma']));
+        // In-app + push (TPA-53): sin datos personales en el aviso (el detalle se ve en el panel).
+        app(Notificador::class)->aRoles($estId, ['dueno', 'admin'], 'consulta_nueva', 'Nueva consulta de un comprador',
+            "Desde {$d['pais']} (idioma: {$d['idioma']}). Respondé desde el panel.", ['consulta_id' => $id, 'ruta' => "/comercial/consultas/{$id}"], "consulta:{$id}");
     }
 
     /** @return array{0: string, 1: string, 2: ?string} */

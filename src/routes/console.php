@@ -21,3 +21,6 @@ Schedule::command('archivos:expirar-subidas')->hourly()->withoutOverlapping();
 // Anclaje de integridad (TPA-40): diario 03:00 ART + actualización cada 6 h.
 Schedule::command('integridad:anclar')->dailyAt('03:00')->timezone('America/Argentina/Buenos_Aires')->withoutOverlapping();
 Schedule::command('integridad:actualizar-anclajes')->everySixHours()->withoutOverlapping();
+
+// Alertas y resumen diario (TPA-53).
+Schedule::command('alertas:generar')->dailyAt('07:00')->timezone('America/Argentina/Buenos_Aires')->withoutOverlapping();

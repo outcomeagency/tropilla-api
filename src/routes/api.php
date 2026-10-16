@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\Comercial\OfertaController;
 use App\Http\Controllers\Api\V1\Comercial\OperacionController;
 use App\Http\Controllers\Api\V1\Comercial\PrecioController;
 use App\Http\Controllers\Api\V1\Comercial\SimulacionController;
+use App\Http\Controllers\Api\V1\Cuenta\NotificacionController;
 use App\Http\Controllers\Api\V1\Documentos\DocumentoController;
 use App\Http\Controllers\Api\V1\Establecimientos\EstablecimientoController;
 use App\Http\Controllers\Api\V1\Establecimientos\InvitacionController;
@@ -91,6 +92,12 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::get('public/invitaciones/{token}', [InvitacionController::class, 'publica'])->middleware('throttle:publico')->name('public.invitaciones.show');
 
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
+        // Notificaciones (TPA-53)
+        Route::get('me/notificaciones', [NotificacionController::class, 'index'])->name('me.notificaciones');
+        Route::post('me/notificaciones/{notificacion}/leer', [NotificacionController::class, 'leer'])->name('me.notificaciones.leer');
+        Route::get('me/preferencias-notificacion', [NotificacionController::class, 'preferencias'])->name('me.preferencias');
+        Route::put('me/preferencias-notificacion', [NotificacionController::class, 'guardarPreferencias'])->name('me.preferencias.guardar');
+
         // Establecimientos (TPA-10, 12, 13)
         Route::post('onboarding', OnboardingController::class)->name('onboarding');
         Route::get('productores/{productor}', [ProductorController::class, 'show'])->name('productores.show');

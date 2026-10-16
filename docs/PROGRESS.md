@@ -771,6 +771,25 @@ pull `entidad: anclaje` (estado + `evento_ids` del establecimiento).
 - Verificado: 2 tests (variación +2/−7/+4/−1/0 con stock inicial excluido, 6 contadores + ítems, actividad con autor, filtro por especie;
   encargado sin consultas, 422, 404 ajeno) + chequeo sobre el demo de dev (1.240 / 380, 4 partos próximos, 8 sugerencias, 2 consultas).
 
+## TPA-53 · Alertas y notificaciones · ✅ (parte API)
+
+**Endpoints:** `GET /me/notificaciones?no_leidas` (cursor + `meta.no_leidas`), `POST /me/notificaciones/{n}/leer` (204),
+`PUT /me/preferencias-notificacion` (204), aditivo `GET /me/preferencias-notificacion`. **Comando:** `alertas:generar` (diario 07:00 ART).
+
+**Comentario del dev:**
+- Tablas `notificaciones` (in-app siempre; `clave_dedupe` única por usuario: el mismo aviso no se repite) y `preferencias_notificacion`
+  (por usuario, establecimiento opcional y tipo; defaults push sí / email no / resumen no).
+- `GeneradorAlertas` por rol (functional/04 §11): tarea próxima ≤ 3 d / vencida y refuerzo (dueño, encargado, asesor), documento a 30/7/0 d
+  o vencido (dueño, admin; clave por versión), parto próximo (`parto_proximo_aviso_dias`) / vencido (encargado, asesor), recategorizaciones
+  (encargado), entrega de contrato a 15 d (cuando existan contratos). Consulta nueva: aviso inmediato desde `RecibirConsultaPublica` (sin datos
+  del comprador). Resumen diario por email con lo de las últimas 24 h de los tipos que el usuario activó.
+- Push detrás de `PushDriver`: `LogPushDriver` (local/testing) y `FcmPushDriver` (FCM HTTP v1, JWT RS256 de la cuenta de servicio → access token
+  cacheado; `UNREGISTERED` borra el `fcm_token` del dispositivo). Sin SDK. Config `TROPILLA_PUSH_DRIVER`, `TROPILLA_FCM_CREDENCIALES`.
+- Huecos: «sin sincronizar > 48 h» es local de la app (el servidor no ve la outbox); «apta para servicio» y «peso de 1er servicio» quedan para F2
+  (falta el parámetro de edad objetivo).
+- Verificado: 3 tests (alertas por rol + push solo al dispositivo del encargado + dedupe + vencida al pasar la fecha; preferencias push off +
+  resumen por email + bandeja/leída/ajena/422/404; FCM con JWT firmado y token inválido).
+
 ---
 
 ## Desvíos del contrato
@@ -794,3 +813,4 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-45: rendimiento al gancho sobre el **bruto** y desbaste solo en pie (modelo-datos §9.1 decía sobre el neto); `formula` aditiva en `SimulacionResultado`.
 - TPA-46: `Operacion`/`OperacionInput` + `animal_ids`, `oferta_id` (+ `lote_id`, `contrato_id`, `confirmar_advertencias`, `id`); liquidación calculada por el servidor.
 - TPA-47: query `referencia` (serie por descripción, admite otra especie) en `…/precios/historial`.
+- TPA-53: `GET /me/preferencias-notificacion` aditivo; `meta.no_leidas` en la bandeja.
