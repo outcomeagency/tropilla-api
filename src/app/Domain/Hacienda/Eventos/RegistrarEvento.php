@@ -138,7 +138,7 @@ final class RegistrarEvento
                 $obs[] = ['codigo' => 'carga_post_revocacion', 'mensaje' => 'Cargado antes de la revocación del acceso.', 'interna' => true, 'revision' => true,
                     'detalle' => ['autor_id' => $autor->id]];
             }
-            $advertencias = array_values(array_filter($obs, fn ($o) => ! $o['interna']));
+            $advertencias = array_values(array_filter($obs, fn ($o) => ! $o['interna'] && empty($o['no_bloqueante'])));
             if ($op['canal'] === 'web' && $advertencias !== [] && empty($op['confirmar_advertencias'])) {
                 throw new ApiException(422, 'requiere_confirmacion', __('Hay advertencias: confirmá para registrar igual.'), [], array_map(
                     fn ($o) => ['codigo' => $o['codigo'], 'mensaje' => $o['mensaje'], 'detalle' => (object) ($o['detalle'] ?? [])], $advertencias,
@@ -650,6 +650,11 @@ final class RegistrarEvento
             foreach (['madre_id', 'padre_id'] as $c) {
                 if (isset($n->{$c}) && ! in_array($n->{$c}, $ids, true) && ! DB::table('animales')->where('id', $n->{$c})->where('establecimiento_id', $est->id)->exists()) {
                     throw new EventoRechazado('dependencia_faltante', 'La madre o el padre todavía no están en el servidor.');
+                }
+            }
+            foreach (['madre_externa_id', 'padre_externo_id'] as $c) {
+                if (isset($n->{$c}) && ! DB::table('reproductores_externos')->where('id', $n->{$c})->where('establecimiento_id', $est->id)->exists()) {
+                    throw new EventoRechazado('dependencia_faltante', 'El progenitor externo todavía no está sincronizado.', ["{$campo}.{$c}" => ['No existe en este establecimiento.']]);
                 }
             }
             foreach ((array) ($n->identificaciones ?? []) as $j => $ident) {

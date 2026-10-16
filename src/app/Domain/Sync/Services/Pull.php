@@ -100,6 +100,7 @@ final class Pull
                 ? PotreroResource::make($p->setAttribute('ocupacion', OcupacionPotreros::de($est->id, [$p->id])[$p->id]))->resolve($request) : null,
             'producto_sanitario' => ($ps = ProductoSanitario::query()->where('id', $id)->where('establecimiento_id', $est->id)->first()) ? ProductoSanitarioResource::make($ps)->resolve($request) : null,
             'tarea' => ($t = Tarea::query()->where('id', $id)->where('establecimiento_id', $est->id)->first()) ? TareaResource::make($t->setAttribute('zona_horaria', $est->zona_horaria))->resolve($request) : null,
+            'reproductor_externo' => ($r = DB::table('reproductores_externos')->where('id', $id)->where('establecimiento_id', $est->id)->first()) ? (array) $r : null,
             'documento' => ($d = DB::table('documentos')->where('id', $id)->where('establecimiento_id', $est->id)->first())
                 ? ConsultasDocumentos::documento($d, Carbon::now($est->zona_horaria)->toDateString(), true) : null,
             'anclaje' => ($a = DB::table('anclajes')->where('id', $id)->first()) ? ['id' => $a->id, 'estado' => $a->estado, 'driver' => $a->driver, 'red' => $a->red,

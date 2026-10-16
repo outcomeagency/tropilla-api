@@ -7,6 +7,7 @@ use App\Domain\Sync\Actions\RegistrarCambio;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -18,7 +19,7 @@ final class ReproductorExternoController extends Controller
     {
         Gate::authorize('hacienda.ver', $establecimiento);
 
-        return response()->json(['data' => DB::table('reproductores_externos')->where('establecimiento_id', $establecimiento->id)->orderBy('nombre')->get()]);
+        return response()->json(['data' => DB::table('reproductores_externos')->where('establecimiento_id', $establecimiento->id)->whereNull('archivado_en')->orderBy('nombre')->get()]);
     }
 
     public function store(Request $request, Establecimiento $establecimiento, RegistrarCambio $cambio): JsonResponse
@@ -39,7 +40,7 @@ final class ReproductorExternoController extends Controller
     public function update(Request $request, Establecimiento $establecimiento, string $reproductor, RegistrarCambio $cambio): JsonResponse
     {
         Gate::authorize('hacienda.corregir', $establecimiento);
-        $actual = DB::table('reproductores_externos')->where('establecimiento_id', $establecimiento->id)->where('id', $reproductor)->first() ?? abort(404);
+        $actual = DB::table('reproductores_externos')->where('establecimiento_id', $establecimiento->id)->whereNull('archivado_en')->where('id', $reproductor)->first() ?? abort(404);
         if ((int) $request->input('row_version') !== (int) $actual->row_version) {
             abort(409, 'Versión desactualizada.');
         }
@@ -55,6 +56,24 @@ final class ReproductorExternoController extends Controller
         });
     }
 
+    public function destroy(Request $request, Establecimiento $establecimiento, string $reproductor, RegistrarCambio $cambio): Response
+    {
+        Gate::authorize('hacienda.corregir', $establecimiento);
+        $actual = DB::table('reproductores_externos')->where('establecimiento_id', $establecimiento->id)->where('id', $reproductor)->first() ?? abort(404);
+        if ($actual->archivado_en !== null) return response()->noContent();
+
+        return DB::transaction(function () use ($actual, $establecimiento, $cambio, $request) {
+            $version = $actual->row_version + 1;
+            $archivado = now();
+            DB::table('reproductores_externos')->where('id', $actual->id)->update(['archivado_en' => $archivado, 'row_version' => $version, 'updated_at' => $archivado]);
+            $datos = [...(array) $actual, 'archivado_en' => $archivado->toIso8601String(), 'row_version' => $version];
+            DB::table('reproductor_externo_versiones')->insert(['reproductor_id' => $actual->id, 'establecimiento_id' => $establecimiento->id, 'version' => $version, 'accion' => 'archivo', 'datos' => json_encode($datos), 'autor_id' => $request->user()->id, 'created_at' => $archivado]);
+            $cambio->handle($establecimiento->id, 'reproductor_externo', $actual->id, 'archivar');
+
+            return response()->noContent();
+        });
+    }
+
     private function validar(Request $request, Establecimiento $establecimiento): array
     {
         $d = $request->validate(['nombre' => ['required', 'string', 'max:255'], 'rp' => ['nullable', 'string', 'max:100'], 'registro_genealogico' => ['nullable', 'string', 'max:120'], 'raza' => ['nullable', 'string', 'max:120'], 'especie_codigo' => ['required', 'string', 'max:32'], 'centro' => ['nullable', 'string', 'max:255'], 'madre_id' => ['nullable', 'uuid'], 'padre_id' => ['nullable', 'uuid'], 'madre_externa_id' => ['nullable', 'uuid'], 'padre_externa_id' => ['nullable', 'uuid']]);
@@ -64,7 +83,7 @@ final class ReproductorExternoController extends Controller
             }
         }
         foreach (['madre_externa_id', 'padre_externa_id'] as $k) {
-            if (! empty($d[$k]) && ! DB::table('reproductores_externos')->where('establecimiento_id', $establecimiento->id)->where('id', $d[$k])->exists()) {
+            if (! empty($d[$k]) && ! DB::table('reproductores_externos')->where('establecimiento_id', $establecimiento->id)->whereNull('archivado_en')->where('id', $d[$k])->exists()) {
                 throw ValidationException::withMessages([$k => ['Reproductor externo inexistente.']]);
             }
         }

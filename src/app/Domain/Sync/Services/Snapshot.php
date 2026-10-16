@@ -65,6 +65,7 @@ final class Snapshot
                     ->map(fn ($p) => ProductoSanitarioResource::make($p)->resolve($request))->all(),
                 'tareas' => Tarea::query()->where('establecimiento_id', $est->id)->where('estado', 'pendiente')->orderBy('vence_en')->get()
                     ->map(fn ($t) => TareaResource::make($t->setAttribute('zona_horaria', $est->zona_horaria))->resolve($request))->all(),
+                'reproductores_externos' => DB::table('reproductores_externos')->where('establecimiento_id', $est->id)->whereNull('archivado_en')->orderBy('nombre')->get()->map(fn ($r) => (array) $r)->all(),
                 'revisiones' => DB::table('revisiones')->where('establecimiento_id', $est->id)->where('estado', 'abierta')->get()
                     ->map(fn ($r) => RevisionResource::make($r)->resolve($request))->all(),
                 'usuarios' => $est->membresias()->with('usuario')->where('estado', 'activa')->get()->map(fn ($m) => MembresiaResource::make($m)->resolve($request))->all(),

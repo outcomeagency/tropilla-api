@@ -85,8 +85,9 @@ it('administra integrantes: listar, cambiar rol y dar de baja con permisos de or
     $operador = User::factory()->create(['email' => 'operador@aacb.example']);
     $this->postJson("/api/v1/organizaciones/{$this->org['id']}/miembros", ['email' => $operador->email, 'rol' => 'operador'])->assertNoContent();
     $this->patchJson("/api/v1/organizaciones/{$this->org['id']}/miembros/{$operador->id}", ['rol' => 'admin'])->assertNoContent();
-    $this->getJson("/api/v1/organizaciones/{$this->org['id']}/miembros")
-        ->assertJsonPath('data.1.usuario.id', $operador->id)->assertJsonPath('data.1.rol', 'admin');
+    $miembros = $this->getJson("/api/v1/organizaciones/{$this->org['id']}/miembros")
+        ->assertOk()->json('data');
+    expect(collect($miembros)->firstWhere('usuario.id', $operador->id)['rol'])->toBe('admin');
     $this->deleteJson("/api/v1/organizaciones/{$this->org['id']}/miembros/{$operador->id}")->assertNoContent();
     $this->getJson("/api/v1/organizaciones/{$this->org['id']}/miembros")->assertJsonCount(1, 'data');
 
