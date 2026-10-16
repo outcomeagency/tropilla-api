@@ -3830,6 +3830,12 @@ paths:
         in: query
         required: false
         schema: {type: string}
+      - name: referencia
+        in: query
+        required: false
+        schema: {type: string}
+        description: 'Aditivo TPA-47: descripción de una serie de referencia (p. ej. «novillo overo») para comparar aunque sea de otra especie.
+          Sin esto: la referencia elegida en la operación o la última declarada de la misma especie/categoría y **misma modalidad**.'
       responses:
         '200':
           description: OK
