@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Comercial\Actions\GestionarOferta;
 use App\Domain\Establecimientos\Actions\RealizarOnboarding;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Hacienda\Actions\GuardarPotrero;
@@ -277,7 +278,7 @@ class DemoLaEsperanzaSeeder extends Seeder
     /** Oferta publicada del lote en venta (ficha pública /o/{codigo}, hasheada y encadenada). */
     private function ofertaBubillos(): void
     {
-        $gestionar = app(\App\Domain\Comercial\Actions\GestionarOferta::class);
+        $gestionar = app(GestionarOferta::class);
         $oferta = $gestionar->crear($this->est, $this->dueno, [
             'tipo' => 'gordo', 'lote_id' => $this->lotes['bubillos'],
             'condiciones' => ['modalidad' => 'en_pie', 'mostrar_precio' => false, 'lugar_carga' => 'General Paz, Corrientes'],
