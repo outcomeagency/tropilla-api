@@ -125,6 +125,8 @@ final class ProyectorAnimal
             'padre_id' => $nuevo['padre_id'] ?? null,
             'madre_externa' => $nuevo['madre_externa'] ?? null,
             'padre_externo' => $nuevo['padre_externo'] ?? null,
+            'madre_externa_id' => $nuevo['madre_externa_id'] ?? null,
+            'padre_externo_id' => $nuevo['padre_externo_id'] ?? null,
             'senas' => $nuevo['senas'] ?? null,
             'foto_sha256' => $nuevo['foto'] ?? null,
             'origen' => match ($origen->tipo) {
@@ -223,6 +225,7 @@ final class ProyectorAnimal
             case 'hacienda.actualizacion_ficha':
                 $mapa = ['raza' => 'raza_codigo', 'cruza' => 'cruza', 'fecha_nacimiento' => 'fecha_nacimiento', 'nacimiento_estimado' => 'nacimiento_estimado',
                     'madre_id' => 'madre_id', 'padre_id' => 'padre_id', 'madre_externa' => 'madre_externa', 'padre_externo' => 'padre_externo',
+                    'madre_externa_id' => 'madre_externa_id', 'padre_externo_id' => 'padre_externo_id',
                     'senas' => 'senas', 'foto' => 'foto_sha256'];
                 foreach ($p['cambios'] as $k => $v) {
                     if (isset($mapa[$k])) {

@@ -2194,6 +2194,48 @@ paths:
         '403': {$ref: '#/components/responses/Prohibido'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
         '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/reproductores-externos:
+    get:
+      tags: [Reproducción]
+      summary: Listar catálogo de reproductores externos del establecimiento
+      operationId: get_establecimientos_establecimiento_reproductores_externos
+      parameters:
+      - {name: establecimiento, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Catálogo disponible para sync offline, content: {application/json: {schema: {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/ReproductorExterno'}}}, required: [data]}}}}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+    post:
+      tags: [Reproducción]
+      summary: Registrar reproductor externo
+      operationId: post_establecimientos_establecimiento_reproductores_externos
+      parameters:
+      - {name: establecimiento, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ReproductorExternoInput'}}}
+      responses:
+        '201': {description: Creado}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/reproductores-externos/{reproductor}:
+    patch:
+      tags: [Reproducción]
+      summary: Corregir reproductor externo con versionado append-only
+      operationId: patch_establecimientos_establecimiento_reproductores_externos_reproductor
+      parameters:
+      - {name: establecimiento, in: path, required: true, schema: {type: string}}
+      - {name: reproductor, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ReproductorExternoInput'}}}
+      responses:
+        '200': {description: Versión agregada}
+        '409': {$ref: '#/components/responses/Conflicto'}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '422': {$ref: '#/components/responses/Validacion'}
   /establecimientos/{establecimiento}/reproduccion/tablero:
     get:
       tags: [Reproducción]
@@ -7306,6 +7348,8 @@ components:
             additionalProperties: false
           madre_externa: {type: [string, 'null']}
           padre_externo: {type: [string, 'null']}
+          madre_externa_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+          padre_externo_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
           senas: {type: [string, 'null']}
           origen: {type: string}
           gdp_kg_dia:
@@ -7404,6 +7448,12 @@ components:
           - {type: 'null'}
         nacimiento_estimado: {type: boolean}
         castrado: {type: [boolean, 'null']}
+        madre_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        padre_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        madre_externa: {type: [string, 'null']}
+        padre_externo: {type: [string, 'null']}
+        madre_externa_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        padre_externo_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
         identificaciones:
           type: array
           items: {type: object, additionalProperties: true}
@@ -7452,12 +7502,35 @@ components:
         lote_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
       required: [evento_id, fecha, peso_kg, fuente, modo, metodo, cantidad, gdp_kg_dia, heredado_de_lote, lote_id]
       additionalProperties: false
+    ReproductorExternoInput:
+      type: object
+      properties:
+        nombre: {type: string}
+        rp: {type: [string, 'null']}
+        registro_genealogico: {type: [string, 'null']}
+        raza: {type: [string, 'null']}
+        especie_codigo: {type: string}
+        centro: {type: [string, 'null']}
+        madre_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        padre_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        madre_externa_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        padre_externa_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        row_version: {type: integer}
+      required: [nombre, especie_codigo]
+      additionalProperties: false
+    ReproductorExterno:
+      allOf:
+      - {$ref: '#/components/schemas/ReproductorExternoInput'}
+      - type: object
+        properties: {id: {$ref: '#/components/schemas/Uuid'}, establecimiento_id: {$ref: '#/components/schemas/Uuid'}}
+        required: [id, establecimiento_id]
     Genealogia:
       type: object
       properties:
         animal: {$ref: '#/components/schemas/AnimalResumen'}
         madre: {type: [object, 'null'], additionalProperties: true}
         padre: {type: [object, 'null'], additionalProperties: true}
+        pedigri: {type: [object, 'null'], additionalProperties: true, description: Árbol recursivo hasta cinco generaciones; nodos tipados interno, externo o legado.}
         crias:
           type: array
           items: {$ref: '#/components/schemas/AnimalResumen'}

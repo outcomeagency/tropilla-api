@@ -161,6 +161,8 @@
         "padre_id": {
           "$ref": "#/$defs/uuid"
         },
+        "madre_externa_id": {"$ref":"#/$defs/uuid"},
+        "padre_externo_id": {"$ref":"#/$defs/uuid"},
         "madre_externa": {
           "$ref": "#/$defs/texto_corto"
         },
@@ -790,9 +792,11 @@
               "padre_id": {
                 "$ref": "#/$defs/animal_nuevo/properties/padre_id"
               },
-              "madre_externa": {
-                "$ref": "#/$defs/animal_nuevo/properties/madre_externa"
-              },
+          "madre_externa": {
+            "$ref": "#/$defs/animal_nuevo/properties/madre_externa"
+          },
+          "madre_externa_id": {"$ref":"#/$defs/animal_nuevo/properties/madre_externa_id"},
+          "padre_externo_id": {"$ref":"#/$defs/animal_nuevo/properties/padre_externo_id"},
               "padre_externo": {
                 "$ref": "#/$defs/animal_nuevo/properties/padre_externo"
               },
@@ -915,6 +919,7 @@
               "toro_id": {
                 "$ref": "#/$defs/uuid"
               },
+              "reproductor_externo_id": {"$ref":"#/$defs/uuid"},
               "toro_nombre": {
                 "$ref": "#/$defs/texto_corto"
               },
@@ -926,7 +931,9 @@
               },
               "partida": {
                 "$ref": "#/$defs/texto_corto"
-              }
+              },
+              "lote_pajuelas": {"$ref":"#/$defs/texto_corto"},
+              "cantidad_dosis": {"type":"integer","minimum":1}
             }
           },
           "inseminador": {

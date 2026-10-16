@@ -230,6 +230,15 @@ final class ReglasReproductivas
         if (isset($p->semen->toro_id)) {
             $this->toro($ctx, $p->semen->toro_id, $especies, 'payload.semen.toro_id', exigirEntero: false);
         }
+        if (isset($p->semen->reproductor_externo_id)) {
+            $externo = DB::table('reproductores_externos')->where('id', $p->semen->reproductor_externo_id)->where('establecimiento_id', $ctx->est->id)->first();
+            if (! $externo) {
+                throw new EventoRechazado('dependencia_faltante', 'El reproductor externo no está sincronizado.', ['payload.semen.reproductor_externo_id' => [$p->semen->reproductor_externo_id]]);
+            }
+            if ($especies !== [] && ! in_array($externo->especie_codigo, $especies, true)) {
+                throw new EventoRechazado('regla_bloqueante', 'El reproductor externo es de otra especie.', ['payload.semen.reproductor_externo_id' => ['Especie distinta.']]);
+            }
+        }
         if (isset($p->semen->raza)) {
             $ok = DB::table('razas')->where('codigo', $p->semen->raza)->whereIn('especie_codigo', $especies)
                 ->where(fn ($q) => $q->whereNull('establecimiento_id')->orWhere('establecimiento_id', $ctx->est->id))->exists();
