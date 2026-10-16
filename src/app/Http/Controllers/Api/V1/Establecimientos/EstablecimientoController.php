@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Establecimientos;
 use App\Domain\Establecimientos\Actions\ActualizarEstablecimiento;
 use App\Domain\Establecimientos\Actions\CrearEstablecimientoDeProductor;
 use App\Domain\Establecimientos\Actions\ListarMisEstablecimientos;
+use App\Domain\Establecimientos\Inicio;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Establecimientos\ActualizarEstablecimientoRequest;
@@ -43,5 +44,14 @@ class EstablecimientoController extends Controller
         Gate::authorize('establecimiento.editar', $establecimiento);
 
         return EstablecimientoResource::make($actualizar->handle($establecimiento, $request->user(), $request->validated())->load('productor'));
+    }
+
+    /** Inicio (TPA-52): existencias con variación del mes, pendientes y actividad reciente. */
+    public function inicio(Request $request, Establecimiento $establecimiento, Inicio $inicio): JsonResponse
+    {
+        Gate::authorize('establecimiento.ver', $establecimiento);
+        $especie = $request->validate(['especie' => ['sometimes', 'nullable', 'exists:especies,codigo']])['especie'] ?? null;
+
+        return response()->json(['data' => $inicio->armar($establecimiento, $request->user(), $especie, $request)], 200, [], JSON_UNESCAPED_UNICODE);
     }
 }

@@ -99,6 +99,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::post('establecimientos', [EstablecimientoController::class, 'store'])->name('establecimientos.store');
         Route::get('establecimientos/{establecimiento}', [EstablecimientoController::class, 'show'])->name('establecimientos.show');
         Route::patch('establecimientos/{establecimiento}', [EstablecimientoController::class, 'update'])->name('establecimientos.update');
+        Route::get('establecimientos/{establecimiento}/inicio', [EstablecimientoController::class, 'inicio'])->name('establecimientos.inicio');
 
         Route::get('sync/catalogos', CatalogoController::class)->name('sync.catalogos');
         // Archivos (TPA-44)

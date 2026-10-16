@@ -754,6 +754,23 @@ pull `entidad: anclaje` (estado + `evento_ids` del establecimiento).
 - Verificado: 2 tests (+5 / −2 / null al gancho / −11,54 overo, promedio 1,5, búfalo vs overo −5,77, referencia elegida +10, anulada fuera,
   listado de referencias; 422 ×5, inmutable, admin ve, encargado/asesor/lectura 403, 404 ajeno).
 
+## TPA-52 · Inicio con existencias, pendientes y actividad · ✅ (parte API)
+
+**Endpoints:** `GET /establecimientos/{e}/inicio?especie` (Inicio: `existencias[]`, `pendientes{…, items[]}`, `actividad[]`). Ability `establecimiento.ver`.
+
+**Comentario del dev:**
+- Existencias = proyección `existencias` por especie y categoría (individuales + anónimas). **Variación del mes** por flujos del mes: nacimientos,
+  partos e ingresos suman; muertes, egresos, faenas y pérdidas restan (individuales con su categoría al darse de baja; lotes por conteo); los
+  movimientos de categoría de lotes anónimos pasan de una a otra. Decisión: las altas de inventario/importación/alta rápida **no** son variación
+  (es hacienda que ya estaba). Categorías que se vaciaron en el mes aparecen con 0 cabezas y su variación.
+- Pendientes de la semana: tareas del plan (pendientes y vencidas, TPA-33), partos próximos/vencidos (`TableroReproductivo`, TPA-30),
+  recategorizaciones sugeridas, documentos que vencen en 30 días (fiscales solo con `documentos.fiscal`), consultas nuevas (solo dueño/admin),
+  anticipos por confirmar (cuando existan tomas, TPA-57) y revisiones abiertas; con `items[]` navegables (tipo, título, fecha, ruta, entidad).
+- Actividad: últimos 10 eventos por fecha de **carga**, con autor y rol. El estado de sincronización lo arma la app con su outbox (el contrato
+  que ya consume `inicio_datos.dart`: `existencias[].variacion_mes`, `pendientes.tareas_sanitarias`, `consultas_nuevas`).
+- Verificado: 2 tests (variación +2/−7/+4/−1/0 con stock inicial excluido, 6 contadores + ítems, actividad con autor, filtro por especie;
+  encargado sin consultas, 422, 404 ajeno) + chequeo sobre el demo de dev (1.240 / 380, 4 partos próximos, 8 sugerencias, 2 consultas).
+
 ---
 
 ## Desvíos del contrato
