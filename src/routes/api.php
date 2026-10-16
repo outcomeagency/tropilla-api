@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\Establecimientos\ProductorController;
 use App\Http\Controllers\Api\V1\Hacienda\AnimalController;
 use App\Http\Controllers\Api\V1\Hacienda\CorreccionController;
 use App\Http\Controllers\Api\V1\Hacienda\EventoController;
+use App\Http\Controllers\Api\V1\Hacienda\ImportacionController;
 use App\Http\Controllers\Api\V1\Hacienda\LoteController;
 use App\Http\Controllers\Api\V1\Hacienda\PotreroController;
 use App\Http\Controllers\Api\V1\HealthController;
@@ -62,6 +63,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::patch('establecimientos/{establecimiento}', [EstablecimientoController::class, 'update'])->name('establecimientos.update');
 
         Route::get('sync/catalogos', CatalogoController::class)->name('sync.catalogos');
+        Route::get('importaciones/plantilla', [ImportacionController::class, 'plantilla'])->name('importaciones.plantilla');
         // Sync offline (TPA-43)
         Route::post('sync/push', [SyncController::class, 'push'])->middleware('throttle:sync-push')->name('sync.push');
         Route::get('sync/pull', [SyncController::class, 'pull'])->name('sync.pull');
@@ -103,6 +105,14 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('revisiones', [CorreccionController::class, 'revisiones'])->name('revisiones.index');
             Route::get('revisiones/{revision}', [CorreccionController::class, 'revision'])->name('revisiones.show');
             Route::post('revisiones/{revision}/resolver', [CorreccionController::class, 'resolver'])->name('revisiones.resolver');
+
+            // Importación de stock (TPA-21)
+            Route::post('importaciones', [ImportacionController::class, 'store'])->name('importaciones.store');
+            Route::get('importaciones/{importacion}', [ImportacionController::class, 'show'])->name('importaciones.show');
+            Route::get('importaciones/{importacion}/filas', [ImportacionController::class, 'filas'])->name('importaciones.filas');
+            Route::patch('importaciones/{importacion}/filas/{numero}', [ImportacionController::class, 'corregirFila'])->whereNumber('numero')->name('importaciones.filas.update');
+            Route::post('importaciones/{importacion}/confirmar', [ImportacionController::class, 'confirmar'])->name('importaciones.confirmar');
+            Route::post('importaciones/{importacion}/cancelar', [ImportacionController::class, 'cancelar'])->name('importaciones.cancelar');
 
             // Lotes (TPA-20)
             Route::get('lotes', [LoteController::class, 'index'])->name('lotes.index');

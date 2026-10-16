@@ -3197,6 +3197,15 @@ paths:
         content:
           application/json:
             schema: {$ref: '#/components/schemas/ImportacionInput'}
+          multipart/form-data:
+            schema:
+              type: object
+              description: 'Desvío aditivo de tropilla-api (TPA-21): subir la planilla directo (CSV/XLSX, ≤ 10 MB) mientras no exista la subida diferida de TPA-44.'
+              properties:
+                archivo: {type: string, format: binary}
+                formato: {type: string, enum: [csv, xlsx]}
+                especie_default: {type: string, enum: [BOV, BUB]}
+              required: [archivo]
       responses:
         '202':
           description: OK
