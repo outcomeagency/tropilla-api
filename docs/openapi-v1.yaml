@@ -1814,7 +1814,10 @@ paths:
       summary: 'Registrar evento (web/online: el servidor arma el sobre y la huella)'
       operationId: post_establecimientos_establecimiento_eventos
       description: '**Ability:** `hacienda.crear` (modelo-datos.md §13). Ability según módulo del tipo. 422 requiere_confirmacion con advertencias;
-        422 regla_bloqueante'
+        422 regla_bloqueante. Sanidad (TPA-32): un evento a un lote **no anónimo** se expande en el servidor a `animales` con
+        `lote_id` de contexto; con `producto_id` se copian al payload `producto_nombre`, `principio_activo` (desparasitación),
+        `via` (vacunación) y los retiros del producto si no vienen. A un `potrero`, el servidor fija los animales presentes.
+        Advertencias nuevas: `retiro_menor_al_producto`, `envase_vencido`, `producto_otra_especie`.'
       parameters:
       - name: establecimiento
         in: path

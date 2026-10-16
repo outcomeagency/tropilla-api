@@ -5,6 +5,7 @@ namespace App\Domain\Hacienda\Eventos;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Hacienda\Models\Evento;
 use App\Domain\Integridad\CanonicalJson;
+use App\Domain\Sanidad\CompletarSobreWeb;
 use App\Models\User;
 use Illuminate\Support\Str;
 use stdClass;
@@ -26,6 +27,7 @@ final class ArmarSobreWeb
         $s->version = 1;
         $s->accion = 'alta';
         self::comunes($s, $est, $autor, $in);
+        CompletarSobreWeb::completar($est, $s);
 
         return $s;
     }

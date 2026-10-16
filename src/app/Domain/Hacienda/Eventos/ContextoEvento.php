@@ -22,6 +22,9 @@ final class ContextoEvento
     /** @var list<string> animales creados por la versión base (correcciones de altas) */
     public array $creadosPorBase = [];
 
+    /** @var list<string> animales que el servidor resuelve para sujetos no individuales (potrero en sanidad, TPA-32) */
+    public array $animalesResueltos = [];
+
     public function __construct(
         public readonly Establecimiento $est,
         public readonly stdClass $sobre,
@@ -44,7 +47,7 @@ final class ContextoEvento
     /** Animales de esta versión: sujetos + creados (crías del parto, altas). @return list<string> */
     public function animalIdsDelEvento(): array
     {
-        $ids = array_merge((array) ($this->sobre->sujetos->animal_ids ?? []), array_column($this->nuevos, 'animal_id'), $this->creadosPorBase);
+        $ids = array_merge((array) ($this->sobre->sujetos->animal_ids ?? []), array_column($this->nuevos, 'animal_id'), $this->creadosPorBase, $this->animalesResueltos);
 
         return array_values(array_unique($ids));
     }

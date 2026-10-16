@@ -15,6 +15,7 @@ use App\Domain\Integridad\CanonicalizacionInvalida;
 use App\Domain\Integridad\CanonicalJson;
 use App\Domain\Integridad\Models\Cadena;
 use App\Domain\Reproduccion\ReglasReproductivas;
+use App\Domain\Sanidad\ReglasSanitarias;
 use App\Domain\Sync\Actions\RegistrarCambio;
 use App\Exceptions\ApiException;
 use App\Models\User;
@@ -496,6 +497,9 @@ final class RegistrarEvento
         if (str_starts_with($s->tipo, 'reproduccion.')) {
             app(ReglasReproductivas::class)->validar($ctx);
         }
+        if (str_starts_with($s->tipo, 'sanidad.')) {
+            app(ReglasSanitarias::class)->validar($ctx);
+        }
         foreach ($ctx->nuevos as $n) {
             foreach ((array) ($n->identificaciones ?? []) as $j => $ident) {
                 if ($ident->tipo === 'registro_genealogico' && empty($ident->entidad)) {
@@ -748,6 +752,9 @@ final class RegistrarEvento
         }
         if (str_starts_with($s->tipo, 'reproduccion.')) {
             $obs = [...$obs, ...app(ReglasReproductivas::class)->observaciones($ctx)];
+        }
+        if (str_starts_with($s->tipo, 'sanidad.')) {
+            $obs = [...$obs, ...app(ReglasSanitarias::class)->observaciones($ctx)];
         }
 
         return $obs;
