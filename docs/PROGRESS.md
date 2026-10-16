@@ -573,6 +573,29 @@ retiro en la ficha (`retiro_carne_hasta`/`retiro_leche_hasta`) y en el timeline 
 - Verificado: 4 tests (lote expandido + retiro 35 d en 3 fichas + snapshot inmutable, potrero con individual y lote trasladado + tratamiento,
   3 advertencias + confirmación, 422 ×3 / 403 lectura / 404 ajeno).
 
+## TPA-33 · Plan sanitario desde plantillas · ✅ (parte API) + seeder DEMO
+
+**Endpoints:** `GET …/plan-sanitario`, `POST …/plan-sanitario/plantillas`, `POST|PATCH …/plan-sanitario/items[/{i}]`,
+`POST …/plan-sanitario/items/{i}/archivar`, `GET|POST …/tareas` (`?estado=pendiente|vencida|hecha|omitida|abiertas&desde&hasta`, cursor),
+`PATCH …/tareas/{t}`, `POST …/tareas/{t}/omitir`. **Comando:** `sanidad:generar-tareas` (diario 04:30 ART).
+
+**Comentario del dev:**
+- Tablas `planes_sanitarios` (aviso aceptado: quién/cuándo, obligatorio para aplicar plantillas: `aviso_aceptado: true` o 422),
+  `plan_items` (copia de la plantilla con código/versión; `editado` si difiere) y `tareas` (`UNIQUE (plan_item_id, clave_ocurrencia)`).
+  Plantillas = **sugerencia**: nunca dosis; ventanas/fechas de aftosa y rabia vienen sin fechas (`requiere_configuracion`) y se editan.
+- `GeneradorTareas` (horizonte 90 d) **sincroniza** lo deseado: crea, actualiza fechas si se editó el ítem (salvo tareas `reprogramada`
+  por el usuario) y omite con motivo las pendientes futuras que ya no corresponden (ítem archivado/inactivo, condición de zona que dejó
+  de cumplirse, animal destetado/salido). Disparadores: fecha fija, ventana (MM-DD o meses), relativo a nacimiento (una por animal),
+  periódico, refuerzo tras primera dosis (rabia 20–60 d) y repetición de ventana (pediculosis +15 d). Condición por zona con el DSL.
+- Alcance resuelto con datos de `categorias` (`es_vientre`, `es_reproductor`, cría…) → `cabezas_estimadas` (individuales + anónimos).
+- Cierre: un evento `sanidad.*` con `payload.tarea_id` la marca hecha dentro de `RegistrarEvento`; **anular** ese evento la reabre.
+  Nacimiento/parto/alta/vacunación disparan la regeneración (job `afterCommit`). Tareas por pull (`tarea`) y abiertas en el snapshot.
+- Trampa: las fechas se calculan como días «naive» de la zona del establecimiento (comparar Carbon en zonas distintas corría un día).
+- Demo: 3 productos, 7 plantillas con aviso aceptado por el dueño, ventanas de aftosa de la zona; queda pendiente el refuerzo de rabia de
+  los bucerros y la 2ª campaña del año omitida («aplicada el 02/10, cargada antes del plan»).
+- Verificado: 4 tests (aviso/condiciones/ventanas/relativa por evento/zona/idempotencia/cierre y reapertura/snapshot; refuerzo + periódico
+  hasta destete; reprogramar/409/omitir/filtros/archivo; ítem manual, 422 ×7, 403 lectura, 404 ajeno) + demo. Suite verde.
+
 ---
 
 ## Desvíos del contrato
@@ -587,3 +610,4 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-43 (bugfix): catálogos con `especie_codigo` (+ alias `especie`); `/sync/catalogos` `private, no-cache`; identificador tolerante a ceros.
 - TPA-31: `ProductoSanitario.id` nullable + `codigo` en la base sugerida; `sugerido_codigo` en el input; filtro `especie`.
 - TPA-32: la web expande sanidad a lote no anónimo y completa el snapshot del producto en el payload; sujeto potrero resuelto a animales presentes.
+- TPA-33: `PlanItem` + `nota`, `aplica`, `requiere_configuracion`, `archivado_en`; `Tarea.reprogramada`; filtro `estado=abiertas`; formato de `disparador` documentado.

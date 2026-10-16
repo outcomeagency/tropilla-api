@@ -11,6 +11,7 @@ use App\Domain\Hacienda\Models\Lote;
 use App\Domain\Hacienda\Models\Potrero;
 use App\Domain\Hacienda\Services\OcupacionPotreros;
 use App\Domain\Sanidad\Models\ProductoSanitario;
+use App\Domain\Sanidad\Models\Tarea;
 use App\Http\Resources\V1\Establecimientos\EstablecimientoResource;
 use App\Http\Resources\V1\Establecimientos\MembresiaResource;
 use App\Http\Resources\V1\Hacienda\AnimalResource;
@@ -19,6 +20,7 @@ use App\Http\Resources\V1\Hacienda\LoteResource;
 use App\Http\Resources\V1\Hacienda\PotreroResource;
 use App\Http\Resources\V1\Hacienda\RevisionResource;
 use App\Http\Resources\V1\Sanidad\ProductoSanitarioResource;
+use App\Http\Resources\V1\Sanidad\TareaResource;
 use App\Support\Formato;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -57,7 +59,8 @@ final class Snapshot
                 'documentos' => [],
                 'productos_sanitarios' => ProductoSanitario::query()->where('establecimiento_id', $est->id)->orderBy('nombre_comercial')->get()
                     ->map(fn ($p) => ProductoSanitarioResource::make($p)->resolve($request))->all(),
-                'tareas' => [],
+                'tareas' => Tarea::query()->where('establecimiento_id', $est->id)->where('estado', 'pendiente')->orderBy('vence_en')->get()
+                    ->map(fn ($t) => TareaResource::make($t->setAttribute('zona_horaria', $est->zona_horaria))->resolve($request))->all(),
                 'revisiones' => DB::table('revisiones')->where('establecimiento_id', $est->id)->where('estado', 'abierta')->get()
                     ->map(fn ($r) => RevisionResource::make($r)->resolve($request))->all(),
                 'usuarios' => $est->membresias()->with('usuario')->where('estado', 'activa')->get()->map(fn ($m) => MembresiaResource::make($m)->resolve($request))->all(),

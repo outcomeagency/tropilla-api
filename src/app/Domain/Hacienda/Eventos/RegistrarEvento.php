@@ -15,6 +15,8 @@ use App\Domain\Integridad\CanonicalizacionInvalida;
 use App\Domain\Integridad\CanonicalJson;
 use App\Domain\Integridad\Models\Cadena;
 use App\Domain\Reproduccion\ReglasReproductivas;
+use App\Domain\Sanidad\Actions\GestionarTarea;
+use App\Domain\Sanidad\GenerarTareasJob;
 use App\Domain\Sanidad\ReglasSanitarias;
 use App\Domain\Sync\Actions\RegistrarCambio;
 use App\Exceptions\ApiException;
@@ -170,6 +172,12 @@ final class RegistrarEvento
             // Proyecciones afectadas + cambios para el pull.
             if (! $enRevision) {
                 $this->proyector->aplicarEvento($evento, $ctx->animalesAfectados(), $ctx->lotesAfectados(), $cadena);
+                if (str_starts_with($sobre->tipo, 'sanidad.')) {
+                    app(GestionarTarea::class)->porEvento($evento, $cadena); // cierra (o reabre al anular) la tarea del plan
+                }
+                if (in_array($sobre->tipo, ReglasSanitarias::DISPARADORES_PLAN, true) && DB::table('planes_sanitarios')->where('establecimiento_id', $est->id)->exists()) {
+                    GenerarTareasJob::dispatch($est->id)->afterCommit();
+                }
             }
             app(RegistrarCambio::class)->handle($est->id, 'evento', $evento->id, cadena: $cadena);
 

@@ -29,6 +29,12 @@ it('carga el demo de La Esperanza por eventos reales, con las existencias del br
     $this->getJson("/api/v1/establecimientos/{$u0142->establecimiento_id}/reproduccion/partos?desde={$hoy->toDateString()}&hasta={$hoy->copy()->addDays(7)->toDateString()}&especie=BUB")
         ->assertOk()->assertJsonCount(4, 'data');
 
+    // Plan sanitario (TPA-33): 7 ítems desde plantillas con el aviso aceptado; refuerzo de rabia de los bucerros pendiente.
+    $this->getJson("/api/v1/establecimientos/{$u0142->establecimiento_id}/plan-sanitario")->assertOk()->assertJsonCount(7, 'data.items')
+        ->assertJsonPath('data.aviso_aceptado_por.nombre', 'Ramón Gómez');
+    expect(DB::table('tareas')->where('clave_ocurrencia', 'like', 'refuerzo:%')->where('estado', 'pendiente')->count())->toBe(1)
+        ->and(DB::table('productos_sanitarios')->count())->toBe(3);
+
     $this->artisan('integridad:verificar-cadenas')->assertSuccessful();
 
     // idempotente

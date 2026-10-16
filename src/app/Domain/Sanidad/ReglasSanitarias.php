@@ -16,6 +16,9 @@ final class ReglasSanitarias
     /** Tipos que aplican un producto (copian el retiro al payload). */
     public const APLICACIONES = ['sanidad.vacunacion', 'sanidad.desparasitacion', 'sanidad.tratamiento'];
 
+    /** Eventos que pueden generar tareas relativas del plan (nacimiento + N días, refuerzo tras primera dosis). */
+    public const DISPARADORES_PLAN = ['hacienda.nacimiento', 'reproduccion.parto', 'hacienda.alta', 'sanidad.vacunacion'];
+
     public function validar(ContextoEvento $ctx): void
     {
         $s = $ctx->sobre;
@@ -23,6 +26,9 @@ final class ReglasSanitarias
 
         if (isset($p->producto_id) && $this->producto($ctx, $p->producto_id) === null) {
             throw new EventoRechazado('dependencia_faltante', 'El producto todavía no está en el servidor.', ['payload.producto_id' => [$p->producto_id]]);
+        }
+        if (isset($p->tarea_id) && ! DB::table('tareas')->where('id', $p->tarea_id)->where('establecimiento_id', $ctx->est->id)->exists()) {
+            throw new EventoRechazado('dependencia_faltante', 'La tarea todavía no está en el servidor.', ['payload.tarea_id' => [$p->tarea_id]]);
         }
         if ($s->tipo === 'sanidad.vacunacion' && ! $this->enCatalogo($ctx, 'enfermedades', $p->enfermedad)) {
             throw new EventoRechazado('esquema_invalido', 'Enfermedad desconocida.', ['payload.enfermedad' => ['No está en el catálogo.']]);

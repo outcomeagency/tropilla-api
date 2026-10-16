@@ -2482,7 +2482,8 @@ paths:
       - name: estado
         in: query
         required: false
-        schema: {type: string}
+        schema: {type: string, enum: [pendiente, vencida, hecha, omitida, abiertas]}
+        description: '`abiertas` = pendientes + vencidas (aditivo TPA-33); filtros `desde`/`hasta` sobre `vence_en`'
       - name: desde
         in: query
         required: false
@@ -7446,8 +7447,18 @@ components:
         condicion: {type: [object, 'null'], additionalProperties: true}
         activo: {type: boolean}
         editado: {type: boolean}
+        nota: {type: [string, 'null'], description: 'Nota de la plantilla (p. ej. dosis bubalina solo informativa). Aditivo TPA-33'}
+        aplica: {type: boolean, description: 'La condición de zona/especie se cumple hoy (si no, no genera tareas). Aditivo TPA-33'}
+        requiere_configuracion: {type: boolean, description: 'Ventana o fecha configurable sin fechas: no genera tareas. Aditivo TPA-33'}
+        archivado_en:
+          oneOf:
+          - {$ref: '#/components/schemas/FechaHora'}
+          - {type: 'null'}
         row_version: {type: integer}
       additionalProperties: false
+      description: 'Disparadores: `fecha_fija {fecha: MM-DD}` · `ventana {desde, hasta: MM-DD}` o `{meses: [4,5]}` · `relativo {evento:
+        nacimiento, dias | semanas[]}` (una tarea por animal) · `periodico {cada_dias, desde?: AAAA-MM-DD}` · `manual`. Repetición:
+        `refuerzo_dias {min, max}` (tras una primera dosis de la enfermedad), `repetir_dias` (segunda ventana), `hasta: destete`.'
     PlanItemInput:
       type: object
       properties:
@@ -7508,6 +7519,7 @@ components:
           - {type: 'null'}
         omitida_motivo: {type: [string, 'null']}
         cabezas_estimadas: {type: [integer, 'null']}
+        reprogramada: {type: boolean, description: 'El usuario cambió las fechas: el generador ya no las toca. Aditivo TPA-33'}
         row_version: {type: integer}
       additionalProperties: false
     TareaInput:

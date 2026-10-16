@@ -11,6 +11,11 @@ use App\Domain\Hacienda\Eventos\ArmarSobreWeb;
 use App\Domain\Hacienda\Eventos\RegistrarEvento;
 use App\Domain\Perfil\Actions\GestionarPerfil;
 use App\Domain\Perfil\Services\Perfiles;
+use App\Domain\Sanidad\Actions\GestionarPlan;
+use App\Domain\Sanidad\Actions\GestionarTarea;
+use App\Domain\Sanidad\Actions\GuardarProductoSanitario;
+use App\Domain\Sanidad\Models\PlanItem;
+use App\Domain\Sanidad\Models\Tarea;
 use App\Domain\Sync\Actions\RegistrarCambio;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -67,6 +72,7 @@ class DemoLaEsperanzaSeeder extends Seeder
             $this->bucerrasDestetadas();
             $this->bubillosEnVenta();
             $this->sanidadDeLotes();
+            $this->planSanitario();
             $this->ofertaBubillos();
             $this->perfilPublico();
         });
@@ -301,6 +307,43 @@ class DemoLaEsperanzaSeeder extends Seeder
         $this->evento('sanidad.vacunacion', ['tipo' => 'lote', 'lote_id' => $this->lotes['bucerros'], 'conteo' => ['BUB_BUCERRO' => 12]], [
             'producto_nombre' => 'Vacuna antirrábica', 'enfermedad' => 'rabia', 'numero_dosis' => 'primera', 'via' => 'subcutanea',
         ], now()->subDays(27)->toDateString());
+    }
+
+    /**
+     * Plan sanitario desde plantillas (TPA-33) con el aviso veterinario aceptado por el dueño, ventanas de aftosa de la zona
+     * y productos del establecimiento (TPA-31). Deja pendientes reales: refuerzo de rabia de los bucerros (primera dosis hace
+     * 27 días) y las campañas/ventanas que caigan en los próximos 90 días.
+     */
+    private function planSanitario(): void
+    {
+        $productos = app(GuardarProductoSanitario::class);
+        foreach ([
+            ['nombre_comercial' => 'Vacuna antiaftosa oleosa', 'tipo' => 'vacuna', 'via' => 'subcutanea', 'dosis_declarada' => 'Según SENASA / vacunador', 'especies' => ['BOV', 'BUB'], 'enfermedades' => ['aftosa'], 'sugerido_codigo' => 'vacuna_aftosa'],
+            ['nombre_comercial' => 'Vacuna antirrábica', 'tipo' => 'vacuna', 'via' => 'subcutanea', 'retiro_carne_dias' => 0, 'especies' => ['BOV', 'BUB'], 'enfermedades' => ['rabia'], 'sugerido_codigo' => 'vacuna_rabia'],
+            ['nombre_comercial' => 'Doramectina 1%', 'principio_activo' => 'doramectina', 'tipo' => 'antiparasitario_interno', 'via' => 'subcutanea',
+                'dosis_declarada' => 'La indicada por el Dr. Pérez', 'retiro_carne_dias' => 35, 'especies' => ['BOV', 'BUB'], 'enfermedades' => ['parasitos_internos', 'parasitos_externos'], 'sugerido_codigo' => 'doramectina'],
+        ] as $p) {
+            $productos->crear($this->est, $this->dueno, $p);
+        }
+
+        $plan = app(GestionarPlan::class);
+        $plan->aplicarPlantillas($this->est, $this->dueno, ['aftosa_campana_1', 'aftosa_campana_2', 'rabia_paresiante', 'bub_toxocara_neonatal',
+            'bub_fasciolicida', 'bub_pediculosis', 'garrapata_rotacion']);
+        $configurar = [
+            'aftosa_campana_1' => ['tipo' => 'ventana', 'desde' => '03-01', 'hasta' => '04-30', 'configurable' => true],
+            'aftosa_campana_2' => ['tipo' => 'ventana', 'desde' => '10-01', 'hasta' => '11-30', 'configurable' => true],
+            'rabia_paresiante' => ['tipo' => 'fecha_fija', 'fecha' => '04-15', 'configurable' => true],
+        ];
+        foreach ($configurar as $codigo => $disparador) {
+            $item = PlanItem::query()->where('establecimiento_id', $this->est->id)->where('plantilla_codigo', $codigo)->sole();
+            $plan->editarItem($this->est, $item, $this->dueno, ['row_version' => $item->row_version, 'disparador' => $disparador]);
+        }
+        // La 2ª campaña de este año ya se aplicó (02/10) antes de armar el plan.
+        $campana2 = Tarea::query()->join('plan_items as i', 'i.id', '=', 'tareas.plan_item_id')->where('i.establecimiento_id', $this->est->id)
+            ->where('i.plantilla_codigo', 'aftosa_campana_2')->where('tareas.clave_ocurrencia', (string) now()->year)->where('tareas.estado', 'pendiente')->first(['tareas.*']);
+        if ($campana2) {
+            app(GestionarTarea::class)->omitir($this->est, $campana2, $this->dueno, 'Aplicada el 02/10 a los lotes de menores (cargada antes de armar el plan).');
+        }
     }
 
     /** Oferta publicada del lote en venta (ficha pública /o/{codigo}, hasheada y encadenada). */
