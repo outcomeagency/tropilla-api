@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\DispositivoController;
 use App\Http\Controllers\Api\V1\Catalogos\CatalogoController;
 use App\Http\Controllers\Api\V1\Catalogos\ParametroController;
+use App\Http\Controllers\Api\V1\Comercial\OfertaController;
 use App\Http\Controllers\Api\V1\Establecimientos\EstablecimientoController;
 use App\Http\Controllers\Api\V1\Establecimientos\InvitacionController;
 use App\Http\Controllers\Api\V1\Establecimientos\MembresiaController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\Api\V1\Hacienda\ImportacionController;
 use App\Http\Controllers\Api\V1\Hacienda\LoteController;
 use App\Http\Controllers\Api\V1\Hacienda\PotreroController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\Publico\OfertaPublicaController;
 use App\Http\Controllers\Api\V1\Sistema\AuditoriaController;
 use App\Http\Controllers\Api\V1\Sync\SyncController;
 use Illuminate\Support\Facades\Route;
@@ -50,6 +52,10 @@ Route::prefix('v1')->name('v1.')->group(function () {
 
     // Público (sin token)
     Route::get('catalogos', CatalogoController::class)->middleware('throttle:publico')->name('catalogos');
+    Route::middleware('throttle:publico')->prefix('public')->name('public.')->group(function () {
+        Route::get('ofertas/{codigo}', [OfertaPublicaController::class, 'show'])->name('ofertas.show');
+        Route::get('ofertas/{codigo}/pdf', [OfertaPublicaController::class, 'pdf'])->name('ofertas.pdf');
+    });
     Route::get('public/invitaciones/{token}', [InvitacionController::class, 'publica'])->middleware('throttle:publico')->name('public.invitaciones.show');
 
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
@@ -114,6 +120,17 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::patch('importaciones/{importacion}/filas/{numero}', [ImportacionController::class, 'corregirFila'])->whereNumber('numero')->name('importaciones.filas.update');
             Route::post('importaciones/{importacion}/confirmar', [ImportacionController::class, 'confirmar'])->name('importaciones.confirmar');
             Route::post('importaciones/{importacion}/cancelar', [ImportacionController::class, 'cancelar'])->name('importaciones.cancelar');
+
+            // Ofertas (TPA-48)
+            Route::get('ofertas', [OfertaController::class, 'index'])->name('ofertas.index');
+            Route::post('ofertas', [OfertaController::class, 'store'])->name('ofertas.store');
+            Route::post('ofertas/desde-lote', [OfertaController::class, 'desdeLote'])->name('ofertas.desde-lote');
+            Route::get('ofertas/{oferta}', [OfertaController::class, 'show'])->name('ofertas.show');
+            Route::patch('ofertas/{oferta}', [OfertaController::class, 'update'])->name('ofertas.update');
+            Route::get('ofertas/{oferta}/avisos', [OfertaController::class, 'avisos'])->name('ofertas.avisos');
+            Route::get('ofertas/{oferta}/preview', [OfertaController::class, 'preview'])->name('ofertas.preview');
+            Route::post('ofertas/{oferta}/publicar', [OfertaController::class, 'publicar'])->name('ofertas.publicar');
+            Route::post('ofertas/{oferta}/estado', [OfertaController::class, 'estado'])->name('ofertas.estado');
 
             // Lotes (TPA-20)
             Route::get('lotes', [LoteController::class, 'index'])->name('lotes.index');

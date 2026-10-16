@@ -2,6 +2,7 @@
 
 namespace App\Domain\Hacienda\Proyecciones;
 
+use App\Domain\Comercial\Services\Compromisos;
 use App\Domain\Hacienda\Models\Evento;
 use App\Domain\Integridad\Models\Cadena;
 use App\Domain\Sync\Actions\RegistrarCambio;
@@ -49,6 +50,8 @@ final class Proyector
         foreach ($animalIds as $id) {
             $this->registrarCambio->handle($est, 'animal', $id, cadena: $cadena);
         }
+        // Compromisos comerciales: una oferta sin hacienda activa pasa a vendida.
+        Compromisos::liberarPorBaja($animalIds);
         foreach ($lotes as $id) {
             $this->registrarCambio->handle($est, 'lote', $id, cadena: $cadena);
         }

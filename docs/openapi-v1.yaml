@@ -6230,7 +6230,7 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
     Conflicto:
-      description: 'Conflicto (code: conflicto_row_version | version_no_vigente | tokens_insuficientes | identificacion_duplicada | version_api)'
+      description: 'Conflicto (code: conflicto_row_version | version_no_vigente | tokens_insuficientes | identificacion_duplicada | version_api | comprometido)'
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
@@ -6891,6 +6891,7 @@ components:
     AnimalResumen:
       type: object
       properties:
+        compromiso: {type: string, enum: [libre, en_oferta, en_contrato, vendido], description: 'Aditivo tropilla-api (TPA-48, duda nº 1 de Claude Design): compromiso comercial derivado. No se publica ni tokeniza lo comprometido (409 comprometido).'}
         id: {$ref: '#/components/schemas/Uuid'}
         especie: {type: string, enum: [BOV, BUB]}
         sexo: {type: string, enum: [M, H]}

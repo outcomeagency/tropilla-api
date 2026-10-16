@@ -346,3 +346,30 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
 - Confirmar en bloque: **un `hacienda.recategorizacion` por animal**, todo o nada; si coincide con la sugerida lleva
   `sugerida: true`, `regla_id` y el motivo de la regla; si el usuario elige otra, `motivo: manual`.
 - Verificado: 5 tests (destete/castración/dentición/parto por especie, confirmación en bloque, atomicidad + 403, job por edad, evaluador del DSL).
+
+## TPA-48 · Ofertas de animales y lotes · ✅ (parte API)
+
+**Endpoints:** `GET|POST …/ofertas`, `POST …/ofertas/desde-lote`, `GET|PATCH …/ofertas/{o}`, `GET …/ofertas/{o}/avisos`,
+`GET …/ofertas/{o}/preview?locale`, `POST …/ofertas/{o}/publicar`, `POST …/ofertas/{o}/estado`, públicos
+`GET /public/ofertas/{codigo}?locale` y `GET /public/ofertas/{codigo}/pdf?locale`.
+
+**Comentario del dev:**
+- Tablas `ofertas`, `oferta_animales`, `oferta_publicaciones` (append-only, sobre `tropilla.oferta_publicacion/1` hasheado y
+  encadenado: lo que se publicó es lo que se ancla) y la base del perfil (`perfiles_publicos` con slug, `perfil_publicaciones`,
+  `perfil_slugs_historicos`) que usa la ficha pública. Código público Crockford base32 de 10 caracteres.
+- Precarga **derivada de la hacienda** (`ContenidoOferta`): categorías, razas, peso promedio con fecha/método y rango (individual
+  o promedio del lote, lo más reciente), edad, dentición, **clase de faena** de `categorias_faena` (bubillos 4 dientes 468 kg →
+  BBO pesado), sanidad de 12 meses sin datos individuales, retiro, origen y sistema. `mostrar` elige bloques; el precio solo sale
+  con `mostrar_precio`. Avisos: retiro vigente, reactores (dato privado, no se publica), pesaje > `pesaje_antiguo_dias`, sin pesaje
+  → `422 requiere_confirmacion` hasta `confirmar_avisos`. Publicar exige email verificado.
+- **Compromisos (duda bloqueante nº 1 de Claude Design):** `libre · en_oferta · en_contrato · vendido` derivado (ofertas activas,
+  contratos abiertos cuando exista TPA-56, estado del animal); publicar hacienda comprometida → **409 `comprometido`**; un lote no
+  anónimo congela sus animales en la oferta; si se venden/dan de baja todos, la oferta pasa sola a `vendida`. Nuevo campo aditivo
+  `compromiso` en `AnimalResumen` (documentado en el YAML).
+- Ficha pública = clase separada (`OfertaPublicaResource`, whitelist), zona general (nunca ubicación exacta), SEO por idioma
+  (canonical/alternates/JSON-LD; indexable solo si el perfil está publicado y en el directorio), leyenda fija es/en/pt.
+  **Desvío:** el PDF (Gotenberg, con QR a `/v/{huella}`) se devuelve directo `200 application/pdf` en vez de `302` a una URL
+  prefirmada (no hay todavía S3 de generados). Probado contra el Gotenberg real del stack.
+- Demo: la oferta «30 bubillos Mediterráneos» queda publicada en el seeder.
+- Verificado: 6 tests (desde lote → preview en → publicar hasheado → ficha pública sin precio/privados, avisos, compromisos 409 y
+  venta → vendida, estados/republicar/retirada 404, PDF con QR, permisos asesor/encargado/404 y 422) + smoke del PDF real.
