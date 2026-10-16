@@ -8,6 +8,7 @@ use App\Domain\Establecimientos\Policies\EstablecimientoPolicy;
 use App\Support\Formato;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Schema `Establecimiento`. `renspa` y `ubicacion` son null sin `establecimiento.ver_privados`
@@ -25,6 +26,7 @@ class EstablecimientoResource extends JsonResource
             ? $e->getRelation('membresiaActual')?->rol
             : EstablecimientoPolicy::rol($request->user(), $e);
         $privados = $rol?->puede('establecimiento.ver_privados') ?? false;
+        $lindero = $privados ? DB::scalar('SELECT ST_AsGeoJSON(lindero) FROM establecimientos WHERE id = ?', [$e->id]) : null;
 
         return [
             'id' => $e->id,
@@ -34,6 +36,7 @@ class EstablecimientoResource extends JsonResource
             'departamento_codigo' => $e->departamento_codigo,
             'localidad' => $e->localidad,
             'ubicacion' => $privados ? $e->ubicacion : null,
+            'lindero_geojson' => $lindero ? json_decode($lindero, true) : null,
             'renspa' => $privados ? $e->renspa : null,
             'superficie_ha' => Formato::decimal($e->superficie_ha),
             'actividades' => $e->actividades,
@@ -60,7 +63,34 @@ class EstablecimientoResource extends JsonResource
     private function fichaPublica(Establecimiento $e): array
     {
         $visibilidad = $e->visibilidad_ficha ?? [];
+        $permitidos = [
+            'potreros_aguadas' => ['potreros', 'aguadas', 'rotacion', 'fuentes_agua'],
+            'sanidad' => ['manejo', 'vacunaciones_actualizadas', 'fecha'],
+            'personal' => ['equipo'],
+            'marcas_senales' => ['marca', 'senal', 'registro'],
+            'suelo_pasturas' => ['suelos', 'pasturas', 'ambientes', 'manejo'],
+            'capacidad_carga' => ['carga_ug_ha', 'periodo', 'criterio'],
+            'infraestructura' => ['manga', 'balanza', 'alambrados', 'energia'],
+            'clima' => ['precipitacion_media_mm', 'temperatura_media_c', 'fuente', 'fecha'],
+            'logistica' => ['distancia_ruta_km', 'distancia_puerto_km', 'accesos', 'carga'],
+            'certificaciones' => ['nombre', 'emisor', 'vence', 'alcance'],
+        ];
 
-        return array_filter($e->ficha_ampliada ?? [], fn ($valor, $bloque) => ($visibilidad[$bloque] ?? false) === true, ARRAY_FILTER_USE_BOTH);
+        $salida = [];
+        foreach ($permitidos as $bloque => $campos) {
+            if (($visibilidad[$bloque] ?? false) !== true) {
+                continue;
+            }
+            $datos = $e->ficha_ampliada[$bloque] ?? null;
+            if (! is_array($datos)) {
+                continue;
+            }
+            $publicos = array_intersect_key($datos, array_flip($campos));
+            if ($publicos !== []) {
+                $salida[$bloque] = $publicos;
+            }
+        }
+
+        return $salida;
     }
 }
