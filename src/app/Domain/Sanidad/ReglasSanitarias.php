@@ -37,6 +37,11 @@ final class ReglasSanitarias
         if ($s->tipo === 'sanidad.prueba_diagnostica') {
             $this->prueba($ctx, $p);
         }
+        foreach ((array) ($p->documento_ids ?? []) as $docId) {
+            if (! DB::table('documentos')->where('id', $docId)->where('establecimiento_id', $ctx->est->id)->exists()) {
+                throw new EventoRechazado('dependencia_faltante', 'El documento todavía no está en el servidor.', ['payload.documento_ids' => [$docId]]);
+            }
+        }
 
         // Potrero: el servidor resuelve los animales individuales presentes al registrar (propio o el de su lote),
         // para que el retiro llegue a cada ficha. Queda fijo en `evento_animales` (append-only).

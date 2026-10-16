@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Catalogos\CatalogoController;
 use App\Http\Controllers\Api\V1\Catalogos\ParametroController;
 use App\Http\Controllers\Api\V1\Comercial\ConsultaController;
 use App\Http\Controllers\Api\V1\Comercial\OfertaController;
+use App\Http\Controllers\Api\V1\Documentos\DocumentoController;
 use App\Http\Controllers\Api\V1\Establecimientos\EstablecimientoController;
 use App\Http\Controllers\Api\V1\Establecimientos\InvitacionController;
 use App\Http\Controllers\Api\V1\Establecimientos\MembresiaController;
@@ -145,6 +146,14 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::post('tareas', [TareaController::class, 'store'])->name('tareas.store');
             Route::patch('tareas/{tarea}', [TareaController::class, 'update'])->name('tareas.update');
             Route::post('tareas/{tarea}/omitir', [TareaController::class, 'omitir'])->name('tareas.omitir');
+
+            // Documentos (TPA-36)
+            Route::get('documentos', [DocumentoController::class, 'index'])->name('documentos.index');
+            Route::post('documentos', [DocumentoController::class, 'store'])->name('documentos.store');
+            Route::get('documentos/vencimientos', [DocumentoController::class, 'vencimientos'])->name('documentos.vencimientos');
+            Route::get('documentos/{documento}', [DocumentoController::class, 'show'])->name('documentos.show');
+            Route::post('documentos/{documento}/versiones', [DocumentoController::class, 'versiones'])->name('documentos.versiones');
+            Route::post('documentos/{documento}/visibilidad', [DocumentoController::class, 'visibilidad'])->name('documentos.visibilidad');
 
             // Eventos (TPA-22, 26)
             Route::get('eventos', [EventoController::class, 'index'])->name('eventos.index');

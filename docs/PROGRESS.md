@@ -630,6 +630,27 @@ aditivo `retiro_carne_hasta`/`retiro_leche_hasta` en `Lote`.
 - Pendiente: animales individualizados desde un lote anónimo no heredan el retiro del lote (heredan el timeline, no la proyección).
 - Verificado: 3 tests (listas por especie + lote + vencimiento al pasar la fecha, advertencias de venta/faena/lote/oferta, 422/lectura/404).
 
+## TPA-36 · Carpeta documental con versiones y vencimientos · ✅ (parte API)
+
+**Endpoints:** `GET|POST …/documentos` (`?tipo&privacidad&vinculo_tipo&vinculo_id&vence_antes&visibilidad&estado&q`, cursor),
+`GET …/documentos/vencimientos?dias`, `GET …/documentos/{d}`, `POST …/documentos/{d}/versiones`, `POST …/documentos/{d}/visibilidad`;
+push `clase: documento_version`; `GET …/animales/{a}/documentos` ya real; sección `documentos` del perfil público.
+
+**Comentario del dev:**
+- Tablas `documentos` (cabecera = proyección de la vigente + visibilidad), `documento_versiones` y `documento_version_archivos` (**append-only**
+  con `tropilla_inmutable`), `documento_vinculos`. CHECK fiscal ⇒ privado + trigger que impide publicar tipos no publicables. Archivos
+  direccionados por SHA-256 (`archivos/sha256/aa/bb/<hash>`, nunca se sobrescriben); una referencia sin bytes queda `pendiente` (TPA-44).
+- Una sola puerta `RegistrarDocumentoVersion` (web arma el sobre `tropilla.documento_version/1`; app lo manda firmado): huella, idempotencia
+  por id, `hash_anterior` = huella de la versión anterior, eslabón en la cadena del establecimiento, vínculos existentes (`dependencia_faltante`),
+  conflicto de versión → `en_revision` + revisión `documento_en_conflicto` (web: 409). Nueva versión / corrección / revocación nunca borran.
+- Permisos: fiscal solo dueño/admin (crear, ver, versionar; un tipo fiscal es siempre fiscal); encargado/asesor versionan solo lo que cargaron.
+  Publicar: `no_publicable` para fiscal/no publicable; la visibilidad no es evidencia (auditada, no va al sobre). Revocar despublica.
+- Verificación: `/public/verificaciones/archivo/{sha}` ahora coincide con documentos **publicados**; `/public/verificaciones/{huella}` describe
+  la versión sin revelar el título si es privada. Pull `documento` (comercial/fiscal según rol) y snapshot con versiones.
+- Las alertas 30/7/0 días se emiten en TPA-53 sobre `…/documentos/vencimientos`.
+- Verificado: 5 tests (alta con 2 archivos y vínculos, huella desde el sobre guardado, v2/corrección/revocación, append-only, cadena verificada;
+  fiscal/publicación/verificación por archivo/encargado; vencimientos y 8 filtros; push idempotente + conflicto + 2 rechazos + pull/snapshot; 422/403/404).
+
 ---
 
 ## Desvíos del contrato
@@ -647,3 +668,4 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-33: `PlanItem` + `nota`, `aplica`, `requiere_configuracion`, `archivado_en`; `Tarea.reprogramada`; filtro `estado=abiertas`; formato de `disparador` documentado.
 - TPA-34: parámetros `tuberculina_*_mm` por especie; resultado calculado por el servidor en la web; revisión `resultado_prueba_discrepante`.
 - TPA-35: `lotes[]` aditivo en `…/sanidad/retiros`; `retiro_*_hasta` en `Lote`; advertencia `reactor` en egreso.
+- TPA-36: `DocumentoInput.privacidad` opcional (default del tipo); `emisor_nombre` en `Documento`; `versiones` solo en ficha/alta/sync.

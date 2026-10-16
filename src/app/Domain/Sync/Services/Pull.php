@@ -3,6 +3,7 @@
 namespace App\Domain\Sync\Services;
 
 use App\Domain\Catalogos\Catalogos;
+use App\Domain\Documentos\ConsultasDocumentos;
 use App\Domain\Establecimientos\Enums\Rol;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Establecimientos\Models\Membresia;
@@ -25,6 +26,7 @@ use App\Http\Resources\V1\Sanidad\ProductoSanitarioResource;
 use App\Http\Resources\V1\Sanidad\TareaResource;
 use App\Support\Formato;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -98,6 +100,8 @@ final class Pull
                 ? PotreroResource::make($p->setAttribute('ocupacion', OcupacionPotreros::de($est->id, [$p->id])[$p->id]))->resolve($request) : null,
             'producto_sanitario' => ($ps = ProductoSanitario::query()->where('id', $id)->where('establecimiento_id', $est->id)->first()) ? ProductoSanitarioResource::make($ps)->resolve($request) : null,
             'tarea' => ($t = Tarea::query()->where('id', $id)->where('establecimiento_id', $est->id)->first()) ? TareaResource::make($t->setAttribute('zona_horaria', $est->zona_horaria))->resolve($request) : null,
+            'documento' => ($d = DB::table('documentos')->where('id', $id)->where('establecimiento_id', $est->id)->first())
+                ? ConsultasDocumentos::documento($d, Carbon::now($est->zona_horaria)->toDateString(), true) : null,
             'establecimiento' => EstablecimientoResource::make($est->loadMissing('productor'))->resolve($request),
             'membresia' => ($m = Membresia::query()->with('usuario')->where('id', $id)->where('establecimiento_id', $est->id)->first()) ? MembresiaResource::make($m)->resolve($request) : null,
             'revision' => ($r = DB::table('revisiones')->where('id', $id)->where('establecimiento_id', $est->id)->first()) ? RevisionResource::make($r)->resolve($request) : null,

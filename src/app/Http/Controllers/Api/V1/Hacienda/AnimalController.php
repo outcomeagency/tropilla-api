@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Hacienda;
 
+use App\Domain\Documentos\ConsultasDocumentos;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Hacienda\Actions\AltaRapida;
 use App\Domain\Hacienda\Actions\ConfirmarRecategorizaciones;
@@ -19,6 +20,7 @@ use App\Http\Resources\V1\Hacienda\EventoResumenResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -127,7 +129,11 @@ class AnimalController extends Controller
     {
         Gate::authorize('documentos.ver', $establecimiento);
         DB::table('animales')->where('id', $animal)->where('establecimiento_id', $establecimiento->id)->exists() || throw ApiException::noEncontrado();
+        $hoy = Carbon::now($establecimiento->zona_horaria)->toDateString();
+        $docs = ConsultasDocumentos::base($establecimiento->id, Gate::allows('documentos.fiscal', $establecimiento))
+            ->whereExists(fn ($w) => $w->from('documento_vinculos as v')->whereColumn('v.documento_id', 'd.id')->where('v.entidad_tipo', 'animal')->where('v.entidad_id', $animal))
+            ->orderByDesc('d.created_at')->get(['d.*']);
 
-        return response()->json(['data' => []]);
+        return response()->json(['data' => $docs->map(fn ($d) => ConsultasDocumentos::documento($d, $hoy))->all()], 200, [], JSON_UNESCAPED_UNICODE);
     }
 }
