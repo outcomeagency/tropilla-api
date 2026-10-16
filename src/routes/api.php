@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\Comercial\SimulacionController;
 use App\Http\Controllers\Api\V1\Comprador\CompradorController;
 use App\Http\Controllers\Api\V1\Contratos\ContratoController;
 use App\Http\Controllers\Api\V1\Cuenta\NotificacionController;
+use App\Http\Controllers\Api\V1\Documentos\BorradorController;
 use App\Http\Controllers\Api\V1\Documentos\DocumentoController;
 use App\Http\Controllers\Api\V1\Establecimientos\EstablecimientoController;
 use App\Http\Controllers\Api\V1\Establecimientos\InvitacionController;
@@ -235,6 +236,15 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('documentos/{documento}/enlaces', [DocumentoController::class, 'enlaces'])->name('documentos.enlaces.index');
             Route::post('documentos/{documento}/enlaces', [DocumentoController::class, 'crearEnlace'])->name('documentos.enlaces.store');
             Route::post('documentos/{documento}/enlaces/{enlace}/revocar', [DocumentoController::class, 'revocarEnlace'])->name('documentos.enlaces.revocar');
+
+            // Borradores de documento desde foto (TPA-61/62)
+            Route::get('borradores', [BorradorController::class, 'index'])->name('borradores.index');
+            Route::post('borradores', [BorradorController::class, 'store'])->name('borradores.store');
+            Route::get('borradores/{borrador}', [BorradorController::class, 'show'])->name('borradores.show');
+            Route::patch('borradores/{borrador}/campos', [BorradorController::class, 'campos'])->name('borradores.campos');
+            Route::post('borradores/{borrador}/confirmar', [BorradorController::class, 'confirmar'])->name('borradores.confirmar');
+            Route::post('borradores/{borrador}/reextraer', [BorradorController::class, 'reextraer'])->name('borradores.reextraer');
+            Route::post('borradores/{borrador}/descartar', [BorradorController::class, 'descartar'])->name('borradores.descartar');
 
             // Eventos (TPA-22, 26)
             Route::get('eventos', [EventoController::class, 'index'])->name('eventos.index');

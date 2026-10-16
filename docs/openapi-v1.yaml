@@ -3256,6 +3256,252 @@ paths:
         '403': {$ref: '#/components/responses/Prohibido'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
         '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/borradores:
+    get:
+      tags: [Documentos]
+      summary: Borradores de documento
+      operationId: get_establecimientos_establecimiento_borradores
+      description: '**Ability:** `documentos.ver`. TPA-61. Los de documentos fiscales solo con `documentos.fiscal`. Más nuevos primero.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: estado
+        in: query
+        required: false
+        schema: {type: string, enum: [esperando_archivos, en_cola, extrayendo, para_revisar, fallido, confirmado, descartado]}
+      - name: documento_id
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/Uuid'}
+      - name: cursor
+        in: query
+        required: false
+        schema: {type: string}
+      - name: limit
+        in: query
+        required: false
+        schema: {type: integer}
+      responses:
+        '200':
+          description: OK (paginado por cursor)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: {$ref: '#/components/schemas/BorradorDocumento'}
+                  meta: {$ref: '#/components/schemas/MetaCursor'}
+                required: [data, meta]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+    post:
+      tags: [Documentos]
+      summary: Pedir la lectura asistida de un documento capturado
+      operationId: post_establecimientos_establecimiento_borradores
+      description: '**Ability:** `documentos.crear`. TPA-61. Idempotente por `id` (UUIDv7 generado en el teléfono al capturar sin señal): el reintento devuelve 200 con el mismo borrador; el mismo id con otro documento/familia → 409 `id_reutilizado`. El documento tiene que haber llegado por el push (si no, 409 `dependencia_faltante`, reintentable). Páginas = archivos de la versión vigente (≤ 10). Si alguna página no terminó de subir queda `esperando_archivos` y pasa a `en_cola` sola al completarse la subida; la lectura es asíncrona (202 + polling de GET). Nunca crea eventos.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BorradorInput'}
+      responses:
+        '202':
+          description: OK (202 creado y encolado; 200 reintento idempotente)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/BorradorDocumento'}
+                required: [data]
+                additionalProperties: false
+        '200':
+          description: OK (202 creado y encolado; 200 reintento idempotente)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/BorradorDocumento'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+        '409': {$ref: '#/components/responses/Conflicto'}
+  /establecimientos/{establecimiento}/borradores/{borrador}:
+    get:
+      tags: [Documentos]
+      summary: Borrador con campos, advertencias e historial
+      operationId: get_establecimientos_establecimiento_borradores_borrador
+      description: '**Ability:** `documentos.ver`. Incluye `historial` (extracciones y correcciones campo por campo, append-only).'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: borrador
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/BorradorDocumento'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /establecimientos/{establecimiento}/borradores/{borrador}/campos:
+    patch:
+      tags: [Documentos]
+      summary: Revisar campos (correcto / editado / no legible / no aplica)
+      operationId: patch_establecimientos_establecimiento_borradores_borrador_campos
+      description: '**Ability:** `documentos.crear`. Solo en `para_revisar` (si no, 409 `estado_invalido`). Cada decisión queda en el historial (quién, cuándo, valor anterior y nuevo). `editado` exige `valor` válido para el `tipo` del campo (fecha YYYY-MM-DD, entero ≥ 0, booleano, una de `opciones`, texto ≤ 200). `agregar_fila` suma una fila vacía (`vacunas` | `categorias`) que el modelo no vio. Las advertencias se recalculan. `row_version` opcional (409 `conflicto_row_version`).'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: borrador
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BorradorCamposInput'}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/BorradorDocumento'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+        '409': {$ref: '#/components/responses/Conflicto'}
+  /establecimientos/{establecimiento}/borradores/{borrador}/confirmar:
+    post:
+      tags: [Documentos]
+      summary: 'Confirmar: registra los eventos y versiona el documento'
+      operationId: post_establecimientos_establecimiento_borradores_borrador_confirmar
+      description: '**Ability:** `documentos.crear` + la del tipo de evento (`sanidad.crear`). Única forma de que un borrador modifique datos. Exige todos los campos revisados (422 `revision_incompleta`) y, si hay advertencias, `confirmar_advertencias: true` (422 `requiere_confirmacion` con `advertencias`). Acta de vacunación (TPA-62): un `sanidad.vacunacion` por vacuna (aftosa / brucelosis) con fecha, producto, serie, vencimiento, vacunador y campaña; sujetos = animales activos de las categorías con vacunados (tandas de 1000) y lotes anónimos con esas categorías (422 `regla_bloqueante` si no hay); alcance `cero` no crea eventos. Las páginas originales van como `adjuntos` y el documento recibe una versión `correccion_metadatos` vinculada a los eventos (si el rol puede versionarlo). Todo o nada; idempotente (reconfirmar devuelve el mismo resultado).'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: borrador
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BorradorConfirmarInput'}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/BorradorDocumento'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+        '409': {$ref: '#/components/responses/Conflicto'}
+  /establecimientos/{establecimiento}/borradores/{borrador}/reextraer:
+    post:
+      tags: [Documentos]
+      summary: Volver a leer
+      operationId: post_establecimientos_establecimiento_borradores_borrador_reextraer
+      description: '**Ability:** `documentos.crear`. Desde `fallido` o `para_revisar` (o `extrayendo` colgado > 15 min): nueva extracción versionada; las correcciones previas quedan en el historial con su `extraccion_version`.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: borrador
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '202':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/BorradorDocumento'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '409': {$ref: '#/components/responses/Conflicto'}
+  /establecimientos/{establecimiento}/borradores/{borrador}/descartar:
+    post:
+      tags: [Documentos]
+      summary: Descartar el borrador
+      operationId: post_establecimientos_establecimiento_borradores_borrador_descartar
+      description: '**Ability:** `documentos.crear`. El documento y sus fotos se conservan. Un borrador confirmado no se descarta (409).'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: borrador
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/BorradorDocumento'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '409': {$ref: '#/components/responses/Conflicto'}
   /archivos/subidas:
     post:
       tags: [Archivos]
@@ -8207,6 +8453,146 @@ components:
         en_revision: {type: boolean}
         huella: {$ref: '#/components/schemas/Hash'}
         confianza: {type: string, enum: [declarado, integridad_registrada]}
+      additionalProperties: false
+    BorradorInput:
+      type: object
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        documento_id: {$ref: '#/components/schemas/Uuid'}
+        familia: {type: string, enum: [acta_vacunacion]}
+      required: [id, documento_id, familia]
+      additionalProperties: false
+    BorradorCamposInput:
+      type: object
+      properties:
+        campos:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            properties:
+              ruta: {type: string, examples: [fecha, categorias.0.existentes]}
+              estado: {type: string, enum: [correcto, editado, no_legible, no_aplica]}
+              valor: {description: 'Obligatorio con `editado`; tipo según el campo (string | integer | boolean | null)'}
+            required: [ruta, estado]
+            additionalProperties: false
+        agregar_fila: {type: [string, 'null'], enum: [vacunas, categorias, null]}
+        row_version: {type: [integer, 'null']}
+      required: [campos]
+      additionalProperties: false
+    BorradorConfirmarInput:
+      type: object
+      properties:
+        confirmar_advertencias: {type: boolean}
+      additionalProperties: false
+    BorradorCampo:
+      type: object
+      description: >-
+        Campo revisable (TPA-61). `valor_extraido` = lo que leyó el modelo tal cual; `valor` = interpretación (fecha ISO, entero, opción) o lo
+        que editó la persona; `sugerido` = valor propuesto por TROPILLA (p. ej. categoría del catálogo), no leído. `confianza` 0–1 (null en
+        filas agregadas a mano); `alternativas` = otras lecturas posibles del trazo. Rutas de filas: `vacunas.N.*`, `categorias.N.*`.
+      properties:
+        ruta: {type: string}
+        grupo: {type: string, enum: [acta, vacunador, firmas, totales, vacunas, categorias]}
+        etiqueta: {type: string}
+        tipo: {type: string, enum: [texto, fecha, entero, booleano, opcion, categoria]}
+        opciones:
+          type: [array, 'null']
+          items:
+            type: object
+            properties:
+              valor: {type: string}
+              etiqueta: {type: string}
+            additionalProperties: false
+        critico: {type: boolean}
+        valor_extraido: {type: [string, 'null']}
+        valor: {type: [string, integer, boolean, 'null']}
+        confianza: {type: [number, 'null']}
+        pagina: {type: [integer, 'null']}
+        alternativas:
+          type: array
+          items: {type: string}
+        sugerido: {type: boolean}
+        estado: {type: string, enum: [pendiente, correcto, editado, no_legible, no_aplica]}
+      required: [ruta, grupo, etiqueta, tipo, opciones, critico, valor_extraido, valor, confianza, pagina, alternativas, sugerido, estado]
+      additionalProperties: false
+    BorradorDocumento:
+      type: object
+      description: >-
+        Borrador de documento desde foto (TPA-61/62). Estados: `esperando_archivos` → `en_cola` → `extrayendo` → `para_revisar` |
+        `fallido` → `confirmado` | `descartado`. Esquemas versionados: `acta_vacunacion.711_2025/1` (Acta Única, Res. 711/2025) y
+        `acta_vacunacion.879_2002/1` (acta histórica). Advertencias (nunca se autocorrige): `vacunados_mayor_existentes`, `totales_no_cierran`,
+        `existencias_distintas`, `renspa_distinto`, `renspa_formato`, `fecha_faltante`, `fecha_futura`, `firma_no_detectada`, `calidad_imagen`,
+        `formulario_no_reconocido`, `categoria_otra_especie` (bloquea la confirmación). `aviso`: transcripción asistida, no es presentación oficial.
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        documento_id: {$ref: '#/components/schemas/Uuid'}
+        documento_version_id: {$ref: '#/components/schemas/Uuid'}
+        familia: {type: string, enum: [acta_vacunacion]}
+        esquema: {type: [string, 'null']}
+        estado: {type: string, enum: [esperando_archivos, en_cola, extrayendo, para_revisar, fallido, confirmado, descartado]}
+        error: {type: [string, 'null']}
+        intentos: {type: integer}
+        paginas:
+          type: array
+          items:
+            type: object
+            properties:
+              numero: {type: integer}
+              sha256: {$ref: '#/components/schemas/Hash'}
+              estado: {type: string, enum: [pendiente, completo, corrupto]}
+              foto:
+                oneOf:
+                - {$ref: '#/components/schemas/Foto'}
+                - {type: 'null'}
+            additionalProperties: false
+        campos:
+          type: array
+          items: {$ref: '#/components/schemas/BorradorCampo'}
+        pendientes: {type: integer, description: Campos sin revisar}
+        advertencias:
+          type: array
+          items:
+            type: object
+            properties:
+              codigo: {type: string}
+              mensaje: {type: string}
+              ruta: {type: string}
+              detalle: {type: object, additionalProperties: true}
+            required: [codigo, mensaje]
+            additionalProperties: false
+        extraccion:
+          type: [object, 'null']
+          properties:
+            version: {type: integer}
+            esquema: {type: string}
+            proveedor: {type: string}
+            modelo: {type: string}
+            creada_en: {$ref: '#/components/schemas/FechaHora'}
+          additionalProperties: false
+        evento_ids:
+          type: array
+          items: {$ref: '#/components/schemas/Uuid'}
+        aviso: {type: string}
+        row_version: {type: integer}
+        creado_por: {$ref: '#/components/schemas/Uuid'}
+        created_at: {$ref: '#/components/schemas/FechaHora'}
+        updated_at: {$ref: '#/components/schemas/FechaHora'}
+        confirmado_por: {type: [string, 'null'], format: uuid}
+        confirmado_en: {type: [string, 'null']}
+        descartado_en: {type: [string, 'null']}
+        historial:
+          type: object
+          description: Solo en GET por id y en confirmar.
+          properties:
+            extracciones:
+              type: array
+              items: {type: object, additionalProperties: true}
+            correcciones:
+              type: array
+              items: {type: object, additionalProperties: true}
+          additionalProperties: false
+      required: [id, documento_id, familia, estado, paginas, campos, pendientes, advertencias, extraccion, evento_ids, aviso, row_version]
       additionalProperties: false
     Documento:
       type: object
