@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 /**
  * Recalcula `lote_conteos` y `lotes_estado` desde los eventos vigentes del lote (modelo-datos.md §6.2):
  * conteo por categoría (alta/ingreso/nacimiento +, egreso/muerte/pérdida/faena/individualización −,
- * recategorización = movimientos), potrero (último traslado del lote) y peso promedio (pesajes promedio).
+ * recategorización = movimientos, destete con categoría nueva), potrero (último traslado del lote) y peso promedio (pesajes promedio).
  * Sin CHECK ≥ 0: si queda negativo se abre una revisión `conteo_negativo` (M13).
  */
 final class ProyectorLote
@@ -43,6 +43,12 @@ final class ProyectorLote
                 } elseif (in_array($e->tipo, self::RESTAN, true)) {
                     foreach ($c as $cat => $n) {
                         $conteo[$cat] = ($conteo[$cat] ?? 0) - $n;
+                    }
+                } elseif ($e->tipo === 'reproduccion.destete' && isset($p['categoria_nueva'])) {
+                    // TPA-29: destete de un lote anónimo = las cabezas del conteo pasan a la categoría nueva.
+                    foreach ($c as $cat => $n) {
+                        $conteo[$cat] = ($conteo[$cat] ?? 0) - $n;
+                        $conteo[$p['categoria_nueva']] = ($conteo[$p['categoria_nueva']] ?? 0) + $n;
                     }
                 } elseif ($e->tipo === 'hacienda.recategorizacion') {
                     foreach ($p['movimientos'] ?? [] as $m) {

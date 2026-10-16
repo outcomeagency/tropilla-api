@@ -6991,6 +6991,17 @@ components:
             - {$ref: '#/components/schemas/Fecha'}
             - {type: 'null'}
           dias_gestacion: {type: [integer, 'null'], description: 'TPA-28 (aditivo): hoy − concepción (tacto con días o servicio); solo servidas/preñadas'}
+          dias_posparto: {type: [integer, 'null'], description: 'TPA-29 (aditivo): hoy − último parto'}
+          destete:
+            type: [object, 'null']
+            description: 'TPA-29 (aditivo)'
+            properties:
+              fecha: {$ref: '#/components/schemas/Fecha'}
+              peso_kg:
+                oneOf:
+                - {$ref: '#/components/schemas/Decimal'}
+                - {type: 'null'}
+            additionalProperties: false
           fpp_precision: {type: [string, 'null']}
           retiro_carne_hasta:
             oneOf:

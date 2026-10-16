@@ -105,7 +105,7 @@ final class ProyectorAnimal
         $madre = $nuevo['madre_id'] ?? null;
         if ($origen->tipo === 'reproduccion.parto' && $madre === null) {
             $madre = DB::table('evento_animales')->where('evento_id', $origen->id)->where('animal_id', '<>', $animal->id)
-                ->whereNotIn('animal_id', array_map(fn ($c) => $c['animal']['animal_id'] ?? '', $p['crias'] ?? []))->value('animal_id');
+                ->whereNotIn('animal_id', array_values(array_filter(array_map(fn ($c) => $c['animal']['animal_id'] ?? null, $p['crias'] ?? []))))->value('animal_id');
         }
         $fecha = $this->fecha($origen->ocurrido_en, $tz);
 
