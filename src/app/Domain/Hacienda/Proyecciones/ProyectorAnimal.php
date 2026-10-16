@@ -241,6 +241,10 @@ final class ProyectorAnimal
 
                 // Reproducción (TPA-27..29): estado reproductivo y fecha probable de parto con parámetros por especie/raza.
             case 'reproduccion.servicio_natural':
+                // Un lote de servicio puede expandirse con los toros adentro (M6): solo cambia el estado de las hembras.
+                if ($s['sexo'] !== 'H') {
+                    break;
+                }
                 $s['estado_reproductivo'] = 'servida';
                 $s['servicio_fecha'] = $p['inicio'];
                 $s['servicio_evento_id'] = $e->evento_raiz_id;
