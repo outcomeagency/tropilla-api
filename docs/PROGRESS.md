@@ -258,3 +258,29 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
 - `IntegridadRegistro` ya devuelve huella/eslabón/seq; `anclaje` y `prueba` quedan `null` hasta TPA-40.
 - Verificado: 6 tests (v2 encadenada + ver cambios + integridad, 409, anulaciones y efecto en proyecciones/stock, corrección del alta
   bloqueada por especie y válida por raza, 422/403/404, revisiones listar/resolver/cerrada).
+
+## TPA-43 · Endpoints de sincronización · ✅
+
+**Endpoints:** `POST /sync/push` (≤ 200 ítems, ≤ 2 MB, gzip aceptado, 60/min por token de dispositivo), `GET /sync/pull?establecimiento_id&cursor&limite`,
+`GET /sync/snapshot?establecimiento_id`.
+
+**Comentario del dev:**
+- Push: cuerpo crudo decodificado **con objetos** (sin pasar por `$request->json()`), cada ítem en su propia transacción vía
+  `RegistrarEvento` (canal `push`: huella recalculada y comparada, `dispositivo_id` del usuario). Resultado por ítem
+  `aceptado` (seq/eslabón/registrado_en/observaciones) · `duplicado` (mismo id + misma huella) · `en_revision`
+  (`conflicto_version`, `revision_id`, `version_vigente`) · `rechazado` (`huella_invalida`, `canonicalizacion`, `esquema_invalido`,
+  `tipo_desconocido`*, `id_reutilizado`, `sin_permiso`, `dependencia_faltante`*, `regla_bloqueante`, `establecimiento_cerrado`; *reintentables).
+  Por sync, «posterior a baja» e identificación duplicada se aceptan con observación + revisión (concurrencia offline).
+- Maestros (`lote`, `potrero`): `base_row_version: 0` = alta offline idempotente; si no coincide, gana el servidor y el cambio
+  queda en `revisiones` (`maestro_en_conflicto`, con diff). Nueva Action `GuardarLote` (la usan sync y TPA-20).
+  `documento_version` → `tipo_desconocido` reintentable hasta TPA-36.
+- Membresía revocada (§7.8): pull/snapshot → 403 `membresia_revocada`; push dentro de 72 h acepta ítems con `creado_en` ≤
+  revocación (observación `carga_post_revocacion` + revisión), después 403 `establecimiento_cerrado`.
+- Pull: `cambios.seq` por establecimiento (asignado bajo el lock de la cadena → sin huecos), dedupe por (entidad, id) dentro
+  de la página, datos = **estado actual** (Evento, Animal, Lote, Potrero, Establecimiento, Membresía, Revisión); `comercial`/`fiscal`
+  solo a dueño/admin; cursor `base64url("v1:"+est+":"+seq)`, de otro establecimiento → 422 `cursor_invalido`.
+- Snapshot: estado completo + eventos vigentes de los últimos `snapshot_offline_dias` (400) y `cursor` leído en la misma
+  transacción REPEATABLE READ. Demo: 44 animales individuales + 112 eventos en ~0,3 s.
+- Verificado: 10 tests (idempotencia y seq sin huecos, 4 rechazos incl. float crudo, correcciones concurrentes → una en revisión
+  y resolución «reaplicada», evento posterior a baja aceptado con revisión, maestros + conflicto, pull/cursor/422, filtro por
+  visibilidad, snapshot → pull vacío, revocación 72 h / lectura 403 / 404, 422 del envío).
