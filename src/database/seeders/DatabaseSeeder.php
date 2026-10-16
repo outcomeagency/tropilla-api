@@ -20,7 +20,7 @@ class DatabaseSeeder extends Seeder
         if (app()->environment('local')) {
             User::firstOrCreate(
                 ['email' => 'dev@tropilla.local'],
-                ['name' => 'Dev TROPILLA', 'password' => 'password'],
+                ['nombre' => 'Dev TROPILLA', 'password' => 'password', 'email_verificado_en' => now()],
             );
         }
     }

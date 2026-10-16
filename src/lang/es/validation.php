@@ -1,0 +1,75 @@
+<?php
+
+/*
+ * Mensajes de validación en español (es-AR, voseo). Los que faltan caen al
+ * inglés del framework (APP_FALLBACK_LOCALE). Las claves de campo se muestran
+ * tal cual (snake_case del contrato), que es lo que el cliente mapea.
+ */
+return [
+    'accepted' => 'El campo :attribute debe ser aceptado.',
+    'after' => 'El campo :attribute debe ser una fecha posterior a :date.',
+    'after_or_equal' => 'El campo :attribute debe ser una fecha posterior o igual a :date.',
+    'array' => 'El campo :attribute debe ser una lista.',
+    'before' => 'El campo :attribute debe ser una fecha anterior a :date.',
+    'before_or_equal' => 'El campo :attribute debe ser una fecha anterior o igual a :date.',
+    'between' => [
+        'array' => 'El campo :attribute debe tener entre :min y :max elementos.',
+        'numeric' => 'El campo :attribute debe estar entre :min y :max.',
+        'string' => 'El campo :attribute debe tener entre :min y :max caracteres.',
+    ],
+    'boolean' => 'El campo :attribute debe ser verdadero o falso.',
+    'confirmed' => 'La confirmación de :attribute no coincide.',
+    'date' => 'El campo :attribute no es una fecha válida.',
+    'date_format' => 'El campo :attribute no tiene el formato :format.',
+    'decimal' => 'El campo :attribute debe tener :decimal decimales.',
+    'different' => 'Los campos :attribute y :other deben ser distintos.',
+    'digits' => 'El campo :attribute debe tener :digits dígitos.',
+    'distinct' => 'El campo :attribute tiene un valor repetido.',
+    'email' => 'El campo :attribute debe ser un email válido.',
+    'exists' => 'El valor de :attribute no existe.',
+    'filled' => 'El campo :attribute no puede estar vacío.',
+    'gt' => ['numeric' => 'El campo :attribute debe ser mayor que :value.'],
+    'gte' => ['numeric' => 'El campo :attribute debe ser mayor o igual que :value.'],
+    'in' => 'El valor de :attribute no es válido.',
+    'integer' => 'El campo :attribute debe ser un número entero.',
+    'list' => 'El campo :attribute debe ser una lista.',
+    'lt' => ['numeric' => 'El campo :attribute debe ser menor que :value.'],
+    'lte' => ['numeric' => 'El campo :attribute debe ser menor o igual que :value.'],
+    'max' => [
+        'array' => 'El campo :attribute no puede tener más de :max elementos.',
+        'numeric' => 'El campo :attribute no puede ser mayor que :max.',
+        'string' => 'El campo :attribute no puede tener más de :max caracteres.',
+    ],
+    'min' => [
+        'array' => 'El campo :attribute debe tener al menos :min elementos.',
+        'numeric' => 'El campo :attribute debe ser al menos :min.',
+        'string' => 'El campo :attribute debe tener al menos :min caracteres.',
+    ],
+    'not_in' => 'El valor de :attribute no es válido.',
+    'numeric' => 'El campo :attribute debe ser un número.',
+    'present' => 'El campo :attribute debe estar presente.',
+    'prohibited' => 'El campo :attribute no está permitido.',
+    'regex' => 'El formato de :attribute no es válido.',
+    'required' => 'El campo :attribute es obligatorio.',
+    'required_if' => 'El campo :attribute es obligatorio cuando :other es :value.',
+    'required_with' => 'El campo :attribute es obligatorio cuando :values está presente.',
+    'required_without' => 'El campo :attribute es obligatorio cuando :values no está presente.',
+    'required_without_all' => 'El campo :attribute es obligatorio cuando ninguno de :values está presente.',
+    'size' => [
+        'array' => 'El campo :attribute debe tener :size elementos.',
+        'string' => 'El campo :attribute debe tener :size caracteres.',
+    ],
+    'string' => 'El campo :attribute debe ser texto.',
+    'unique' => 'El valor de :attribute ya está en uso.',
+    'uuid' => 'El campo :attribute debe ser un UUID válido.',
+    'ulid' => 'El campo :attribute debe ser un ULID válido.',
+    'password' => [
+        'letters' => 'La contraseña debe tener al menos una letra.',
+        'mixed' => 'La contraseña debe tener mayúsculas y minúsculas.',
+        'numbers' => 'La contraseña debe tener al menos un número.',
+        'symbols' => 'La contraseña debe tener al menos un símbolo.',
+        'uncompromised' => 'Esa contraseña apareció en una filtración. Elegí otra.',
+    ],
+    'custom' => [],
+    'attributes' => [],
+];
