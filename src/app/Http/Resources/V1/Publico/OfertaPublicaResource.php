@@ -3,6 +3,7 @@
 namespace App\Http\Resources\V1\Publico;
 
 use App\Domain\Catalogos\Catalogos;
+use App\Domain\Documentos\Fotos;
 use App\Domain\Establecimientos\Data\Provincias;
 use App\Domain\Integridad\Confianza;
 use App\Support\Formato;
@@ -33,6 +34,7 @@ final class OfertaPublicaResource
         $textos = (array) ($c['textos'] ?? []);
         $t = (array) ($textos[$locale] ?? $textos['es'] ?? []);
         unset($c['textos']);
+        $c['fotos'] = Fotos::lista($c['fotos'] ?? [], true, $locale); // bugfix TPA-54: hashes → Foto[]
         $c['titulo'] = $t['titulo'] ?? '';
         $c['descripcion'] = $t['descripcion'] ?? '';
 
@@ -90,7 +92,7 @@ final class OfertaPublicaResource
         return [
             'codigo' => $oferta->codigo_publico, 'titulo' => $t['titulo'] ?? '', 'especie' => $c['especie'], 'cantidad' => (int) $c['cantidad'],
             'categorias' => array_column($c['categorias'] ?? [], 'codigo'), 'peso_promedio_kg' => $c['peso']['promedio_kg'] ?? null,
-            'estado' => $oferta->estado, 'foto_url' => null, 'url' => config('tropilla.web_url')."/{$locale}/o/{$oferta->codigo_publico}",
+            'estado' => $oferta->estado, 'foto_url' => ($foto = Fotos::publica($c['fotos'][0] ?? null, $locale))['url'] ?? null, 'foto' => $foto, 'url' => config('tropilla.web_url')."/{$locale}/o/{$oferta->codigo_publico}",
         ];
     }
 }

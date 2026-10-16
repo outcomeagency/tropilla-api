@@ -4,6 +4,7 @@ namespace App\Http\Resources\V1\Hacienda;
 
 use App\Domain\Catalogos\Catalogos;
 use App\Domain\Comercial\Services\Compromisos;
+use App\Domain\Documentos\Fotos;
 use App\Support\Formato;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -39,7 +40,7 @@ class AnimalResumenResource extends JsonResource
             'potrero' => $a->potrero_actual_id ? ['id' => $a->potrero_actual_id, 'nombre' => $a->potrero_nombre] : null,
             'retiro_vigente' => ($a->retiro_carne_hasta !== null && $a->retiro_carne_hasta >= $hoy) || ($a->retiro_leche_hasta !== null && $a->retiro_leche_hasta >= $hoy),
             'reactor' => $a->reactor ? ($a->reactor_prueba ?? 'positivo') : null,
-            'foto_url' => null,
+            'foto_url' => $a->foto_sha256 ? Fotos::urlFirmada($a->foto_sha256) : null, // bugfix TPA-54: URL firmada (privado)
             // Aditivo (duda nº 1 de Claude Design): libre | en_oferta | en_contrato | vendido.
             'compromiso' => Compromisos::deAnimal($a->animal_id),
         ];

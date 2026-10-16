@@ -76,6 +76,8 @@ class AppServiceProvider extends ServiceProvider
         // api-v1.md §5: login/registro 5/min/IP; resto 300/min/usuario.
         RateLimiter::for('auth', fn (Request $request) => Limit::perMinute(5)->by('auth|'.$request->ip()));
         RateLimiter::for('publico', fn (Request $request) => Limit::perMinute(120)->by('publico|'.$request->ip()));
+        // Fotos (TPA-54): una página del directorio pide decenas; van con cache inmutable, el límite solo frena abusos.
+        RateLimiter::for('fotos', fn (Request $request) => Limit::perMinute(1200)->by('fotos|'.$request->ip()));
         RateLimiter::for('sync-push', fn (Request $request) => Limit::perMinute(60)->by('push|'.($request->user()?->currentAccessToken()?->getKey() ?? $request->ip())));
         RateLimiter::for('consultas', fn (Request $request) => Limit::perHour(3)->by('consultas|'.$request->ip()));
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(300)->by($request->user()?->getAuthIdentifier() ?: $request->ip()));

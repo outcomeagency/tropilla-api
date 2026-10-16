@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\V1\Auth;
 
+use App\Domain\Documentos\Fotos;
 use App\Models\User;
 use App\Support\Formato;
 use Illuminate\Http\Request;
@@ -27,7 +28,8 @@ class UsuarioResource extends JsonResource
             'email_verificado' => $u->emailVerificado(),
             'idioma' => $u->idioma,
             'pais' => $u->pais,
-            'foto_url' => null, // archivos firmados: TPA-44
+            'foto_url' => ($foto = Fotos::privada($u->foto_sha256))['url'] ?? null, // bugfix TPA-54: URL firmada
+            'foto' => $foto,
             'es_staff' => (bool) $u->es_staff,
             'es_comprador' => false, // TPA-57
             'es_profesional' => false, // TPA-58

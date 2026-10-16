@@ -31,6 +31,10 @@ final class AccesoArchivos
                 return true;
             }
         }
+        // Foto de un animal visible (bugfix TPA-54).
+        if (DB::table('animales_estado')->whereIn('establecimiento_id', $con('hacienda.ver'))->where('foto_sha256', $sha)->exists()) {
+            return true;
+        }
         if (DB::table('eventos')->whereIn('establecimiento_id', $con('hacienda.ver'))->whereRaw('? = ANY(adjuntos)', [$sha])->exists()) {
             return true;
         }

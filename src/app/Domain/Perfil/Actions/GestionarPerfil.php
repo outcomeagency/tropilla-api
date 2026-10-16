@@ -54,6 +54,9 @@ final class GestionarPerfil
                 }
                 $cambios['secciones'] = json_encode($actual);
             }
+            if (isset($d['fotos'])) { // bugfix TPA-54: se validaba pero no se guardaba; la primera es la portada
+                $cambios['fotos'] = '{'.implode(',', array_values($d['fotos'])).'}';
+            }
             if (isset($d['idiomas'])) {
                 $cambios['idiomas'] = '{'.implode(',', array_unique($d['idiomas'])).'}';
             }

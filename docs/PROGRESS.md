@@ -500,6 +500,24 @@ aditivo `Animal.categorias_descartadas`; parámetro nuevo `edad_destete_meses` (
   (perfiles del directorio y sus ofertas activas) con idiomas.
 - Verificado: 3 tests (filtros/búsqueda/oculto fuera, paginado + facetas, sitemap).
 
+### TPA-54 · bugfix: fotos en la API + demo del directorio con fotos · ✅
+
+**Rutas nuevas:** `GET /public/fotos/{sha256}` (sin cuenta, inmutable) y `GET /fotos/{sha256}?expires&signature` (privada, URL firmada).
+**Seeder:** `DemoDirectorioSeeder` (después de `DemoLaEsperanzaSeeder`; `php artisan db:seed --class=DemoDirectorioSeeder`).
+
+**Comentario del dev:**
+- Schema `Foto {sha256, url, alt, ancho, alto}`: público en perfil (portada), oferta (congelada en la publicación), profesional y directorio; firmado en animal,
+  usuario y vistas internas. La ruta pública sirve un hash solo si lo referencia un perfil publicado, la publicación vigente de una oferta
+  publicada/reservada/vendida o un profesional público (retirada/borrador/no referenciado → 404); `immutable` + `ETag` = hash. La firmada es relativa
+  (vale detrás del proxy de la web), estable dentro de la hora, y sin firma o vencida da 404. `archivos` suma `ancho`, `alto` (se miden al subir) y `alt` {es,en,pt}.
+- Arreglos de paso: `PATCH …/perfil` validaba `fotos` pero no las guardaba; `PUT /me/profesional` acepta `foto_sha256`; toda foto debe ser un archivo completo (422 si no).
+- Demo: 5 establecimientos (El Timbó, Los Caranday, Don Anselmo, La Paloma, Santa Rita; `<slug>@tropilla.test` / `tropilla-demo`) con hacienda por eventos, 7 ofertas + la de
+  La Esperanza republicada con foto, 3 profesionales y fotos de animales por `hacienda.actualizacion_ficha` (sobreviven a la reconstrucción). Formosa, Chaco y Misiones
+  usan códigos INDEC reales (34056, 22084, 54007) pero `geo_departamentos` solo tiene Corrientes: la zona pública muestra la provincia.
+- Trampa: en el entorno compartido migré unos minutos después de montar el código; en esa ventana completar una subida dio 500 (columna `ancho`). Migrar antes de tocar el código.
+- Verificado: 5 tests (público ok/304/no referenciado/borrador/retirada, firmada ok/sin firma/adulterada/vencida, 401 descarga sin token, 422/403/404 al guardar, demo
+  completo + reconstrucción + idempotencia) + suite verde; seeder corrido sobre la base de dev (cadenas verificadas).
+
 ## TPA-41 · Página pública de verificación · ✅ (parte API)
 
 **Endpoints:** `GET /public/verificaciones/{huella}?locale`, `GET /public/verificaciones/{huella}/prueba` (prueba.json),
@@ -970,5 +988,6 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-53: `GET /me/preferencias-notificacion` aditivo; `meta.no_leidas` en la bandeja.
 - TPA-56: `Contrato.documento_id`; `huella` null en borrador; respuesta de `?simular=true` = {terminos, recorte}; vínculo de documentos `contrato` → tabla `contratos_futuro`.
 - TPA-57: `Toma.contrato` y `Toma.entrega` (solo la línea del comprador) aditivos; `estado=vigentes` en `/comprador/tomas`; códigos 403 `perfil_comprador_requerido` / `email_no_verificado`.
+- TPA-54 (bugfix): schema `Foto`; `fotos` de `Perfil`/`Oferta` pasan de `Archivo[]` a `Foto[]` y las públicas de `string[]` a `Foto[]`; `foto` aditivo junto a cada `foto_url`; rutas `/public/fotos/{sha}` y `/fotos/{sha}`; `Profesional.foto_sha256`.
 - TPA-58: `Busco.zona.provincias_nombres` aditivo; reglas de visibilidad del comprador y puntaje documentados.
 - TPA-51: `POST /organizaciones` (staff) y `POST /organizaciones/{o}/miembros` aditivos; `Adherido.datos` con solo lo consentido; 409 `ya_adherido`.

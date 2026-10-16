@@ -14,4 +14,7 @@ final class Reglas
     public const UUID = 'regex:/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
 
     public const CODIGO = 'regex:/^[A-Za-z0-9_.-]{1,64}$/';
+
+    /** Foto ya subida (bugfix TPA-54): hash de un archivo completo. */
+    public const FOTO = 'exists:archivos,sha256,estado,completo';
 }

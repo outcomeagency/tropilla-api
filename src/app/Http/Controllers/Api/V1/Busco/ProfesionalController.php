@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Busco;
 
 use App\Casts\PgTextArray;
+use App\Domain\Documentos\Fotos;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
@@ -37,6 +38,7 @@ class ProfesionalController extends Controller
             'zonas' => ['sometimes', 'array'], 'zonas.provincias' => ['sometimes', 'array'], 'zonas.provincias.*' => ['string', 'size:2'],
             'zonas.departamentos' => ['sometimes', 'array'], 'zonas.departamentos.*' => ['string', 'max:5'],
             'idiomas' => ['sometimes', 'array'], 'idiomas.*' => ['in:es,en,pt'], 'bio' => ['sometimes', 'nullable', 'string', 'max:2000'], 'publico' => ['sometimes', 'boolean'],
+            'foto_sha256' => ['sometimes', 'nullable', Reglas::HASH, Reglas::FOTO],
         ]);
         if (($d['publico'] ?? false) && ! $u->email_verificado_en) {
             throw new ApiException(403, 'email_no_verificado', __('Verificá tu email para publicar tu perfil.'));
@@ -46,6 +48,7 @@ class ProfesionalController extends Controller
             'slug' => $d['slug'], 'nombre_publico' => $d['nombre_publico'], 'profesion' => $d['profesion'], 'matricula_declarada' => $d['matricula_declarada'] ?? null,
             'especialidades' => $arr($d['especialidades'] ?? []), 'zonas' => json_encode((object) ($d['zonas'] ?? [])), 'idiomas' => $arr($d['idiomas'] ?? ['es']),
             'bio' => $d['bio'] ?? null, 'publico' => $d['publico'] ?? false, 'updated_at' => now(), 'created_at' => now(),
+            ...(array_key_exists('foto_sha256', $d) ? ['foto_sha256' => $d['foto_sha256']] : []),
         ]);
 
         return $this->show($request);
@@ -61,7 +64,7 @@ class ProfesionalController extends Controller
         return response()->json(['data' => [
             'slug' => $p->slug, 'nombre' => $p->nombre_publico, 'profesion' => $p->profesion, 'matricula_declarada' => $p->matricula_declarada,
             'especialidades' => PgTextArray::parse($p->especialidades), 'zonas' => (object) json_decode($p->zonas, true), 'idiomas' => PgTextArray::parse($p->idiomas),
-            'bio' => $p->bio, 'foto_url' => null, 'establecimientos' => $ests->map(fn ($e) => ['slug' => $e->slug, 'nombre' => $e->nombre])->all(),
+            'bio' => $p->bio, 'foto_url' => ($foto = Fotos::publica($p->foto_sha256, $request->query('locale')))['url'] ?? null, 'foto' => $foto, 'establecimientos' => $ests->map(fn ($e) => ['slug' => $e->slug, 'nombre' => $e->nombre])->all(),
             'leyenda' => Leyenda::texto(Leyenda::locale($request->query('locale'))).' '.__('Matrícula declarada por el profesional, no verificada por TROPILLA.'),
         ]], 200, ['Cache-Control' => 'public, max-age=60'], JSON_UNESCAPED_UNICODE);
     }
@@ -82,6 +85,6 @@ class ProfesionalController extends Controller
     {
         return ['slug' => $p->slug, 'nombre_publico' => $p->nombre_publico, 'profesion' => $p->profesion, 'matricula_declarada' => $p->matricula_declarada,
             'especialidades' => PgTextArray::parse($p->especialidades), 'zonas' => (object) json_decode($p->zonas, true), 'idiomas' => PgTextArray::parse($p->idiomas),
-            'bio' => $p->bio, 'publico' => (bool) $p->publico];
+            'bio' => $p->bio, 'foto' => Fotos::privada($p->foto_sha256), 'publico' => (bool) $p->publico];
     }
 }

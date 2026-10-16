@@ -93,7 +93,7 @@ final class GestionarOferta
     {
         $pre = $this->evaluar($o)['precarga'];
 
-        return ContenidoOferta::publico($pre, $o->tipo, $o->cantidad, $o->mostrar ?? [], $o->condiciones ?? [], $o->textos ?? []);
+        return ContenidoOferta::publico($pre, $o->tipo, $o->cantidad, $o->mostrar ?? [], $o->condiciones ?? [], $o->textos ?? [], $o->fotos ?? []);
     }
 
     public function publicar(Oferta $o, User $u, bool $confirmarAvisos): Oferta
@@ -112,7 +112,7 @@ final class GestionarOferta
             if ($avisos !== [] && ! $confirmarAvisos) {
                 throw new ApiException(422, 'requiere_confirmacion', __('Revisá los avisos antes de publicar.'), [], array_map(fn ($a) => [...$a, 'detalle' => (object) []], $avisos));
             }
-            $contenido = ContenidoOferta::publico($pre, $o->tipo, $o->cantidad, $o->mostrar ?? [], $o->condiciones ?? [], $o->textos ?? []);
+            $contenido = ContenidoOferta::publico($pre, $o->tipo, $o->cantidad, $o->mostrar ?? [], $o->condiciones ?? [], $o->textos ?? [], $o->fotos ?? []);
             $version = ($o->publicacion_vigente ?? 0) + 1;
             $id = (string) Str::uuid7();
             $sobre = json_decode(json_encode([
