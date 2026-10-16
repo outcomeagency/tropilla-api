@@ -555,6 +555,24 @@ y los **campos aditivos** `tacto_fecha` y `dias_gestacion` (hoy − concepción,
 - Trampa: la autorización va en el FormRequest (`authorize()`) para que un no-miembro reciba 404 aunque mande un cuerpo inválido.
 - Verificado: 3 tests (ciclo alta/idempotencia/filtros/409/archivo/pull/snapshot, sugeridos sin dosis, 422 ×6 + nombre repetido, 403 lectura, 404 ajeno).
 
+## TPA-32 · Registrar aplicación sanitaria · ✅ (parte API)
+
+**Endpoints:** vía `POST …/eventos` / `POST /sync/push` (`sanidad.vacunacion`, `sanidad.desparasitacion`, `sanidad.tratamiento`);
+retiro en la ficha (`retiro_carne_hasta`/`retiro_leche_hasta`) y en el timeline (pestaña Sanidad).
+
+**Comentario del dev:**
+- Una sola puerta: `ReglasSanitarias` (nuevo, como `ReglasReproductivas`) lo llama `RegistrarEvento` para todo `sanidad.*`: producto del
+  establecimiento (`dependencia_faltante`, reintentable), enfermedad del catálogo, y advertencias `retiro_menor_al_producto`,
+  `envase_vencido`, `producto_otra_especie` (web → `422 requiere_confirmacion`; app → observación).
+- «A lote en un paso» (web): `CompletarSobreWeb` expande un lote no anónimo a sus animales activos con `lote_id` de contexto (lo mismo que
+  hace la app, sync §3.1.1) y copia al payload el **snapshot del producto** (nombre, principio activo, vía, retiros) **antes de hashear**;
+  editar el producto después no cambia lo aplicado. Solo para sanidad: en hacienda un evento a lote tiene semántica propia (pesaje promedio).
+- Potrero: el servidor resuelve los individuales presentes (propio o vía su lote) y los fija en `evento_animales` → el retiro llega a cada
+  ficha. Lote anónimo: queda a nivel lote (el retiro por lote se calcula en TPA-35). Tratamiento: el retiro corre desde el último día.
+- Cerrar la tarea del plan (`tarea_id`) llega con TPA-33 (las tareas todavía no existían). Por push el sobre no se toca (viene firmado).
+- Verificado: 4 tests (lote expandido + retiro 35 d en 3 fichas + snapshot inmutable, potrero con individual y lote trasladado + tratamiento,
+  3 advertencias + confirmación, 422 ×3 / 403 lectura / 404 ajeno).
+
 ---
 
 ## Desvíos del contrato
@@ -568,3 +586,4 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-48: `compromiso` en `AnimalResumen`; PDF público de oferta como `200 application/pdf` en vez de `302` a URL prefirmada.
 - TPA-43 (bugfix): catálogos con `especie_codigo` (+ alias `especie`); `/sync/catalogos` `private, no-cache`; identificador tolerante a ceros.
 - TPA-31: `ProductoSanitario.id` nullable + `codigo` en la base sugerida; `sugerido_codigo` en el input; filtro `especie`.
+- TPA-32: la web expande sanidad a lote no anónimo y completa el snapshot del producto en el payload; sujeto potrero resuelto a animales presentes.
