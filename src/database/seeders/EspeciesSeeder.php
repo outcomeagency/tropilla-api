@@ -159,6 +159,9 @@ class EspeciesSeeder extends Seeder
             ['desbaste_max_pct', '8', '8', 'pct'],
             ['edad_cambio_dientes_meses', 23, 16, 'meses'],
             ['edad_adulto_macho_meses', 24, 30, 'meses'],
+            // Edad a la que una cría sin evento de destete se considera destetada para las reglas de categoría (bugfix TPA-25:
+            // altas de crías grandes, p. ej. por push desde la app). Mismo valor que la semilla de la app.
+            ['edad_destete_meses', 7, 7, 'meses'],
             ['vaca_por_prenez', false, false, 'bool'],
             ['parto_vencido_tolerancia_dias', 15, 15, 'dias'],
             ['parto_proximo_aviso_dias', 15, 15, 'dias'],

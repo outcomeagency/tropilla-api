@@ -6,6 +6,7 @@ use App\Domain\Documentos\ConsultasDocumentos;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Hacienda\Actions\AltaRapida;
 use App\Domain\Hacienda\Actions\ConfirmarRecategorizaciones;
+use App\Domain\Hacienda\Actions\DescartarSugerencias;
 use App\Domain\Hacienda\ConsultasAnimales;
 use App\Domain\Hacienda\Eventos\ConsultasEventos;
 use App\Domain\Hacienda\Proyecciones\Identificaciones;
@@ -99,6 +100,21 @@ class AnimalController extends Controller
         $q = ConsultasEventos::timelineAnimal($a, $request->only(['tipo', 'modulo', 'incluir_anulados']));
 
         return CursorRespuesta::make($q->cursorPaginate(CursorRespuesta::limite($request), cursorName: 'cursor'), EventoResumenResource::class, $request);
+    }
+
+    /** Descartar sugerencias de recategorización en bloque (bugfix TPA-25): no se vuelven a proponer para ese animal. */
+    public function descartarSugerencias(Request $request, Establecimiento $establecimiento, DescartarSugerencias $descartar): JsonResponse
+    {
+        Gate::authorize('hacienda.crear', $establecimiento);
+        $datos = $request->validate([
+            'items' => ['required', 'array', 'min:1', 'max:500'],
+            'items.*.animal_id' => ['required', 'uuid', 'distinct'],
+            'items.*.categoria' => ['required', 'string', 'max:64'],
+        ]);
+        $ids = $descartar->handle($establecimiento, $request->user(), $datos['items']);
+        $filas = ConsultasAnimales::base($establecimiento->id)->whereIn('a.animal_id', $ids)->get();
+
+        return response()->json(['data' => AnimalResumenResource::collection($filas)->resolve($request)]);
     }
 
     /** Serie de pesos para la curva de la ficha (bugfix TPA-23): ascendente por fecha, desde el payload de los eventos. */

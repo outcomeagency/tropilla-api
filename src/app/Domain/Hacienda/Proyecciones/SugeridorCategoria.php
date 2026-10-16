@@ -26,11 +26,18 @@ final class SugeridorCategoria
             return [null, null];
         }
         $hoy ??= now();
+        $param = fn (string $clave) => Parametros::valor($clave, $s['especie_codigo'], $s['raza_codigo'] ?? null, $establecimientoId);
+        $edad = $s['fecha_nacimiento'] ? (int) floor(Carbon::parse($s['fecha_nacimiento'])->diffInMonths($hoy, true)) : null;
+        // Sin evento de destete, una cría que ya pasó la edad de destete (parámetro por especie) cuenta como destetada.
+        $destetado = (bool) $s['destetado'];
+        if (! $destetado && $edad !== null && is_numeric($edadDestete = $param('edad_destete_meses'))) {
+            $destetado = $edad >= (int) $edadDestete;
+        }
         $hechos = [
             'sexo' => $s['sexo'],
             'castrado' => $s['castrado'],
-            'edad_meses' => $s['fecha_nacimiento'] ? (int) floor(Carbon::parse($s['fecha_nacimiento'])->diffInMonths($hoy, true)) : null,
-            'destetado' => (bool) $s['destetado'],
+            'edad_meses' => $edad,
+            'destetado' => $destetado,
             'partos' => (int) $s['partos'],
             'prenada' => $s['estado_reproductivo'] === 'prenada',
             'denticion' => $s['denticion'],
@@ -38,7 +45,6 @@ final class SugeridorCategoria
             'peso_kg' => $s['peso_kg'] === null ? null : (float) $s['peso_kg'],
             'estado_reproductivo' => $s['estado_reproductivo'],
         ];
-        $param = fn (string $clave) => Parametros::valor($clave, $s['especie_codigo'], $s['raza_codigo'] ?? null, $establecimientoId);
 
         foreach ($this->reglas($s['especie_codigo'], $establecimientoId) as $r) {
             if (CondicionEvaluator::evaluar(json_decode($r->condiciones, true), $hechos, $param)) {
@@ -47,6 +53,12 @@ final class SugeridorCategoria
                 // hace el evento con `categoria_nueva`.
                 $orden = $this->orden();
                 if ($r->categoria_codigo === $s['categoria_codigo'] || ($orden[$r->categoria_codigo] ?? 0) < ($orden[$s['categoria_codigo']] ?? 0)) {
+                    return [null, null];
+                }
+
+                // Descartada por el usuario para este animal (bugfix TPA-25): no se sugiere mientras la regla siga dando eso.
+                if (isset($s['animal_id']) && DB::table('sugerencias_descartadas')->where('animal_id', $s['animal_id'])
+                    ->where('categoria_codigo', $r->categoria_codigo)->exists()) {
                     return [null, null];
                 }
 
