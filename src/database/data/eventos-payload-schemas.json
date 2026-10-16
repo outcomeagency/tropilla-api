@@ -1,0 +1,1599 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tropilla.app/schemas/eventos-payload/1",
+  "title": "TROPILLA — payload por tipo de evento (tipo_version 1)",
+  "$comment": "Seed de tipos_evento_versiones.json_schema (version 1). Tablas legibles en technical/modelo-datos.md §5: mantener ambos en sincronía (este JSON manda).",
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "decimal": {
+      "type": "string",
+      "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]*[1-9])?$",
+      "description": "Decimal canónico como string (sin ceros de más, sin exponente)"
+    },
+    "decimal_pos": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]*[1-9])?$"
+    },
+    "fecha": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "fechahora": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+    },
+    "codigo": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.\\-]{1,64}$",
+      "description": "Código de catálogo"
+    },
+    "texto": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "texto_corto": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "identificacion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tipo",
+        "valor"
+      ],
+      "properties": {
+        "tipo": {
+          "enum": [
+            "caravana_visual",
+            "caravana_oficial",
+            "rfid",
+            "tatuaje",
+            "marca_senal",
+            "registro_genealogico"
+          ]
+        },
+        "valor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "entidad": {
+          "$ref": "#/$defs/texto_corto",
+          "description": "Registro genealógico: AACB, SRA…"
+        },
+        "tipo_registro": {
+          "enum": [
+            "P1",
+            "P2",
+            "D",
+            "C",
+            "B1",
+            "B2",
+            "otro"
+          ]
+        },
+        "colocada_en": {
+          "$ref": "#/$defs/fecha"
+        }
+      }
+    },
+    "cruza": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "raza"
+        ],
+        "properties": {
+          "raza": {
+            "$ref": "#/$defs/codigo"
+          },
+          "pct": {
+            "$ref": "#/$defs/decimal_pos"
+          }
+        }
+      }
+    },
+    "animal_nuevo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "animal_id",
+        "especie",
+        "sexo",
+        "categoria"
+      ],
+      "properties": {
+        "animal_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "especie": {
+          "enum": [
+            "BOV",
+            "BUB"
+          ]
+        },
+        "sexo": {
+          "enum": [
+            "M",
+            "H"
+          ]
+        },
+        "categoria": {
+          "$ref": "#/$defs/codigo"
+        },
+        "raza": {
+          "$ref": "#/$defs/codigo"
+        },
+        "cruza": {
+          "$ref": "#/$defs/cruza"
+        },
+        "fecha_nacimiento": {
+          "$ref": "#/$defs/fecha"
+        },
+        "nacimiento_estimado": {
+          "type": "boolean"
+        },
+        "castrado": {
+          "type": "boolean"
+        },
+        "denticion": {
+          "enum": [
+            "leche",
+            "2",
+            "4",
+            "6_mas"
+          ]
+        },
+        "madre_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "padre_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "madre_externa": {
+          "$ref": "#/$defs/texto_corto"
+        },
+        "padre_externo": {
+          "$ref": "#/$defs/texto_corto"
+        },
+        "identificaciones": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/$defs/identificacion"
+          }
+        },
+        "senas": {
+          "$ref": "#/$defs/texto"
+        },
+        "foto": {
+          "$ref": "#/$defs/sha256"
+        },
+        "lote_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "potrero_id": {
+          "$ref": "#/$defs/uuid"
+        }
+      }
+    },
+    "cria": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "viva"
+      ],
+      "properties": {
+        "viva": {
+          "type": "boolean"
+        },
+        "animal": {
+          "$ref": "#/$defs/animal_nuevo",
+          "description": "Obligatorio si viva=true"
+        },
+        "sexo": {
+          "enum": [
+            "M",
+            "H"
+          ],
+          "description": "Si viva=false y no se da de alta"
+        },
+        "peso_kg": {
+          "$ref": "#/$defs/decimal_pos"
+        }
+      }
+    }
+  },
+  "tipos": {
+    "hacienda.alta": {
+      "nombre": "Alta de existencia (inventario inicial / alta rápida / importación)",
+      "fase": "MVP",
+      "sujetos": "animales | lote(conteo)",
+      "crea_animales": true,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "motivo": {
+            "enum": [
+              "inventario_inicial",
+              "alta_rapida",
+              "importacion"
+            ]
+          },
+          "animales": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "$ref": "#/$defs/animal_nuevo"
+            }
+          },
+          "importacion_id": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "required": [
+          "motivo"
+        ]
+      }
+    },
+    "hacienda.nacimiento": {
+      "nombre": "Nacimiento (madre fuera del sistema o en lote anónimo)",
+      "fase": "MVP",
+      "sujetos": "animales(nuevos) | lote(conteo)",
+      "crea_animales": true,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "crias": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "$ref": "#/$defs/cria"
+            }
+          },
+          "madre_id": {
+            "$ref": "#/$defs/uuid"
+          },
+          "madre_externa": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "facilidad": {
+            "enum": [
+              "normal",
+              "asistido",
+              "distocico",
+              "cesarea"
+            ]
+          }
+        }
+      }
+    },
+    "hacienda.ingreso": {
+      "nombre": "Ingreso / compra",
+      "fase": "MVP",
+      "sujetos": "animales(nuevos) | lote(conteo)",
+      "crea_animales": true,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "motivo": {
+            "enum": [
+              "compra",
+              "traslado_externo",
+              "capitalizacion",
+              "devolucion",
+              "otro"
+            ]
+          },
+          "origen": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "vendedor": {
+                "$ref": "#/$defs/texto_corto"
+              },
+              "establecimiento": {
+                "$ref": "#/$defs/texto_corto"
+              },
+              "renspa_declarado": {
+                "$ref": "#/$defs/texto_corto"
+              },
+              "localidad": {
+                "$ref": "#/$defs/texto_corto"
+              }
+            }
+          },
+          "animales": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "$ref": "#/$defs/animal_nuevo"
+            }
+          },
+          "dte_numero": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "documento_ids": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "$ref": "#/$defs/uuid"
+            }
+          },
+          "operacion_id": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "required": [
+          "motivo"
+        ]
+      }
+    },
+    "hacienda.egreso": {
+      "nombre": "Egreso / venta",
+      "fase": "MVP",
+      "sujetos": "animales | lote(conteo)",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "motivo": {
+            "enum": [
+              "venta",
+              "traslado_externo",
+              "entrega_contrato",
+              "otro"
+            ]
+          },
+          "comprador": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "destino": {
+            "enum": [
+              "faena",
+              "invernada",
+              "cria",
+              "exportacion",
+              "otro"
+            ]
+          },
+          "destino_establecimiento": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "renspa_destino_declarado": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "dte_numero": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "documento_ids": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "$ref": "#/$defs/uuid"
+            }
+          },
+          "operacion_id": {
+            "$ref": "#/$defs/uuid"
+          },
+          "contrato_id": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "required": [
+          "motivo"
+        ]
+      }
+    },
+    "hacienda.traslado": {
+      "nombre": "Traslado interno (potrero)",
+      "fase": "MVP",
+      "sujetos": "animales | lote",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "potrero_destino_id": {
+            "$ref": "#/$defs/uuid"
+          },
+          "potrero_origen_id": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "required": [
+          "potrero_destino_id"
+        ]
+      }
+    },
+    "hacienda.cambio_lote": {
+      "nombre": "Cambio de lote",
+      "fase": "MVP",
+      "sujetos": "animales",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "lote_destino_id": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "required": [
+          "lote_destino_id"
+        ]
+      }
+    },
+    "hacienda.identificacion": {
+      "nombre": "Identificación / reposición",
+      "fase": "MVP",
+      "sujetos": "animales (1)",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "identificacion": {
+            "$ref": "#/$defs/identificacion"
+          },
+          "accion": {
+            "enum": [
+              "colocacion",
+              "reposicion",
+              "retiro"
+            ]
+          },
+          "reemplaza": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tipo",
+              "valor"
+            ],
+            "properties": {
+              "tipo": {
+                "$ref": "#/$defs/identificacion/properties/tipo"
+              },
+              "valor": {
+                "type": "string",
+                "maxLength": 64
+              }
+            }
+          }
+        },
+        "required": [
+          "identificacion",
+          "accion"
+        ]
+      }
+    },
+    "hacienda.pesaje": {
+      "nombre": "Pesaje",
+      "fase": "MVP",
+      "sujetos": "animales | lote",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "modo": {
+            "enum": [
+              "individual",
+              "promedio"
+            ]
+          },
+          "peso_kg": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "cantidad": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "peso_min_kg": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "peso_max_kg": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "desbaste": {
+            "type": "boolean"
+          },
+          "desbaste_pct": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "metodo": {
+            "enum": [
+              "balanza",
+              "cinta",
+              "estimado"
+            ]
+          }
+        },
+        "required": [
+          "modo",
+          "peso_kg",
+          "metodo"
+        ]
+      }
+    },
+    "hacienda.condicion_corporal": {
+      "nombre": "Condición corporal",
+      "fase": "MVP",
+      "sujetos": "animales | lote",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "valor": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "escala": {
+            "enum": [
+              "1-5",
+              "1-9"
+            ]
+          }
+        },
+        "required": [
+          "valor",
+          "escala"
+        ]
+      }
+    },
+    "hacienda.recategorizacion": {
+      "nombre": "Recategorización",
+      "fase": "MVP",
+      "sujetos": "animales | lote(conteo)",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "categoria_nueva": {
+            "$ref": "#/$defs/codigo"
+          },
+          "movimientos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "de",
+                "a",
+                "cantidad"
+              ],
+              "properties": {
+                "de": {
+                  "$ref": "#/$defs/codigo"
+                },
+                "a": {
+                  "$ref": "#/$defs/codigo"
+                },
+                "cantidad": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "motivo": {
+            "enum": [
+              "edad",
+              "destete",
+              "castracion",
+              "servicio",
+              "parto",
+              "denticion",
+              "manual"
+            ]
+          },
+          "sugerida": {
+            "type": "boolean"
+          },
+          "regla_id": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          }
+        },
+        "required": [
+          "motivo"
+        ]
+      }
+    },
+    "hacienda.castracion": {
+      "nombre": "Castración",
+      "fase": "MVP",
+      "sujetos": "animales",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "metodo": {
+            "enum": [
+              "quirurgico",
+              "goma",
+              "burdizzo",
+              "otro"
+            ]
+          },
+          "categoria_nueva": {
+            "$ref": "#/$defs/codigo"
+          }
+        }
+      }
+    },
+    "hacienda.muerte": {
+      "nombre": "Muerte",
+      "fase": "MVP",
+      "sujetos": "animales | lote(conteo)",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "causa": {
+            "$ref": "#/$defs/codigo"
+          },
+          "causa_otra": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "hallazgos": {
+            "$ref": "#/$defs/texto"
+          }
+        },
+        "required": [
+          "causa"
+        ]
+      }
+    },
+    "hacienda.perdida": {
+      "nombre": "Pérdida / robo",
+      "fase": "MVP",
+      "sujetos": "animales | lote(conteo)",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "tipo": {
+            "enum": [
+              "perdida",
+              "robo",
+              "faltante"
+            ]
+          },
+          "circunstancias": {
+            "$ref": "#/$defs/texto"
+          },
+          "denuncia_numero": {
+            "$ref": "#/$defs/texto_corto"
+          }
+        },
+        "required": [
+          "tipo"
+        ]
+      }
+    },
+    "hacienda.faena": {
+      "nombre": "Faena",
+      "fase": "MVP",
+      "sujetos": "animales | lote(conteo)",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "frigorifico": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "tropa_numero": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "peso_vivo_kg": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "pcc_kg": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "pcf_kg": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "tipificacion": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "categoria_faena": {
+            "$ref": "#/$defs/codigo"
+          },
+          "decomisos": {
+            "$ref": "#/$defs/texto"
+          },
+          "operacion_id": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "required": [
+          "frigorifico"
+        ]
+      }
+    },
+    "hacienda.denticion": {
+      "nombre": "Dentición",
+      "fase": "MVP",
+      "sujetos": "animales",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "denticion": {
+            "enum": [
+              "leche",
+              "2",
+              "4",
+              "6_mas"
+            ]
+          }
+        },
+        "required": [
+          "denticion"
+        ]
+      }
+    },
+    "hacienda.actualizacion_ficha": {
+      "nombre": "Actualización de datos del animal",
+      "fase": "MVP",
+      "sujetos": "animales (1)",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cambios": {
+            "type": "object",
+            "additionalProperties": false,
+            "minProperties": 1,
+            "properties": {
+              "raza": {
+                "$ref": "#/$defs/animal_nuevo/properties/raza"
+              },
+              "cruza": {
+                "$ref": "#/$defs/animal_nuevo/properties/cruza"
+              },
+              "fecha_nacimiento": {
+                "$ref": "#/$defs/animal_nuevo/properties/fecha_nacimiento"
+              },
+              "nacimiento_estimado": {
+                "$ref": "#/$defs/animal_nuevo/properties/nacimiento_estimado"
+              },
+              "madre_id": {
+                "$ref": "#/$defs/animal_nuevo/properties/madre_id"
+              },
+              "padre_id": {
+                "$ref": "#/$defs/animal_nuevo/properties/padre_id"
+              },
+              "madre_externa": {
+                "$ref": "#/$defs/animal_nuevo/properties/madre_externa"
+              },
+              "padre_externo": {
+                "$ref": "#/$defs/animal_nuevo/properties/padre_externo"
+              },
+              "senas": {
+                "$ref": "#/$defs/animal_nuevo/properties/senas"
+              },
+              "foto": {
+                "$ref": "#/$defs/animal_nuevo/properties/foto"
+              }
+            }
+          }
+        },
+        "required": [
+          "cambios"
+        ]
+      }
+    },
+    "hacienda.individualizacion": {
+      "nombre": "Individualización desde lote anónimo",
+      "fase": "MVP",
+      "sujetos": "lote(conteo)",
+      "crea_animales": true,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "animales": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "$ref": "#/$defs/animal_nuevo"
+            }
+          }
+        },
+        "required": [
+          "animales"
+        ]
+      }
+    },
+    "reproduccion.celo": {
+      "nombre": "Celo detectado",
+      "fase": "F2",
+      "sujetos": "animales",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "fuente": {
+            "enum": [
+              "visual",
+              "retajo",
+              "podometro",
+              "otro"
+            ]
+          }
+        },
+        "required": [
+          "fuente"
+        ]
+      }
+    },
+    "reproduccion.servicio_natural": {
+      "nombre": "Servicio natural",
+      "fase": "MVP",
+      "sujetos": "animales | lote",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "inicio": {
+            "$ref": "#/$defs/fecha"
+          },
+          "fin": {
+            "$ref": "#/$defs/fecha"
+          },
+          "toro_ids": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "$ref": "#/$defs/uuid"
+            }
+          },
+          "toros_externos": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "$ref": "#/$defs/texto_corto"
+            }
+          },
+          "lote_toros_id": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "required": [
+          "inicio"
+        ]
+      }
+    },
+    "reproduccion.inseminacion": {
+      "nombre": "Inseminación (IA / IATF)",
+      "fase": "MVP",
+      "sujetos": "animales",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "tipo": {
+            "enum": [
+              "ia",
+              "iatf"
+            ]
+          },
+          "semen": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "toro_id": {
+                "$ref": "#/$defs/uuid"
+              },
+              "toro_nombre": {
+                "$ref": "#/$defs/texto_corto"
+              },
+              "raza": {
+                "$ref": "#/$defs/codigo"
+              },
+              "centro": {
+                "$ref": "#/$defs/texto_corto"
+              },
+              "partida": {
+                "$ref": "#/$defs/texto_corto"
+              }
+            }
+          },
+          "inseminador": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "protocolo": {
+            "$ref": "#/$defs/codigo"
+          },
+          "dia_protocolo": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          }
+        },
+        "required": [
+          "tipo"
+        ]
+      }
+    },
+    "reproduccion.inicio_iatf": {
+      "nombre": "Inicio de protocolo IATF",
+      "fase": "F2",
+      "sujetos": "animales | lote",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "protocolo": {
+            "$ref": "#/$defs/codigo"
+          },
+          "d0": {
+            "$ref": "#/$defs/fecha"
+          }
+        },
+        "required": [
+          "protocolo",
+          "d0"
+        ]
+      }
+    },
+    "reproduccion.tacto": {
+      "nombre": "Tacto / ecografía",
+      "fase": "MVP",
+      "sujetos": "animales",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "metodo": {
+            "enum": [
+              "tacto",
+              "ecografia"
+            ]
+          },
+          "resultado": {
+            "enum": [
+              "vacia",
+              "prenada"
+            ]
+          },
+          "dias_gestacion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "tamano": {
+            "enum": [
+              "chica",
+              "mediana",
+              "grande"
+            ]
+          },
+          "veterinario": {
+            "$ref": "#/$defs/texto_corto"
+          }
+        },
+        "required": [
+          "metodo",
+          "resultado"
+        ]
+      }
+    },
+    "reproduccion.parto": {
+      "nombre": "Parto",
+      "fase": "MVP",
+      "sujetos": "animales (madre, 1)",
+      "crea_animales": true,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "tipo": {
+            "enum": [
+              "normal",
+              "asistido",
+              "distocico",
+              "cesarea"
+            ]
+          },
+          "crias": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "$ref": "#/$defs/cria"
+            }
+          },
+          "servicio_evento_id": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "required": [
+          "tipo",
+          "crias"
+        ]
+      }
+    },
+    "reproduccion.aborto": {
+      "nombre": "Aborto",
+      "fase": "MVP",
+      "sujetos": "animales",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "dias_gestacion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "causa_presunta": {
+            "$ref": "#/$defs/texto_corto"
+          }
+        }
+      }
+    },
+    "reproduccion.destete": {
+      "nombre": "Destete",
+      "fase": "MVP",
+      "sujetos": "animales | lote(conteo)",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "tipo": {
+            "enum": [
+              "tradicional",
+              "precoz",
+              "hiperprecoz"
+            ]
+          },
+          "peso_kg": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "categoria_nueva": {
+            "$ref": "#/$defs/codigo"
+          }
+        },
+        "required": [
+          "tipo"
+        ]
+      }
+    },
+    "reproduccion.evaluacion_toro": {
+      "nombre": "Evaluación de toro",
+      "fase": "F2",
+      "sujetos": "animales",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "circunferencia_escrotal_cm": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "evaluacion_semen": {
+            "$ref": "#/$defs/texto"
+          },
+          "resultado": {
+            "enum": [
+              "apto",
+              "no_apto",
+              "dudoso"
+            ]
+          }
+        },
+        "required": [
+          "resultado"
+        ]
+      }
+    },
+    "reproduccion.control_lechero": {
+      "nombre": "Control lechero",
+      "fase": "F3",
+      "sujetos": "animales",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "litros": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "grasa_pct": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "proteina_pct": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "lactancia_numero": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          }
+        },
+        "required": [
+          "litros"
+        ]
+      }
+    },
+    "reproduccion.secado": {
+      "nombre": "Secado",
+      "fase": "F3",
+      "sujetos": "animales",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      }
+    },
+    "sanidad.vacunacion": {
+      "nombre": "Vacunación",
+      "fase": "MVP",
+      "sujetos": "animales | lote | potrero",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "producto_id": {
+            "$ref": "#/$defs/uuid"
+          },
+          "producto_nombre": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "enfermedad": {
+            "$ref": "#/$defs/codigo"
+          },
+          "dosis_aplicada": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "via": {
+            "enum": [
+              "subcutanea",
+              "intramuscular",
+              "oral",
+              "pour_on",
+              "intranasal",
+              "otra"
+            ]
+          },
+          "numero_dosis": {
+            "enum": [
+              "primera",
+              "refuerzo",
+              "anual",
+              "unica"
+            ]
+          },
+          "envase_lote": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "envase_vence": {
+            "$ref": "#/$defs/fecha"
+          },
+          "vacunador": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "campana": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "retiro_carne_dias": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "retiro_leche_dias": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "tarea_id": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "required": [
+          "producto_nombre",
+          "enfermedad"
+        ]
+      }
+    },
+    "sanidad.desparasitacion": {
+      "nombre": "Desparasitación",
+      "fase": "MVP",
+      "sujetos": "animales | lote | potrero",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "producto_id": {
+            "$ref": "#/$defs/uuid"
+          },
+          "producto_nombre": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "principio_activo": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "tipo": {
+            "enum": [
+              "interno",
+              "externo",
+              "ambos"
+            ]
+          },
+          "dosis_aplicada": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "peso_dosificacion_kg": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "metodo_dosificacion": {
+            "enum": [
+              "individual",
+              "por_el_mas_pesado"
+            ]
+          },
+          "retiro_carne_dias": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "retiro_leche_dias": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "tarea_id": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "required": [
+          "producto_nombre",
+          "tipo"
+        ]
+      }
+    },
+    "sanidad.tratamiento": {
+      "nombre": "Tratamiento",
+      "fase": "MVP",
+      "sujetos": "animales | lote",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "diagnostico_presuntivo": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "producto_id": {
+            "$ref": "#/$defs/uuid"
+          },
+          "producto_nombre": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "dosis_aplicada": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "duracion_dias": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "veterinario": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "retiro_carne_dias": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "retiro_leche_dias": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "tarea_id": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "required": [
+          "diagnostico_presuntivo"
+        ]
+      }
+    },
+    "sanidad.prueba_diagnostica": {
+      "nombre": "Prueba diagnóstica",
+      "fase": "MVP",
+      "sujetos": "animales",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "prueba": {
+            "$ref": "#/$defs/codigo"
+          },
+          "lectura_0h_mm": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "lectura_72h_mm": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "resultado": {
+            "enum": [
+              "negativo",
+              "sospechoso",
+              "positivo",
+              "no_concluyente"
+            ]
+          },
+          "resultado_origen": {
+            "enum": [
+              "calculado",
+              "declarado"
+            ]
+          },
+          "umbrales_version": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "laboratorio": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "protocolo_numero": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "tarea_id": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "required": [
+          "prueba",
+          "resultado",
+          "resultado_origen"
+        ]
+      }
+    },
+    "sanidad.analisis_laboratorio": {
+      "nombre": "Análisis de laboratorio",
+      "fase": "MVP",
+      "sujetos": "animales | lote",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "tipo": {
+            "enum": [
+              "coprologico",
+              "frotis",
+              "ifd",
+              "mat",
+              "serologia",
+              "otro"
+            ]
+          },
+          "muestra": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "laboratorio": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "resultado_texto": {
+            "$ref": "#/$defs/texto"
+          },
+          "documento_ids": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "$ref": "#/$defs/uuid"
+            }
+          }
+        },
+        "required": [
+          "tipo"
+        ]
+      }
+    },
+    "sanidad.observacion_clinica": {
+      "nombre": "Observación clínica",
+      "fase": "MVP",
+      "sujetos": "animales | lote",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "signos": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "$ref": "#/$defs/texto_corto"
+            }
+          },
+          "descripcion": {
+            "$ref": "#/$defs/texto"
+          }
+        }
+      }
+    },
+    "sanidad.bienestar": {
+      "nombre": "Evaluación de bienestar",
+      "fase": "F2",
+      "sujetos": "animales | lote",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "condicion_corporal": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "lesiones": {
+            "type": "array",
+            "maxItems": 1000,
+            "items": {
+              "$ref": "#/$defs/texto_corto"
+            }
+          },
+          "distancia_huida_m": {
+            "$ref": "#/$defs/decimal_pos"
+          }
+        }
+      }
+    },
+    "establecimiento.interdiccion": {
+      "nombre": "Interdicción sanitaria",
+      "fase": "MVP",
+      "sujetos": "establecimiento",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "motivo": {
+            "enum": [
+              "rabia",
+              "otra"
+            ]
+          },
+          "motivo_otro": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "inicio": {
+            "$ref": "#/$defs/fecha"
+          },
+          "levantamiento_estimado": {
+            "$ref": "#/$defs/fecha"
+          },
+          "documento_id": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "required": [
+          "motivo",
+          "inicio"
+        ]
+      }
+    },
+    "establecimiento.levantamiento_interdiccion": {
+      "nombre": "Levantamiento de interdicción",
+      "fase": "MVP",
+      "sujetos": "establecimiento",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "interdiccion_evento_id": {
+            "$ref": "#/$defs/uuid"
+          },
+          "fecha": {
+            "$ref": "#/$defs/fecha"
+          },
+          "documento_id": {
+            "$ref": "#/$defs/uuid"
+          }
+        },
+        "required": [
+          "interdiccion_evento_id",
+          "fecha"
+        ]
+      }
+    },
+    "establecimiento.recorrida": {
+      "nombre": "Recorrida / observación de potrero",
+      "fase": "MVP",
+      "sujetos": "potrero | establecimiento",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "estado_recurso": {
+            "enum": [
+              "bueno",
+              "regular",
+              "malo"
+            ]
+          },
+          "aguadas": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "alambrados": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "notas": {
+            "$ref": "#/$defs/texto"
+          }
+        }
+      }
+    },
+    "establecimiento.suplementacion": {
+      "nombre": "Suplementación",
+      "fase": "F3",
+      "sujetos": "lote",
+      "crea_animales": false,
+      "payload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "alimento": {
+            "$ref": "#/$defs/texto_corto"
+          },
+          "kg_cab_dia": {
+            "$ref": "#/$defs/decimal_pos"
+          },
+          "desde": {
+            "$ref": "#/$defs/fecha"
+          },
+          "hasta": {
+            "$ref": "#/$defs/fecha"
+          }
+        },
+        "required": [
+          "alimento",
+          "kg_cab_dia",
+          "desde"
+        ]
+      }
+    }
+  }
+}
