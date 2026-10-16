@@ -1,50 +1,61 @@
 <?php
 
+use App\Domain\Establecimientos\Actions\RealizarOnboarding;
+use App\Domain\Establecimientos\Enums\Rol;
+use App\Domain\Establecimientos\Models\Establecimiento;
+use App\Domain\Establecimientos\Models\Membresia;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
-
-/*
-|--------------------------------------------------------------------------
-| Test Case
-|--------------------------------------------------------------------------
-|
-| The closure you provide to your test functions is always bound to a specific PHPUnit test
-| case class. By default, that class is "PHPUnit\Framework\TestCase". Of course, you may
-| need to change it using the "pest()" function to bind different classes or traits.
-|
-*/
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature');
 
 /*
-|--------------------------------------------------------------------------
-| Expectations
-|--------------------------------------------------------------------------
-|
-| When you're writing tests, you often need to check that values meet certain conditions. The
-| "expect()" function gives you access to a set of "expectations" methods that you can use
-| to assert different things. Of course, you may extend the Expectation API at any time.
-|
+| Helpers de tenencia para los tests de feature.
 */
 
-expect()->extend('toBeOne', function () {
-    return $this->toBe(1);
-});
-
-/*
-|--------------------------------------------------------------------------
-| Functions
-|--------------------------------------------------------------------------
-|
-| While Pest is very powerful out-of-the-box, you may have some testing code specific to your
-| project that you don't want to repeat in every file. Here you can also expose helpers as
-| global functions to help you to reduce the number of lines of code in your test files.
-|
-*/
-
-function something()
+/** Datos válidos de EstablecimientoInput (Corrientes, Mercedes). */
+function datosEstablecimiento(array $extra = []): array
 {
-    // ..
+    return array_replace_recursive([
+        'nombre' => 'La Esperanza',
+        'provincia_codigo' => '18',
+        'departamento_codigo' => '18105',
+        'localidad' => 'Mercedes',
+        'actividades' => ['cria', 'recria'],
+        'especies' => ['BOV', 'BUB'],
+    ], $extra);
+}
+
+/** Crea productor + establecimiento por la Action real; `$dueno` queda dueño. */
+function crearEstablecimiento(?User $dueno = null, array $extra = []): Establecimiento
+{
+    $dueno ??= User::factory()->create();
+
+    return app(RealizarOnboarding::class)->handle($dueno, [
+        'productor' => ['tipo' => 'sociedad', 'nombre' => 'Agropecuaria Don Ramón S.A.'],
+        'establecimiento' => datosEstablecimiento($extra),
+    ]);
+}
+
+/** Usuario nuevo con membresía activa del rol dado en el establecimiento. */
+function miembro(Establecimiento $establecimiento, Rol|string $rol, ?User $usuario = null): User
+{
+    $usuario ??= User::factory()->create();
+    Membresia::query()->create([
+        'establecimiento_id' => $establecimiento->id,
+        'usuario_id' => $usuario->id,
+        'rol' => $rol instanceof Rol ? $rol : Rol::from($rol),
+        'aceptada_en' => now(),
+    ]);
+
+    return $usuario;
+}
+
+function duenoDe(Establecimiento $establecimiento): User
+{
+    return Membresia::query()->activas()->where('establecimiento_id', $establecimiento->id)
+        ->where('rol', 'dueno')->sole()->usuario;
 }

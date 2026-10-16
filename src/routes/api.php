@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\DispositivoController;
+use App\Http\Controllers\Api\V1\Establecimientos\EstablecimientoController;
+use App\Http\Controllers\Api\V1\Establecimientos\OnboardingController;
+use App\Http\Controllers\Api\V1\Establecimientos\ProductorController;
 use App\Http\Controllers\Api\V1\HealthController;
 use Illuminate\Support\Facades\Route;
 
@@ -31,5 +34,14 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::put('dispositivos/{dispositivo}', [DispositivoController::class, 'update'])->name('dispositivos.update');
             Route::post('dispositivos/{dispositivo}/revocar', [DispositivoController::class, 'revocar'])->name('dispositivos.revocar');
         });
+    });
+
+    Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
+        // Establecimientos (TPA-10, 12, 13)
+        Route::post('onboarding', OnboardingController::class)->name('onboarding');
+        Route::get('productores/{productor}', [ProductorController::class, 'show'])->name('productores.show');
+        Route::patch('productores/{productor}', [ProductorController::class, 'update'])->name('productores.update');
+        Route::post('establecimientos', [EstablecimientoController::class, 'store'])->name('establecimientos.store');
+        Route::get('establecimientos/{establecimiento}', [EstablecimientoController::class, 'show'])->name('establecimientos.show');
     });
 });
