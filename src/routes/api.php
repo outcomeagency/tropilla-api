@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Establecimientos\InvitacionController;
 use App\Http\Controllers\Api\V1\Establecimientos\MembresiaController;
 use App\Http\Controllers\Api\V1\Establecimientos\OnboardingController;
 use App\Http\Controllers\Api\V1\Establecimientos\ProductorController;
+use App\Http\Controllers\Api\V1\Hacienda\PotreroController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Sistema\AuditoriaController;
 use Illuminate\Support\Facades\Route;
@@ -63,6 +64,13 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::post('invitaciones', [InvitacionController::class, 'store'])->name('invitaciones.store');
             Route::post('invitaciones/{invitacion}/revocar', [InvitacionController::class, 'revocar'])->name('invitaciones.revocar');
             Route::get('auditoria', AuditoriaController::class)->name('auditoria');
+
+            // Potreros (TPA-14)
+            Route::get('potreros', [PotreroController::class, 'index'])->name('potreros.index');
+            Route::post('potreros', [PotreroController::class, 'store'])->name('potreros.store');
+            Route::get('potreros/{potrero}', [PotreroController::class, 'show'])->name('potreros.show');
+            Route::patch('potreros/{potrero}', [PotreroController::class, 'update'])->name('potreros.update');
+            Route::post('potreros/{potrero}/archivar', [PotreroController::class, 'archivar'])->name('potreros.archivar');
         });
     });
 });

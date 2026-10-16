@@ -4,6 +4,7 @@ namespace App\Domain\Establecimientos\Models;
 
 use App\Casts\PgTextArray;
 use App\Casts\PuntoGeografico;
+use App\Domain\Hacienda\Models\Potrero;
 use App\Support\Concerns\BindingHijosEnEspanol;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -72,6 +73,12 @@ class Establecimiento extends Model
     public function membresias(): HasMany
     {
         return $this->hasMany(Membresia::class);
+    }
+
+    /** @return HasMany<Potrero, $this> */
+    public function potreros(): HasMany
+    {
+        return $this->hasMany(Potrero::class);
     }
 
     /** @return HasMany<Invitacion, $this> */
