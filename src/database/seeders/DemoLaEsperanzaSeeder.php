@@ -62,6 +62,7 @@ class DemoLaEsperanzaSeeder extends Seeder
             $this->bucerrasDestetadas();
             $this->bubillosEnVenta();
             $this->sanidadDeLotes();
+            $this->ofertaBubillos();
         });
 
         $this->command?->info('Demo La Esperanza cargado: '.self::EMAIL.' / '.self::PASSWORD);
@@ -271,6 +272,22 @@ class DemoLaEsperanzaSeeder extends Seeder
         $this->evento('sanidad.vacunacion', ['tipo' => 'lote', 'lote_id' => $this->lotes['bucerros'], 'conteo' => ['BUB_BUCERRO' => 12]], [
             'producto_nombre' => 'Vacuna antirrábica', 'enfermedad' => 'rabia', 'numero_dosis' => 'primera', 'via' => 'subcutanea',
         ], now()->subDays(27)->toDateString());
+    }
+
+    /** Oferta publicada del lote en venta (ficha pública /o/{codigo}, hasheada y encadenada). */
+    private function ofertaBubillos(): void
+    {
+        $gestionar = app(\App\Domain\Comercial\Actions\GestionarOferta::class);
+        $oferta = $gestionar->crear($this->est, $this->dueno, [
+            'tipo' => 'gordo', 'lote_id' => $this->lotes['bubillos'],
+            'condiciones' => ['modalidad' => 'en_pie', 'mostrar_precio' => false, 'lugar_carga' => 'General Paz, Corrientes'],
+            'textos' => [
+                'es' => ['titulo' => '30 bubillos Mediterráneos', 'descripcion' => 'Bubillos de 24 a 28 meses, terminados a pasto en humedales del NEA. Pesada en balanza del 10/10/2026.'],
+                'en' => ['titulo' => '30 Mediterranean buffalo steers', 'descripcion' => '24–28 month old buffalo steers, grass-finished in NEA wetlands. Scale-weighed on 2026-10-10.'],
+                'pt' => ['titulo' => '30 bubilhos Mediterrâneos', 'descripcion' => 'Bubilhos de 24 a 28 meses, terminados a pasto em áreas úmidas do NEA.'],
+            ],
+        ]);
+        $gestionar->publicar($oferta, $this->dueno, true);
     }
 
     /** @param list<array<string, mixed>> $animales */
