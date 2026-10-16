@@ -8149,6 +8149,15 @@ components:
           - {type: 'null'}
         huella: {$ref: '#/components/schemas/Hash'}
         confianza: {type: string, enum: [declarado, integridad_registrada]}
+        animal_ids:
+          type: array
+          description: 'Aditivo TPA-46: animales del trato (compromiso «vendido»)'
+          items: {$ref: '#/components/schemas/Uuid'}
+        oferta_id:
+          oneOf:
+          - {$ref: '#/components/schemas/Uuid'}
+          - {type: 'null'}
+          description: 'Aditivo TPA-46: oferta de origen (pasa a vendida)'
       additionalProperties: false
     OperacionInput:
       type: object
@@ -8175,8 +8184,31 @@ components:
           - {type: 'null'}
         motivo: {type: [string, 'null']}
         generar_pdf: {type: boolean}
+        id: {type: string, description: 'Aditivo: UUID del cliente (reintento idempotente)'}
+        animal_ids:
+          type: array
+          items: {$ref: '#/components/schemas/Uuid'}
+          description: 'Aditivo TPA-46: si falta y hay `evento_raiz_id`, se toman los animales del egreso/faena'
+        oferta_id:
+          oneOf:
+          - {$ref: '#/components/schemas/Uuid'}
+          - {type: 'null'}
+        lote_id:
+          oneOf:
+          - {$ref: '#/components/schemas/Uuid'}
+          - {type: 'null'}
+        contrato_id:
+          oneOf:
+          - {$ref: '#/components/schemas/Uuid'}
+          - {type: 'null'}
+        confirmar_advertencias: {type: boolean, description: 'Retiro vigente / reactor → 422 requiere_confirmacion hasta confirmar'}
       required: [tipo, fecha, especie, categoria, cantidad, trato, liquidacion]
       additionalProperties: false
+      description: '`trato`: comprador, destino (catálogo), lugar_pesada, hora_pesada (HH:MM), modalidad (en_pie|al_gancho, obligatoria),
+        desbaste_pct, tolerancias, plazo_pago_dias, flete_a_cargo (vendedor|comprador), comision_pct, intermediario. `liquidacion`:
+        peso_bruto_kg y precio_kg obligatorios; desbaste/rendimiento/iva/flete/arranque/seguro/comision/moneda opcionales — el servidor
+        calcula las líneas con la fórmula del simulador (TPA-45); con flete del comprador no se descuenta. 409 `comprometido` si un animal
+        está en un contrato a futuro o ya vendido en otra operación. `motivo` obligatorio en correcciones.'
     PrecioReferencia:
       type: object
       properties:
