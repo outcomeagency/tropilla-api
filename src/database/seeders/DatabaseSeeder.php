@@ -24,9 +24,8 @@ class DatabaseSeeder extends Seeder
                 ['nombre' => 'Dev TROPILLA', 'password' => 'password', 'email_verificado_en' => now()],
             );
             // Demo «La Esperanza» (demo@tropilla.ar / tropilla-demo) para el front y la app. Idempotente.
-            $this->call(DemoLaEsperanzaSeeder::class);
-            // Directorio con fotos (bugfix TPA-54): 5 establecimientos más, ofertas y profesionales. Idempotente.
-            $this->call(DemoDirectorioSeeder::class);
+            // Ficha regional, directorio y datos sintéticos ampliados; seguro para repetir y para producción con --force.
+            $this->call(DemoRegionalSeeder::class);
         }
     }
 }

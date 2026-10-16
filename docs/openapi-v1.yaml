@@ -6867,6 +6867,10 @@ components:
             lon: {$ref: '#/components/schemas/Decimal'}
           description: 'Privada: solo dueño/admin'
           additionalProperties: false
+        lindero_geojson:
+          type: [object, 'null']
+          additionalProperties: true
+          description: 'Geometría privada del establecimiento en GeoJSON Polygon/MultiPolygon.'
         superficie_ha:
           oneOf:
           - {$ref: '#/components/schemas/Decimal'}
@@ -6924,6 +6928,12 @@ components:
           items: {type: string}
         historia: {type: [string, 'null']}
         ficha_ampliada: {type: object, additionalProperties: true, description: 'Datos extendidos por bloques (sanidad, superficies, potreros, infraestructura, personal, rodeo, clima y logística).'}
+        lindero_geojson:
+          type: [object, 'null']
+          properties:
+            type: {type: string, enum: [Polygon, MultiPolygon]}
+            coordinates: {type: array, items: {type: array}}
+          description: 'Lindero privado en GeoJSON WGS84.'
         visibilidad_ficha: {type: object, additionalProperties: {type: boolean}, description: 'Opt-in público por bloque; los campos no marcados permanecen privados.'}
         row_version: {type: string, description: Obligatorio en PATCH}
       additionalProperties: false
@@ -9211,6 +9221,9 @@ components:
         secciones:
           type: object
           properties:
+            ficha_establecimiento:
+              type: object
+              additionalProperties: {type: object, additionalProperties: {oneOf: [{type: string}, {type: number}]}}
             portada:
               type: [object, 'null']
               properties:

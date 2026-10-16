@@ -76,13 +76,38 @@ it('guarda ficha extendida con visibilidad privada por defecto y filtra bloques 
         'ficha_ampliada' => [
             'sanidad' => ['brucelosis' => ['estado' => 'libre', 'vence' => '2027-04-01']],
             'clima' => ['precipitacion_media_mm' => 1350, 'fuente' => 'INTA', 'fecha' => '2026-10-16'],
+            'personal' => ['equipo' => '7', 'encargado' => 'Nombre reservado'],
+            'sanidad_renspa' => ['renspa' => '18.063.0.00421/00', 'renspa_vencimiento' => '2027-06-30'],
         ],
-        'visibilidad_ficha' => ['clima' => true],
+        'visibilidad_ficha' => ['clima' => true, 'personal' => true, 'sanidad_renspa' => true],
     ])->assertOk()->assertJsonPath('data.ficha_ampliada.sanidad.brucelosis.estado', 'libre')
         ->assertJsonPath('data.ficha_ampliada.clima.fuente', 'INTA');
 
     Sanctum::actingAs(miembro($this->est, 'lectura'));
     $this->getJson($this->url)->assertOk()
         ->assertJsonPath('data.ficha_ampliada.clima.fuente', 'INTA')
-        ->assertJsonMissingPath('data.ficha_ampliada.sanidad');
+        ->assertJsonMissingPath('data.ficha_ampliada.sanidad')
+        ->assertJsonPath('data.ficha_ampliada.personal.equipo', '7')
+        ->assertJsonMissingPath('data.ficha_ampliada.personal.encargado')
+        ->assertJsonMissingPath('data.ficha_ampliada.sanidad_renspa');
+});
+
+it('persiste el lindero como geometría PostGIS privada y lo expone como GeoJSON al dueño', function () {
+    Sanctum::actingAs(duenoDe($this->est));
+    $geojson = ['type' => 'Polygon', 'coordinates' => [[[-58.1, -29.1], [-58.0, -29.1], [-58.0, -29.0], [-58.1, -29.1]]]];
+
+    $this->patchJson($this->url, ['row_version' => 1, 'lindero_geojson' => $geojson])
+        ->assertOk()->assertJsonPath('data.lindero_geojson.type', 'MultiPolygon');
+    expect(DB::table('establecimientos')->where('id', $this->est->id)->value('lindero'))->not->toBeNull();
+
+    Sanctum::actingAs(miembro($this->est, 'lectura'));
+    $this->getJson($this->url)->assertOk()->assertJsonPath('data.lindero_geojson', null);
+});
+
+it('422 si el GeoJSON del lindero no forma un polígono válido', function () {
+    Sanctum::actingAs(duenoDe($this->est));
+    $this->patchJson($this->url, [
+        'row_version' => 1,
+        'lindero_geojson' => ['type' => 'Polygon', 'coordinates' => [[[0, 0], [1, 1]]]],
+    ])->assertStatus(422)->assertJsonValidationErrors(['lindero_geojson']);
 });

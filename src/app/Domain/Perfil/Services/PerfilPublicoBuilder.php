@@ -45,6 +45,7 @@ final class PerfilPublicoBuilder
                 ? $conf['snapshot']
                 : self::seccion($s, $perfil, $est, $prod, $t, $locale, $conf);
         }
+        $out['ficha_establecimiento'] = self::fichaEstablecimiento($est);
         $out['ofertas'] = $out['oferta'];
         unset($out['oferta']);
         // Contratos a futuro abiertos (TPA-56): sin precios (son solo para compradores con cuenta, ver /public/contratos/{codigo}).
@@ -83,6 +84,38 @@ final class PerfilPublicoBuilder
                     'address' => ['@type' => 'PostalAddress', 'addressRegion' => Provincias::TODAS[$est->provincia_codigo] ?? '', 'addressCountry' => 'AR']],
             ],
         ];
+    }
+
+    /** @return array<string, array<string, mixed>> Publica solo opt-in y campos no sensibles. */
+    private static function fichaEstablecimiento(object $est): array
+    {
+        $row = DB::table('establecimientos')->where('id', $est->id)->first(['ficha_ampliada', 'visibilidad_ficha']);
+        $ficha = json_decode((string) $row->ficha_ampliada, true) ?: [];
+        $visibilidad = json_decode((string) $row->visibilidad_ficha, true) ?: [];
+        $permitidos = [
+            'potreros_aguadas' => ['potreros', 'aguadas', 'rotacion', 'fuentes_agua'],
+            'sanidad' => ['manejo', 'vacunaciones_actualizadas', 'fecha'],
+            'personal' => ['equipo'],
+            'marcas_senales' => ['marca', 'senal', 'registro'],
+            'suelo_pasturas' => ['suelos', 'pasturas', 'ambientes', 'manejo'],
+            'capacidad_carga' => ['carga_ug_ha', 'periodo', 'criterio'],
+            'infraestructura' => ['manga', 'balanza', 'alambrados', 'energia'],
+            'clima' => ['precipitacion_media_mm', 'temperatura_media_c', 'fuente', 'fecha'],
+            'logistica' => ['distancia_ruta_km', 'distancia_puerto_km', 'accesos', 'carga'],
+            'certificaciones' => ['nombre', 'emisor', 'vence', 'alcance'],
+        ];
+        $salida = [];
+        foreach ($permitidos as $bloque => $campos) {
+            if (($visibilidad[$bloque] ?? false) !== true || ! is_array($ficha[$bloque] ?? null)) {
+                continue;
+            }
+            $datos = array_filter(array_intersect_key($ficha[$bloque], array_flip($campos)), static fn ($valor) => is_string($valor) || is_numeric($valor));
+            if ($datos !== []) {
+                $salida[$bloque] = $datos;
+            }
+        }
+
+        return $salida;
     }
 
     /**

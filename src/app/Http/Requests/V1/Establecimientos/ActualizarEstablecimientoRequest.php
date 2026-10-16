@@ -17,6 +17,9 @@ class ActualizarEstablecimientoRequest extends FormRequest
             'ficha_ampliada.*' => ['nullable'],
             'visibilidad_ficha' => ['sometimes', 'array'],
             'visibilidad_ficha.*' => ['sometimes', 'boolean'],
+            'lindero_geojson' => ['sometimes', 'nullable', 'array'],
+            'lindero_geojson.type' => ['required_with:lindero_geojson', 'in:Polygon,MultiPolygon'],
+            'lindero_geojson.coordinates' => ['required_with:lindero_geojson', 'array'],
             ...ReglasEstablecimiento::reglas(parcial: true, provincia: $establecimiento?->provincia_codigo),
             // cambiar de provincia obliga a mandar el departamento
             'departamento_codigo' => ['required_with:provincia_codigo', 'string', ...array_slice(ReglasEstablecimiento::reglas(parcial: true, provincia: $establecimiento?->provincia_codigo)['departamento_codigo'], 2)],
