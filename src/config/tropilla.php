@@ -52,13 +52,19 @@ return [
         'vigencia_horas' => 6,
     ],
 
-    // Lectura asistida de planillas fotografiadas (TPA-61/62). `driver`: claude (API de Anthropic, key en ANTHROPIC_API_KEY) |
-    // deshabilitado (sin key: el borrador queda `fallido` y se transcribe a mano) | fake (solo tests). Nunca se inventan datos.
+    // Lectura asistida de planillas fotografiadas (TPA-61/62). `driver`: gemini (API de Gemini, key en GEMINI_API_KEY) |
+    // claude (API de Anthropic, key en ANTHROPIC_API_KEY) | deshabilitado (el borrador queda `fallido` y se transcribe a
+    // mano) | fake (solo tests). Por defecto: gemini si hay su key, si no claude si hay la suya, si no deshabilitado.
     'extraccion' => [
-        'driver' => env('TROPILLA_EXTRACCION_DRIVER', env('ANTHROPIC_API_KEY') ? 'claude' : 'deshabilitado'),
+        'driver' => env('TROPILLA_EXTRACCION_DRIVER', env('GEMINI_API_KEY') ? 'gemini' : (env('ANTHROPIC_API_KEY') ? 'claude' : 'deshabilitado')),
         'anthropic_key' => env('ANTHROPIC_API_KEY'),
         'modelo' => env('TROPILLA_EXTRACCION_MODELO', 'claude-haiku-4-5-20251001'),
         'max_tokens' => (int) env('TROPILLA_EXTRACCION_MAX_TOKENS', 8192),
+        'gemini_key' => env('GEMINI_API_KEY'),
+        'gemini_modelo' => env('TROPILLA_EXTRACCION_GEMINI_MODELO', 'gemini-flash-latest'),
+        'gemini_max_tokens' => (int) env('TROPILLA_EXTRACCION_GEMINI_MAX_TOKENS', 32768),
+        'gemini_razonamiento' => env('TROPILLA_EXTRACCION_GEMINI_RAZONAMIENTO', 'low'), // thinkingLevel; vacío = no se envía
+        'timeout_segundos' => (int) env('TROPILLA_EXTRACCION_TIMEOUT', 120),
     ],
 
     // Pepper del HMAC de CUIT (búsqueda exacta / unicidad sin descifrar). modelo-datos §2.3.
