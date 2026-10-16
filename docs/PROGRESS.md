@@ -240,3 +240,21 @@ y en `GET …/animales/identificador`.
 - Reposición exige `reemplaza` y que esa identificación esté vigente en el animal (si no, `regla_bloqueante`); reposición y retiro
   dejan la anterior **no vigente con fecha** (historial completo en la ficha); la caravana liberada puede usarse en otro animal.
 - Verificado: 6 tests (todos los tipos, prefijo/RFID/entidad, historial de reposición, reglas de reposición/retiro, 409, 403/404).
+
+## TPA-26 · Correcciones y anulaciones de eventos · ✅ (parte API)
+
+**Endpoints:** `POST …/eventos/{e}/correcciones`, `POST …/eventos/{e}/anulaciones`, `GET …/eventos/{e}` (EventoDetalle: vigente +
+versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?estado&tipo` (cursor), `GET …/revisiones/{r}`,
+`POST …/revisiones/{r}/resolver`.
+
+**Comentario del dev:**
+- La web arma la versión v+1 (`corrige_evento_id`, `hash_anterior` = huella de la corregida, `motivo` obligatorio; la anulación
+  no lleva payload) y entra por `RegistrarEvento` → misma cadena, mismas reglas. Nada se borra: las versiones viejas quedan
+  (`vigente: false`) y las proyecciones se recalculan desde cero (anular un pesaje revierte el peso; anular un alta deja el animal
+  `anulado` y fuera de existencias). Una corrección no cambia el tipo, la especie ni el conjunto de animales que creó el alta.
+- Online, corregir una versión que no es la vigente → 409 `version_no_vigente`; por sync queda `en_revision` + revisión
+  `correccion_en_conflicto` (gana el servidor). Resolver: `reaplicada` crea una corrección sobre la vigente (motivo con el id de la
+  revisión), `descartada`/`resuelta` cierran con motivo; la versión en revisión nunca cambia (M4). `id` opcional → idempotente.
+- `IntegridadRegistro` ya devuelve huella/eslabón/seq; `anclaje` y `prueba` quedan `null` hasta TPA-40.
+- Verificado: 6 tests (v2 encadenada + ver cambios + integridad, 409, anulaciones y efecto en proyecciones/stock, corrección del alta
+  bloqueada por especie y válida por raza, 422/403/404, revisiones listar/resolver/cerrada).

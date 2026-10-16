@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\Establecimientos\MembresiaController;
 use App\Http\Controllers\Api\V1\Establecimientos\OnboardingController;
 use App\Http\Controllers\Api\V1\Establecimientos\ProductorController;
 use App\Http\Controllers\Api\V1\Hacienda\AnimalController;
+use App\Http\Controllers\Api\V1\Hacienda\CorreccionController;
 use App\Http\Controllers\Api\V1\Hacienda\EventoController;
 use App\Http\Controllers\Api\V1\Hacienda\PotreroController;
 use App\Http\Controllers\Api\V1\HealthController;
@@ -89,6 +90,13 @@ Route::prefix('v1')->name('v1.')->group(function () {
             // Eventos (TPA-22, 26)
             Route::get('eventos', [EventoController::class, 'index'])->name('eventos.index');
             Route::post('eventos', [EventoController::class, 'store'])->name('eventos.store');
+            Route::get('eventos/{evento}', [CorreccionController::class, 'show'])->name('eventos.show');
+            Route::get('eventos/{evento}/integridad', [CorreccionController::class, 'integridad'])->name('eventos.integridad');
+            Route::post('eventos/{evento}/correcciones', [CorreccionController::class, 'correccion'])->name('eventos.correcciones');
+            Route::post('eventos/{evento}/anulaciones', [CorreccionController::class, 'anulacion'])->name('eventos.anulaciones');
+            Route::get('revisiones', [CorreccionController::class, 'revisiones'])->name('revisiones.index');
+            Route::get('revisiones/{revision}', [CorreccionController::class, 'revision'])->name('revisiones.show');
+            Route::post('revisiones/{revision}/resolver', [CorreccionController::class, 'resolver'])->name('revisiones.resolver');
 
             // Potreros (TPA-14)
             Route::get('potreros', [PotreroController::class, 'index'])->name('potreros.index');
