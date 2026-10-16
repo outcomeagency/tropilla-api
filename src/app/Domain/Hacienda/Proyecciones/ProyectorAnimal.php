@@ -3,6 +3,7 @@
 namespace App\Domain\Hacienda\Proyecciones;
 
 use App\Domain\Catalogos\Parametros;
+use App\Domain\Sanidad\Retiros;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -147,6 +148,13 @@ final class ProyectorAnimal
             'reactor' => false, 'reactor_desde' => null, 'reactor_prueba' => null,
             'retiro_carne_hasta' => null, 'retiro_leche_hasta' => null,
         ];
+        // Individualizado desde un lote anónimo (bugfix TPA-35): hereda el retiro del lote por las aplicaciones previas
+        // (al lote o a un potrero donde estaba). Las aplicaciones propias posteriores lo extienden con `max` en aplicar().
+        if ($animal->lote_origen_anonimo_id !== null) {
+            $r = Retiros::deLote($animal->lote_origen_anonimo_id, Carbon::parse($origen->ocurrido_en)->utc()->toIso8601String());
+            $s['retiro_carne_hasta'] = $r['carne'];
+            $s['retiro_leche_hasta'] = $r['leche'];
+        }
         if (isset($nuevo['_peso_kg'])) {
             $s['peso_kg'] = $nuevo['_peso_kg'];
             $s['peso_fecha'] = $fecha;

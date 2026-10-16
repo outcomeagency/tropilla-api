@@ -51,6 +51,11 @@ final class ReglasSanitarias
                 ->where('e.establecimiento_id', $ctx->est->id)->where('e.estado', 'activo')
                 ->where(DB::raw('COALESCE(e.potrero_id, le.potrero_id)'), $s->sujetos->potrero_id)
                 ->orderBy('e.animal_id')->pluck('e.animal_id')->all();
+            // Y los lotes anónimos que están en ese potrero (bugfix TPA-35): su retiro se deriva de `evento_lotes`.
+            $ctx->lotesResueltos = DB::table('lotes as l')->join('lotes_estado as le', 'le.lote_id', '=', 'l.id')
+                ->where('l.establecimiento_id', $ctx->est->id)->where('l.anonimo', true)->whereNull('l.archivado_en')
+                ->where('le.potrero_id', $s->sujetos->potrero_id)->where('le.cabezas_anonimas', '>', 0)
+                ->orderBy('l.id')->pluck('l.id')->all();
         }
     }
 

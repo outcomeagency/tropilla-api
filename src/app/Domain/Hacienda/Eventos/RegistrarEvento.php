@@ -156,6 +156,11 @@ final class RegistrarEvento
                     'evento_id' => $evento->id, 'animal_id' => $aid, 'establecimiento_id' => $est->id, 'ocurrido_en' => $evento->ocurrido_en,
                 ]);
             }
+            foreach (array_unique($ctx->lotesResueltos) as $lid) {
+                DB::table('evento_lotes')->insert([
+                    'evento_id' => $evento->id, 'lote_id' => $lid, 'establecimiento_id' => $est->id, 'ocurrido_en' => $evento->ocurrido_en,
+                ]);
+            }
 
             // Revisiones (conflicto de versión y coherencia que viene de la concurrencia offline).
             $revisionId = null;

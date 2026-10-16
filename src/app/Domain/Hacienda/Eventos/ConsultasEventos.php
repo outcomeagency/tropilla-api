@@ -50,6 +50,7 @@ final class ConsultasEventos
                 $q->whereExists($propio);
                 if ($loteOrigen) {
                     $q->orWhere(fn ($q2) => $q2->where('v.lote_id', $loteOrigen)->where('v.sujeto_tipo', 'lote')->where('v.ocurrido_en', '<', $desde));
+                    $q->orWhere(fn ($q2) => $q2->whereExists(self::resueltoParaLote($loteOrigen))->where('v.ocurrido_en', '<', $desde));
                 }
             })
             ->selectRaw('NOT EXISTS (SELECT 1 FROM evento_animales ea3 WHERE ea3.evento_id = v.id AND ea3.animal_id = ?) AS heredado_de_lote', [$animal->id])
@@ -59,12 +60,19 @@ final class ConsultasEventos
             ->orderByDesc('v.ocurrido_en')->orderByDesc('v.id');
     }
 
-    /** Timeline del lote (TPA-20): eventos vigentes con ese lote como sujeto o contexto. */
+    /** Timeline del lote (TPA-20): eventos vigentes con ese lote como sujeto o contexto, o resuelto por el servidor (potrero, TPA-35). */
     public static function timelineLote(string $establecimientoId, string $loteId, ?string $tipo): Builder
     {
-        return self::base()->where('v.establecimiento_id', $establecimientoId)->where('v.lote_id', $loteId)
+        return self::base()->where('v.establecimiento_id', $establecimientoId)
+            ->where(fn ($q) => $q->where('v.lote_id', $loteId)->orWhereExists(self::resueltoParaLote($loteId)))
             ->where('v.accion', '<>', 'anulacion')
             ->when($tipo, fn ($q, $v) => $q->where('v.tipo', $v))
             ->orderByDesc('v.ocurrido_en')->orderByDesc('v.id');
+    }
+
+    /** Evento resuelto para el lote al registrar (`evento_lotes`, bugfix TPA-35). */
+    private static function resueltoParaLote(string $loteId): \Closure
+    {
+        return fn ($q) => $q->select(DB::raw(1))->from('evento_lotes as el')->whereColumn('el.evento_id', 'v.id')->where('el.lote_id', $loteId);
     }
 }
