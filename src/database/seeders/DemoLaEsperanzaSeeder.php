@@ -63,6 +63,7 @@ class DemoLaEsperanzaSeeder extends Seeder
             $this->bufalaU0142();
             $this->vaca1187();
             $this->bufalasPorParir();
+            $this->vacasDeServicio();
             $this->bucerrasDestetadas();
             $this->bubillosEnVenta();
             $this->sanidadDeLotes();
@@ -129,7 +130,7 @@ class DemoLaEsperanzaSeeder extends Seeder
     private function rodeosAnonimos(): void
     {
         $conteos = [
-            'vacas' => ['BOV_VACA' => 619], 'vaquillonas' => ['BOV_VAQUILLONA' => 180],
+            'vacas' => ['BOV_VACA' => 617], 'vaquillonas' => ['BOV_VAQUILLONA' => 180],
             'terneros' => ['BOV_TERNERO' => 155, 'BOV_TERNERA' => 155], 'novillos' => ['BOV_NOVILLO' => 110],
             'toros' => ['BOV_TORO' => 20], 'bufalas' => ['BUB_BUFALA' => 185], 'bubillas' => ['BUB_BUBILLA' => 60],
             'bucerros' => ['BUB_BUCERRO' => 48, 'BUB_BUCERRA' => 39], 'bufalos' => ['BUB_BUFALO_TORO' => 5],
@@ -210,6 +211,29 @@ class DemoLaEsperanzaSeeder extends Seeder
             $this->evento('reproduccion.tacto', ['tipo' => 'animales', 'animal_ids' => [$id]],
                 ['metodo' => 'tacto', 'resultado' => 'prenada', 'dias_gestacion' => max(1, $dias)], '2026-09-25');
         }
+    }
+
+    /**
+     * TPA-30: dos vacas Braford individualizadas del rodeo (por eso el lote anónimo tiene 617 y el total sigue en 620):
+     * la 0904 inseminada (IATF, servida) y la 0731 preñada con la fecha probable de parto vencida hace 20 días (alerta).
+     */
+    private function vacasDeServicio(): void
+    {
+        $iatf = (string) Str::uuid7();
+        $vencida = (string) Str::uuid7();
+        $this->alta([
+            ['animal_id' => $iatf, 'especie' => 'BOV', 'sexo' => 'H', 'categoria' => 'BOV_VACA', 'raza' => 'BOV_BRAFORD', 'lote_id' => $this->lotes['vacas'],
+                'fecha_nacimiento' => '2020-09-01', 'nacimiento_estimado' => true, 'identificaciones' => [['tipo' => 'caravana_visual', 'valor' => '0904']]],
+            ['animal_id' => $vencida, 'especie' => 'BOV', 'sexo' => 'H', 'categoria' => 'BOV_VACA', 'raza' => 'BOV_BRAFORD', 'lote_id' => $this->lotes['vacas'],
+                'fecha_nacimiento' => '2018-10-01', 'nacimiento_estimado' => true, 'identificaciones' => [['tipo' => 'caravana_visual', 'valor' => '0731']]],
+        ], '2026-01-15');
+        $this->evento('reproduccion.inseminacion', ['tipo' => 'animales', 'animal_ids' => [$iatf]], [
+            'tipo' => 'iatf', 'semen' => ['toro_nombre' => 'Braford Don Gaspar', 'raza' => 'BOV_BRAFORD', 'centro' => 'Centro de IA (declarado)'],
+            'inseminador' => 'Vet. Juan Pérez',
+        ], now()->startOfDay()->subDays(25)->toDateString());
+        // Tacto hace 60 días con 243 días de gestación → FPP hace 20 días (bovino 283 d): parto vencido (+15 d).
+        $this->evento('reproduccion.tacto', ['tipo' => 'animales', 'animal_ids' => [$vencida]],
+            ['metodo' => 'tacto', 'resultado' => 'prenada', 'dias_gestacion' => 243, 'veterinario' => 'Vet. Juan Pérez, MP 1234'], now()->startOfDay()->subDays(60)->toDateString());
     }
 
     /** 8 bucerras destetadas → recategorización sugerida a bubilla (pendiente del inicio). */

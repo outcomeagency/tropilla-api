@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\V1\Publico\DirectorioController;
 use App\Http\Controllers\Api\V1\Publico\OfertaPublicaController;
 use App\Http\Controllers\Api\V1\Publico\PerfilPublicoController;
 use App\Http\Controllers\Api\V1\Publico\VerificacionController;
+use App\Http\Controllers\Api\V1\Reproduccion\ReproduccionController;
 use App\Http\Controllers\Api\V1\Sistema\AuditoriaController;
 use App\Http\Controllers\Api\V1\Sync\SyncController;
 use Illuminate\Support\Facades\Route;
@@ -118,6 +119,10 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('animales/{animal}/eventos', [AnimalController::class, 'eventos'])->name('animales.eventos');
             Route::get('animales/{animal}/genealogia', [AnimalController::class, 'genealogia'])->name('animales.genealogia');
             Route::get('animales/{animal}/documentos', [AnimalController::class, 'documentos'])->name('animales.documentos');
+
+            // Reproducción (TPA-30)
+            Route::get('reproduccion/tablero', [ReproduccionController::class, 'tablero'])->name('reproduccion.tablero');
+            Route::get('reproduccion/partos', [ReproduccionController::class, 'partos'])->name('reproduccion.partos');
 
             // Eventos (TPA-22, 26)
             Route::get('eventos', [EventoController::class, 'index'])->name('eventos.index');
