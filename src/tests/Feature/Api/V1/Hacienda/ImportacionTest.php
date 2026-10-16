@@ -4,6 +4,8 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Writer\XLSX\Writer;
 
 beforeEach(function () {
     Storage::fake();
@@ -73,10 +75,10 @@ it('cancelar; 422 sin archivo; 403 encargado; 404 otro establecimiento', functio
 
 it('también lee Excel (xlsx)', function () {
     $tmp = tempnam(sys_get_temp_dir(), 'x').'.xlsx';
-    $w = new OpenSpout\Writer\XLSX\Writer;
+    $w = new Writer;
     $w->openToFile($tmp);
-    $w->addRow(OpenSpout\Common\Entity\Row::fromValues(['especie', 'sexo', 'categoria', 'caravana']));
-    $w->addRow(OpenSpout\Common\Entity\Row::fromValues(['BUB', 'H', 'Bubilla', 'X-1']));
+    $w->addRow(Row::fromValues(['especie', 'sexo', 'categoria', 'caravana']));
+    $w->addRow(Row::fromValues(['BUB', 'H', 'Bubilla', 'X-1']));
     $w->close();
 
     $imp = $this->postJson("{$this->base}/importaciones", ['archivo' => UploadedFile::fake()->createWithContent('stock.xlsx', file_get_contents($tmp))])->json('data.id');
