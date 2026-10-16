@@ -122,7 +122,7 @@ class OfertaController extends Controller
             'textos' => ['sometimes', 'array'],
             'textos.*.titulo' => ['sometimes', 'string', 'max:120'],
             'textos.*.descripcion' => ['sometimes', 'nullable', 'string', 'max:3000'],
-            'fotos' => ['sometimes', 'array'], 'fotos.*' => [Reglas::HASH],
+            'fotos' => ['sometimes', 'array', 'max:12'], 'fotos.*' => [Reglas::HASH, Reglas::FOTO],
         ]);
     }
 

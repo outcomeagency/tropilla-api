@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Archivos\ArchivoController;
+use App\Http\Controllers\Api\V1\Archivos\FotoController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\DispositivoController;
 use App\Http\Controllers\Api\V1\Busco\BuscoController;
@@ -96,6 +97,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('enlaces/{token}', EnlacePublicoController::class)->where('token', '[A-Za-z0-9_-]{20,100}')->name('enlaces.show');
         Route::post('consultas', ConsultaPublicaController::class)->middleware('throttle:consultas')->name('consultas.store');
     });
+    // Fotos (bugfix TPA-54): públicas por hash si algo publicado las referencia; privadas con URL firmada (la firma es la credencial).
+    Route::get('public/fotos/{sha256}', [FotoController::class, 'publica'])->where('sha256', '[0-9a-fA-F]{64}')->middleware('throttle:fotos')->name('public.fotos.show');
+    Route::get('fotos/{sha256}', [FotoController::class, 'firmada'])->where('sha256', '[0-9a-fA-F]{64}')->middleware('throttle:fotos')->name('fotos.firmada');
     // Subida diferida con almacén local (dev/tests): la URL firmada es la credencial (como una URL prefirmada de S3).
     Route::put('archivos/subidas/{subida}/partes/{numero}', [ArchivoController::class, 'parte'])->middleware('signed')->whereNumber('numero')->name('archivos.parte');
     Route::get('public/invitaciones/{token}', [InvitacionController::class, 'publica'])->middleware('throttle:publico')->name('public.invitaciones.show');

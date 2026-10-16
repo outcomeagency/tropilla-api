@@ -2,6 +2,7 @@
 
 namespace App\Domain\Documentos\Actions;
 
+use App\Domain\Documentos\Fotos;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -22,8 +23,9 @@ final class GuardarArchivo
             if (! Storage::exists($clave)) {
                 Storage::put($clave, $contenido);
             }
+            [$ancho, $alto] = str_starts_with($mime, 'image/') ? Fotos::dimensiones($contenido) : [null, null];
             DB::table('archivos')->updateOrInsert(['sha256' => $sha], [
-                'bytes' => strlen($contenido), 'mime' => $mime, 's3_clave' => $clave, 'estado' => 'completo',
+                'bytes' => strlen($contenido), 'mime' => $mime, 's3_clave' => $clave, 'estado' => 'completo', 'ancho' => $ancho, 'alto' => $alto,
                 'subido_por' => $usuario->id, 'subido_en' => now(), 'verificado_en' => now(),
             ]);
         }

@@ -25,6 +25,8 @@ class DatabaseSeeder extends Seeder
             );
             // Demo «La Esperanza» (demo@tropilla.ar / tropilla-demo) para el front y la app. Idempotente.
             $this->call(DemoLaEsperanzaSeeder::class);
+            // Directorio con fotos (bugfix TPA-54): 5 establecimientos más, ofertas y profesionales. Idempotente.
+            $this->call(DemoDirectorioSeeder::class);
         }
     }
 }

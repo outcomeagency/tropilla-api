@@ -8,6 +8,7 @@ use App\Domain\Perfil\Services\Perfiles;
 use App\Domain\Perfil\Services\PerfilPublicoBuilder;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\Perfil\PerfilResource;
+use App\Rules\Reglas;
 use App\Support\Leyenda;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,7 +38,7 @@ class PerfilController extends Controller
             'textos.*.titulo' => ['nullable', 'string', 'max:120'], 'textos.*.descripcion' => ['nullable', 'string', 'max:1000'], 'textos.*.historia' => ['nullable', 'string', 'max:5000'],
             'contacto_visible' => ['nullable', 'array:telefono,email,whatsapp'], 'contacto_visible.*' => ['boolean'],
             'secciones' => ['nullable', 'array'], 'secciones.*.activa' => ['sometimes', 'boolean'], 'secciones.rodeo.modo' => ['sometimes', 'in:exacto,rango'],
-            'fotos' => ['sometimes', 'array'],
+            'fotos' => ['sometimes', 'array', 'max:12'], 'fotos.*' => [Reglas::HASH, Reglas::FOTO, 'distinct'],
         ]);
 
         return PerfilResource::make($gestionar->editar($establecimiento, $request->user(), $d));

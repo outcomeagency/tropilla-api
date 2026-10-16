@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\V1\Hacienda;
 
+use App\Domain\Documentos\Fotos;
 use App\Domain\Integridad\Confianza;
 use App\Domain\Reproduccion\ReglasReproductivas;
 use App\Support\Formato;
@@ -42,6 +43,7 @@ class AnimalResource extends JsonResource
             'madre_externa' => $a->madre_externa,
             'padre_externo' => $a->padre_externo,
             'senas' => $a->senas,
+            'foto' => Fotos::privada($a->foto_sha256), // bugfix TPA-54
             'identificaciones' => $idents->map(fn ($i) => [
                 'tipo' => $i->tipo, 'valor' => $i->valor, 'entidad' => $i->entidad, 'tipo_registro' => $i->tipo_registro,
                 'vigente' => (bool) $i->vigente, 'en_conflicto' => (bool) $i->en_conflicto,

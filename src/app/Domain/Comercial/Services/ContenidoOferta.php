@@ -112,7 +112,7 @@ final class ContenidoOferta
      * @param  array<string, mixed>  $condiciones
      * @return array<string, mixed>
      */
-    public static function publico(array $precarga, string $tipo, int $cantidad, array $mostrar, array $condiciones, array $textos): array
+    public static function publico(array $precarga, string $tipo, int $cantidad, array $mostrar, array $condiciones, array $textos, array $fotos = []): array
     {
         $c = ['tipo' => $tipo, 'especie' => $precarga['especie'], 'cantidad' => $cantidad, 'categorias' => $precarga['categorias'], 'razas' => $precarga['razas']];
         foreach (['peso', 'edad', 'denticion', 'clase_faena', 'sanidad', 'origen', 'sistema'] as $b) {
@@ -130,7 +130,8 @@ final class ContenidoOferta
             'disponible_hasta' => $condiciones['disponible_hasta'] ?? null,
         ], fn ($v) => $v !== null);
         $c['documentos'] = [];
-        $c['fotos'] = [];
+        // Fotos (bugfix TPA-54): hashes congelados en la publicación; la ficha pública los convierte en Foto.
+        $c['fotos'] = ($mostrar['fotos'] ?? true) ? array_values($fotos) : [];
         $c['textos'] = (object) $textos;
 
         return $c;

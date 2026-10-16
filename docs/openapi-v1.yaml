@@ -6100,6 +6100,53 @@ paths:
                 additionalProperties: false
         '401': {$ref: '#/components/responses/NoAutenticado'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
+  /public/fotos/{sha256}:
+    get:
+      tags: [Público]
+      summary: Foto pública por hash
+      operationId: get_public_fotos_sha256
+      security: []
+      description: >-
+        TPA-54 (bugfix). Sirve los bytes solo si el hash lo referencia un perfil publicado, la publicación vigente de una oferta
+        publicada/reservada/vendida o un profesional público; cualquier otro caso (o una oferta retirada) → 404.
+        `Cache-Control: public, max-age=31536000, immutable`, `ETag` = hash (304 con `If-None-Match`).
+      parameters:
+      - name: sha256
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/Hash'}
+      responses:
+        '200':
+          description: Imagen
+          content:
+            image/webp: {schema: {type: string, format: binary}}
+            image/jpeg: {schema: {type: string, format: binary}}
+            image/png: {schema: {type: string, format: binary}}
+        '304': {description: Sin cambios}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /fotos/{sha256}:
+    get:
+      tags: [Archivos]
+      summary: Foto privada con URL firmada
+      operationId: get_fotos_sha256
+      security: []
+      description: >-
+        TPA-54 (bugfix). La firma (`expires` + `signature`, generada por la API en `foto_url`/`Foto.url`) es la credencial: sirve en
+        `<img>` sin token. Sin firma, adulterada o vencida → 404. `Cache-Control: private` hasta el vencimiento.
+      parameters:
+      - name: sha256
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/Hash'}
+      - {name: expires, in: query, required: true, schema: {type: integer}}
+      - {name: signature, in: query, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: Imagen
+          content:
+            image/webp: {schema: {type: string, format: binary}}
+        '304': {description: Sin cambios}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
   /public/profesionales/{slug}:
     get:
       tags: [Público]
@@ -6484,6 +6531,7 @@ components:
         pais: {type: [string, 'null']}
         email_verificado: {type: boolean}
         foto_url: {type: [string, 'null']}
+        foto: {oneOf: [{$ref: '#/components/schemas/Foto'}, {type: 'null'}], description: 'Aditivo TPA-54 (bugfix): la misma foto como objeto'}
         es_comprador: {type: boolean}
         es_profesional: {type: boolean}
         es_staff: {type: boolean}
@@ -6598,6 +6646,8 @@ components:
           type: array
           items: {type: string, enum: [es, en, pt]}
         bio: {type: [string, 'null']}
+        foto_sha256: {oneOf: [{$ref: '#/components/schemas/Hash'}, {type: 'null'}], description: 'Entrada (TPA-54 bugfix): hash de una foto ya subida; 422 si no existe completa', writeOnly: true}
+        foto: {oneOf: [{$ref: '#/components/schemas/Foto'}, {type: 'null'}], readOnly: true, description: 'Salida (TPA-54 bugfix), URL firmada'}
         publico: {type: boolean}
       required: [slug, nombre_publico, profesion]
       additionalProperties: false
@@ -7133,6 +7183,9 @@ components:
       - {$ref: '#/components/schemas/AnimalResumen'}
       - type: object
         properties:
+          foto:
+            oneOf: [{$ref: '#/components/schemas/Foto'}, {type: 'null'}]
+            description: Aditivo TPA-54 (bugfix). Privada (URL firmada); `AnimalResumen.foto_url` es la misma URL.
           categorias_descartadas:
             type: array
             items: {type: string}
@@ -7760,6 +7813,20 @@ components:
         bytes: {type: integer}
         mime: {type: string}
       required: [sha256, bytes, mime]
+      additionalProperties: false
+    Foto:
+      type: object
+      description: >-
+        Foto (TPA-54 bugfix). `url` pública (`/public/fotos/{sha256}`, inmutable, sin cuenta) en todo lo publicado (perfil, oferta,
+        profesional, directorio); firmada (`/fotos/{sha256}?expires&signature`, vence al terminar la hora siguiente) en lo privado
+        (animal, usuario, vistas internas de perfil y oferta). `alt` en el idioma pedido (fallback es); dimensiones en px (null si no se midieron).
+      properties:
+        sha256: {$ref: '#/components/schemas/Hash'}
+        url: {type: string, format: uri}
+        alt: {type: [string, 'null']}
+        ancho: {type: [integer, 'null']}
+        alto: {type: [integer, 'null']}
+      required: [sha256, url, alt, ancho, alto]
       additionalProperties: false
     Archivo:
       type: object
@@ -8457,7 +8524,7 @@ components:
         textos: {type: object, additionalProperties: true}
         fotos:
           type: array
-          items: {$ref: '#/components/schemas/Archivo'}
+          items: {$ref: '#/components/schemas/Foto'}
         publicacion_vigente: {type: [integer, 'null']}
         precarga: {type: object, additionalProperties: true}
         avisos:
@@ -8929,7 +8996,7 @@ components:
         ubicacion_publica: {type: string, enum: [provincia, departamento, localidad]}
         fotos:
           type: array
-          items: {$ref: '#/components/schemas/Archivo'}
+          items: {$ref: '#/components/schemas/Foto'}
         asociaciones_visibles: {type: boolean}
         completitud: {type: integer}
         faltantes:
@@ -8971,7 +9038,7 @@ components:
               properties:
                 fotos:
                   type: array
-                  items: {type: string}
+                  items: {$ref: '#/components/schemas/Foto'}
                 historia: {type: [string, 'null']}
                 zona:
                   type: object
@@ -9103,6 +9170,7 @@ components:
           - {type: 'null'}
         estado: {type: string}
         foto_url: {type: [string, 'null']}
+        foto: {oneOf: [{$ref: '#/components/schemas/Foto'}, {type: 'null'}], description: 'Aditivo TPA-54 (bugfix): la misma foto como objeto'}
         url: {type: string}
       additionalProperties: false
     OfertaPublica:
@@ -9157,7 +9225,7 @@ components:
             sistema: {type: [string, 'null']}
             fotos:
               type: array
-              items: {type: string}
+              items: {$ref: '#/components/schemas/Foto'}
             condiciones: {type: object, additionalProperties: true}
             documentos:
               type: array
@@ -9231,6 +9299,7 @@ components:
           type: array
           items: {type: string}
         foto_url: {type: [string, 'null']}
+        foto: {oneOf: [{$ref: '#/components/schemas/Foto'}, {type: 'null'}], description: 'Aditivo TPA-54 (bugfix): la misma foto como objeto'}
         actualizado_en: {$ref: '#/components/schemas/FechaHora'}
       additionalProperties: false
     DirectorioFacetas:
@@ -9273,6 +9342,7 @@ components:
           items: {type: string}
         bio: {type: [string, 'null']}
         foto_url: {type: [string, 'null']}
+        foto: {oneOf: [{$ref: '#/components/schemas/Foto'}, {type: 'null'}], description: 'Aditivo TPA-54 (bugfix): la misma foto como objeto'}
         establecimientos:
           type: array
           items:

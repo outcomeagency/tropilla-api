@@ -2,9 +2,11 @@
 
 namespace App\Domain\Perfil\Services;
 
+use App\Casts\PgTextArray;
 use App\Domain\Catalogos\Catalogos;
 use App\Domain\Contratos\ConsultasContratos;
 use App\Domain\Documentos\ConsultasDocumentos;
+use App\Domain\Documentos\Fotos;
 use App\Domain\Establecimientos\Data\Provincias;
 use App\Domain\Integridad\Confianza;
 use App\Http\Resources\V1\Publico\OfertaPublicaResource;
@@ -97,7 +99,7 @@ final class PerfilPublicoBuilder
         return match ($s) {
             'portada' => [
                 'historia' => ($t['historia'] ?? null) ?: $est->historia,
-                'fotos' => [],
+                'fotos' => Fotos::lista(PgTextArray::parse($perfil->fotos), true, $locale), // bugfix TPA-54: Foto[] públicas
                 'zona' => [
                     'provincia' => Provincias::TODAS[$est->provincia_codigo] ?? '',
                     'departamento' => $perfil->ubicacion_publica === 'provincia' ? null : DB::table('geo_departamentos')->where('codigo', $est->departamento_codigo)->value('nombre'),

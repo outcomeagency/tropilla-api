@@ -4,6 +4,7 @@ namespace App\Domain\Perfil\Services;
 
 use App\Casts\PgTextArray;
 use App\Domain\Catalogos\Catalogos;
+use App\Domain\Documentos\Fotos;
 use App\Domain\Establecimientos\Data\Provincias;
 use App\Support\Formato;
 use Illuminate\Database\Query\Builder;
@@ -79,7 +80,9 @@ final class Directorio
             'ofertas_activas' => (int) $r->ofertas_activas,
             'contratos_abiertos' => DB::table('contratos_futuro')->where('establecimiento_id', $r->establecimiento_id)->whereIn('estado', ['publicado', 'parcialmente_tomado'])->count(),
             'insignias' => $insignias,
-            'foto_url' => null,
+            // Portada = primera foto del perfil (bugfix TPA-54).
+            'foto_url' => ($portada = Fotos::publica(PgTextArray::parse($r->fotos)[0] ?? null, $locale))['url'] ?? null,
+            'foto' => $portada,
             'actualizado_en' => Formato::fechaHora(Carbon::parse($r->ultima_actividad ?? $r->updated_at)),
         ];
     }

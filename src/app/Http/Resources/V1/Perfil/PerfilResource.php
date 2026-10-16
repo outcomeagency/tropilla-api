@@ -3,6 +3,7 @@
 namespace App\Http\Resources\V1\Perfil;
 
 use App\Casts\PgTextArray;
+use App\Domain\Documentos\Fotos;
 use App\Domain\Perfil\Services\PerfilPublicoBuilder;
 use App\Support\Formato;
 use Illuminate\Http\Request;
@@ -33,7 +34,7 @@ class PerfilResource extends JsonResource
             'idiomas' => PgTextArray::parse($p->idiomas),
             'contacto_visible' => (object) (json_decode($p->contacto_visible, true) ?: []),
             'ubicacion_publica' => $p->ubicacion_publica,
-            'fotos' => [],
+            'fotos' => Fotos::lista(PgTextArray::parse($p->fotos), false), // bugfix TPA-54: Foto[] (URL firmada)
             'asociaciones_visibles' => (bool) $p->asociaciones_visibles,
             'completitud' => $completitud,
             'faltantes' => $faltantes,

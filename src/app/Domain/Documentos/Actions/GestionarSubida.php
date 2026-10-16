@@ -4,11 +4,13 @@ namespace App\Domain\Documentos\Actions;
 
 use App\Domain\Documentos\Almacen\AlmacenObjetos;
 use App\Domain\Documentos\Archivos;
+use App\Domain\Documentos\Fotos;
 use App\Exceptions\ApiException;
 use App\Models\User;
 use App\Support\Formato;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -96,9 +98,11 @@ final class GestionarSubida
             throw new ApiException(422, 'archivo_corrupto', __('El archivo subido no coincide con su SHA-256: se descartó. Volvé a subirlo.'));
         }
 
-        DB::transaction(function () use ($subida, $h) {
+        // Fotos (bugfix TPA-54): dimensiones para `Foto {ancho, alto}`.
+        [$ancho, $alto] = str_starts_with((string) $archivo->mime, 'image/') ? rescue(fn () => Fotos::dimensiones((string) Storage::get($clave)), [null, null], false) : [null, null];
+        DB::transaction(function () use ($subida, $h, $ancho, $alto) {
             DB::table('archivos')->where('sha256', $subida->archivo_sha256)->update([
-                'estado' => 'completo', 'bytes' => $h['bytes'], 'subido_por' => $subida->usuario_id, 'subido_en' => now(), 'verificado_en' => now(),
+                'estado' => 'completo', 'bytes' => $h['bytes'], 'ancho' => $ancho, 'alto' => $alto, 'subido_por' => $subida->usuario_id, 'subido_en' => now(), 'verificado_en' => now(),
             ]);
             DB::table('subidas')->where('id', $subida->id)->update(['estado' => 'completada', 'updated_at' => now()]);
         });
