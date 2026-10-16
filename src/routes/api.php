@@ -50,6 +50,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('establecimientos', [EstablecimientoController::class, 'index'])->name('establecimientos.index');
         Route::post('establecimientos', [EstablecimientoController::class, 'store'])->name('establecimientos.store');
         Route::get('establecimientos/{establecimiento}', [EstablecimientoController::class, 'show'])->name('establecimientos.show');
+        Route::patch('establecimientos/{establecimiento}', [EstablecimientoController::class, 'update'])->name('establecimientos.update');
 
         // Usuarios y roles (TPA-11)
         Route::post('invitaciones/{token}/aceptar', [InvitacionController::class, 'aceptar'])->name('invitaciones.aceptar');

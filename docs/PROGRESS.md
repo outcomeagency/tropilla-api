@@ -80,3 +80,16 @@ acá y en la sección «Desvíos del contrato» al final.
   Paginación por cursor genérica (`CursorRespuesta`: solo `data` + `meta`), usada por la auditoría.
 - Verificado: 10 tests (invitar mail/teléfono, flujo público→aceptar, vencida/revocada, 422/403/404, cambio de rol,
   protección del dueño, revocación → `membresia_revocada`, scoped 404, transferencia, auditoría paginada).
+
+## TPA-13 · Datos del establecimiento y zonas sanitarias · ✅ (parte API)
+
+**Endpoints:** `PATCH /establecimientos/{establecimiento}` (+ `GET` de TPA-10).
+
+**Comentario del dev:**
+- PATCH parcial con `row_version` obligatorio (409 `conflicto_row_version`), lock de la cadena + fila, auditoría
+  antes/después y `cambios` (baja por sync). Zonas sanitarias se mergean (mandar solo `rabia_endemica` no borra el resto).
+- Garrapata sugerida por departamento (Corrientes) al crear; la sugerencia por departamento también sale en `/catalogos` (TPA-15).
+  Ubicación por punto (PostGIS) y RENSPA privados: `null` sin `establecimiento.ver_privados`; la auditoría no guarda la ubicación exacta.
+- Interdicción: no es un campo; `interdiccion_vigente` queda `null` hasta que exista el evento `establecimiento.interdiccion` (TPA-22).
+- Trampa: cambiar `provincia_codigo` exige mandar `departamento_codigo` coherente. Pendiente: impedir quitar una especie con animales activos (cuando exista hacienda).
+- Verificado: 6 tests (edición completa + auditoría sin ubicación, merge de zonas, 409, 422, 403 por rol, 404 ajeno, admin).

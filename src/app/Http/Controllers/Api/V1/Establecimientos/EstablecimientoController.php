@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Api\V1\Establecimientos;
 
+use App\Domain\Establecimientos\Actions\ActualizarEstablecimiento;
 use App\Domain\Establecimientos\Actions\CrearEstablecimientoDeProductor;
 use App\Domain\Establecimientos\Actions\ListarMisEstablecimientos;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\V1\Establecimientos\ActualizarEstablecimientoRequest;
 use App\Http\Requests\V1\Establecimientos\CrearEstablecimientoRequest;
 use App\Http\Resources\V1\Establecimientos\EstablecimientoResource;
 use Illuminate\Http\JsonResponse;
@@ -33,5 +35,13 @@ class EstablecimientoController extends Controller
         Gate::authorize('establecimiento.ver', $establecimiento);
 
         return EstablecimientoResource::make($establecimiento->load('productor'));
+    }
+
+    /** PATCH (TPA-13): datos, zonas sanitarias, instalaciones, ubicación. 409 conflicto_row_version. */
+    public function update(ActualizarEstablecimientoRequest $request, Establecimiento $establecimiento, ActualizarEstablecimiento $actualizar): EstablecimientoResource
+    {
+        Gate::authorize('establecimiento.editar', $establecimiento);
+
+        return EstablecimientoResource::make($actualizar->handle($establecimiento, $request->user(), $request->validated())->load('productor'));
     }
 }
