@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\DispositivoController;
+use App\Http\Controllers\Api\V1\Catalogos\CatalogoController;
+use App\Http\Controllers\Api\V1\Catalogos\ParametroController;
 use App\Http\Controllers\Api\V1\Establecimientos\EstablecimientoController;
 use App\Http\Controllers\Api\V1\Establecimientos\InvitacionController;
 use App\Http\Controllers\Api\V1\Establecimientos\MembresiaController;
@@ -41,6 +43,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
     });
 
     // Público (sin token)
+    Route::get('catalogos', CatalogoController::class)->middleware('throttle:publico')->name('catalogos');
     Route::get('public/invitaciones/{token}', [InvitacionController::class, 'publica'])->middleware('throttle:publico')->name('public.invitaciones.show');
 
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
@@ -53,6 +56,8 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('establecimientos/{establecimiento}', [EstablecimientoController::class, 'show'])->name('establecimientos.show');
         Route::patch('establecimientos/{establecimiento}', [EstablecimientoController::class, 'update'])->name('establecimientos.update');
 
+        Route::get('sync/catalogos', CatalogoController::class)->name('sync.catalogos');
+
         // Usuarios y roles (TPA-11)
         Route::post('invitaciones/{token}/aceptar', [InvitacionController::class, 'aceptar'])->name('invitaciones.aceptar');
         Route::prefix('establecimientos/{establecimiento}')->name('establecimientos.')->scopeBindings()->group(function () {
@@ -64,6 +69,11 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::post('invitaciones', [InvitacionController::class, 'store'])->name('invitaciones.store');
             Route::post('invitaciones/{invitacion}/revocar', [InvitacionController::class, 'revocar'])->name('invitaciones.revocar');
             Route::get('auditoria', AuditoriaController::class)->name('auditoria');
+
+            // Parámetros y catálogo propio (TPA-15)
+            Route::get('parametros', [ParametroController::class, 'index'])->name('parametros.index');
+            Route::put('parametros/{clave}', [ParametroController::class, 'update'])->where('clave', '[a-z0-9_]+')->name('parametros.update');
+            Route::post('catalogo-propio', [ParametroController::class, 'catalogoPropio'])->name('catalogo-propio');
 
             // Potreros (TPA-14)
             Route::get('potreros', [PotreroController::class, 'index'])->name('potreros.index');

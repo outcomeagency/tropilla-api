@@ -4,20 +4,16 @@ namespace App\Http\Requests\V1\Establecimientos;
 
 use App\Domain\Catalogos\Models\GeoDepartamento;
 use App\Domain\Establecimientos\Data\Provincias;
+use App\Rules\Catalogo;
 use App\Rules\Reglas;
 use Closure;
 use Illuminate\Validation\Rule;
 
 /**
- * Validación de EstablecimientoInput (alta y PATCH). Las listas (actividades, instalaciones)
- * salen de `catalogo_items` cuando existe el catálogo; mientras tanto de los valores del modelo de datos.
+ * Validación de EstablecimientoInput (alta y PATCH). Actividades e instalaciones salen de `catalogo_items`.
  */
 final class ReglasEstablecimiento
 {
-    public const ACTIVIDADES = ['cria', 'recria', 'invernada', 'feedlot', 'cabana', 'tambo'];
-
-    public const INSTALACIONES = ['manga', 'balanza', 'cepo', 'embarcadero', 'aguadas', 'revolcaderos'];
-
     /** @return array<string, mixed> */
     public static function reglas(string $prefijo = '', bool $parcial = false, ?string $provincia = null): array
     {
@@ -34,11 +30,11 @@ final class ReglasEstablecimiento
             $prefijo.'renspa' => ['sometimes', 'nullable', 'string', 'max:40'],
             $prefijo.'superficie_ha' => ['sometimes', 'nullable', 'string', Reglas::DECIMAL_POS, 'numeric', 'max:9999999999'],
             $prefijo.'actividades' => [$req, 'array', 'min:1'],
-            $prefijo.'actividades.*' => ['distinct', Rule::in(self::ACTIVIDADES)],
+            $prefijo.'actividades.*' => ['distinct', Catalogo::existe('actividades')],
             $prefijo.'especies' => [$req, 'array', 'min:1'],
-            $prefijo.'especies.*' => ['distinct', Rule::in(['BOV', 'BUB'])],
+            $prefijo.'especies.*' => ['distinct', 'string', Rule::exists('especies', 'codigo')->where('activa', true)],
             $prefijo.'instalaciones' => ['sometimes', 'array'],
-            $prefijo.'instalaciones.*' => ['distinct', Rule::in(self::INSTALACIONES)],
+            $prefijo.'instalaciones.*' => ['distinct', Catalogo::existe('instalaciones')],
             $prefijo.'zonas_sanitarias' => ['sometimes', 'array:aftosa_zona,garrapata,rabia_endemica,fasciola_endemica'],
             $prefijo.'zonas_sanitarias.aftosa_zona' => ['sometimes', 'nullable', 'string', 'max:80'],
             $prefijo.'zonas_sanitarias.garrapata' => ['sometimes', 'nullable', Rule::in(['erradicacion', 'control', 'libre'])],

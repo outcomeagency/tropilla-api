@@ -2,18 +2,14 @@
 
 namespace App\Http\Requests\V1\Hacienda;
 
+use App\Rules\Catalogo;
 use App\Rules\Reglas;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 /** PotreroInput (POST y PATCH). Ambiente y recurso forrajero = catálogos `ambientes` / `recursos_forrajeros`. */
 class PotreroRequest extends FormRequest
 {
-    public const AMBIENTES = ['loma', 'media_loma', 'bajo', 'malezal', 'banado', 'estero', 'isla'];
-
-    public const RECURSOS = ['campo_natural', 'pastura_implantada', 'verdeo'];
-
     /** @return array<string, mixed> */
     public function rules(): array
     {
@@ -25,8 +21,8 @@ class PotreroRequest extends FormRequest
             'row_version' => $patch ? ['required', 'integer', 'min:1'] : ['prohibited'],
             'nombre' => [$req, 'string', 'max:80'],
             'superficie_ha' => ['sometimes', 'nullable', 'string', Reglas::DECIMAL_POS, 'numeric', 'max:99999999'],
-            'ambiente' => ['sometimes', 'nullable', Rule::in(self::AMBIENTES)],
-            'recurso_forrajero' => ['sometimes', 'nullable', Rule::in(self::RECURSOS)],
+            'ambiente' => ['sometimes', 'nullable', Catalogo::existe('ambientes')],
+            'recurso_forrajero' => ['sometimes', 'nullable', Catalogo::existe('recursos_forrajeros')],
             'agua' => ['sometimes', 'boolean'],
             'revolcadero' => ['sometimes', 'boolean'],
             'notas' => ['sometimes', 'nullable', 'string', 'max:2000'],
