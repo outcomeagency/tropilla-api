@@ -68,3 +68,21 @@ it('el admin también puede editar', function () {
     Sanctum::actingAs(miembro($this->est, 'admin'));
     $this->patchJson($this->url, ['row_version' => 1, 'localidad' => 'Mercedes (zona rural)'])->assertOk();
 });
+
+it('guarda ficha extendida con visibilidad privada por defecto y filtra bloques públicos', function () {
+    Sanctum::actingAs(duenoDe($this->est));
+    $this->patchJson($this->url, [
+        'row_version' => 1,
+        'ficha_ampliada' => [
+            'sanidad' => ['brucelosis' => ['estado' => 'libre', 'vence' => '2027-04-01']],
+            'clima' => ['precipitacion_media_mm' => 1350, 'fuente' => 'INTA', 'fecha' => '2026-10-16'],
+        ],
+        'visibilidad_ficha' => ['clima' => true],
+    ])->assertOk()->assertJsonPath('data.ficha_ampliada.sanidad.brucelosis.estado', 'libre')
+        ->assertJsonPath('data.ficha_ampliada.clima.fuente', 'INTA');
+
+    Sanctum::actingAs(miembro($this->est, 'lectura'));
+    $this->getJson($this->url)->assertOk()
+        ->assertJsonPath('data.ficha_ampliada.clima.fuente', 'INTA')
+        ->assertJsonMissingPath('data.ficha_ampliada.sanidad');
+});

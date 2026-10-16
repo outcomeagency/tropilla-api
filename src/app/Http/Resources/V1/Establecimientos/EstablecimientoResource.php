@@ -47,10 +47,20 @@ class EstablecimientoResource extends JsonResource
             'interdiccion_vigente' => Interdiccion::vigente($e->id), // derivado de eventos
             'instalaciones' => $e->instalaciones,
             'historia' => $e->historia,
+            'ficha_ampliada' => $privados ? ($e->ficha_ampliada ?? []) : $this->fichaPublica($e),
+            'visibilidad_ficha' => $privados ? ($e->visibilidad_ficha ?? []) : [],
             'mi_rol' => $rol?->value,
             'abilities' => $rol?->abilities() ?? [],
             'row_version' => $e->row_version,
             'created_at' => Formato::fechaHora($e->created_at),
         ];
+    }
+
+    /** @return array<string, mixed> */
+    private function fichaPublica(Establecimiento $e): array
+    {
+        $visibilidad = $e->visibilidad_ficha ?? [];
+
+        return array_filter($e->ficha_ampliada ?? [], fn ($valor, $bloque) => ($visibilidad[$bloque] ?? false) === true, ARRAY_FILTER_USE_BOTH);
     }
 }

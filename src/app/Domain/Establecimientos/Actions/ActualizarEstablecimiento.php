@@ -21,6 +21,7 @@ final class ActualizarEstablecimiento
     private const CAMPOS = [
         'nombre', 'provincia_codigo', 'departamento_codigo', 'localidad', 'ubicacion', 'renspa', 'superficie_ha',
         'actividades', 'especies', 'instalaciones', 'historia',
+        'ficha_ampliada', 'visibilidad_ficha',
     ];
 
     public function __construct(
