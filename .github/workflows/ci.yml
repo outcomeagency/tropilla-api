@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [integration, staging, production, "feature/**"]
+  pull_request:
+    branches: [integration, staging, production]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # Solo se cancelan corridas viejas de PRs y feature/**; las ramas de entorno corren siempre.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/feature/') }}
+
+jobs:
+  tests:
+    name: Pest + Pint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.5
+        env:
+          POSTGRES_DB: tropilla_test
+          POSTGRES_USER: tropilla
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tropilla -d tropilla_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+    # Los servicios se publican en el runner: los hosts de Docker (postgres/redis)
+    # se reemplazan por 127.0.0.1. phpunit.xml fuerza DB_DATABASE=tropilla_test
+    # pero no host/puerto, así que estas variables mandan sobre .env.
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USERNAME: tropilla
+      DB_PASSWORD: secret
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+
+    defaults:
+      run:
+        working-directory: src
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pdo_pgsql, pgsql, redis, bcmath, gd, zip, exif, pcntl, intl
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache de Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ runner.os }}-${{ hashFiles('src/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: composer install
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Preparar .env
+        run: |
+          cp .env.example .env
+          php artisan key:generate --ansi
+
+      - name: Pest
+        run: php artisan test
+
+      - name: Pint
+        run: vendor/bin/pint --test
