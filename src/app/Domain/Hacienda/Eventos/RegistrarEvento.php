@@ -113,6 +113,7 @@ final class RegistrarEvento
 
             // 7–8. Sujetos, referencias y reglas bloqueantes.
             $ctx = new ContextoEvento($est, $sobre, $tipo, $base);
+            $ctx->canal = $op['canal'];
             $this->sujetos($ctx);
             $this->referenciasYReglas($ctx, $op['canal']);
 
