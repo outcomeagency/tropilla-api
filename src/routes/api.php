@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\Hacienda\EventoController;
 use App\Http\Controllers\Api\V1\Hacienda\PotreroController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Sistema\AuditoriaController;
+use App\Http\Controllers\Api\V1\Sync\SyncController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -60,6 +61,10 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::patch('establecimientos/{establecimiento}', [EstablecimientoController::class, 'update'])->name('establecimientos.update');
 
         Route::get('sync/catalogos', CatalogoController::class)->name('sync.catalogos');
+        // Sync offline (TPA-43)
+        Route::post('sync/push', [SyncController::class, 'push'])->middleware('throttle:sync-push')->name('sync.push');
+        Route::get('sync/pull', [SyncController::class, 'pull'])->name('sync.pull');
+        Route::get('sync/snapshot', [SyncController::class, 'snapshot'])->name('sync.snapshot');
 
         // Usuarios y roles (TPA-11)
         Route::post('invitaciones/{token}/aceptar', [InvitacionController::class, 'aceptar'])->name('invitaciones.aceptar');

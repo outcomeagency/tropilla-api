@@ -4,6 +4,7 @@ namespace App\Domain\Hacienda\Eventos;
 
 use App\Casts\PgTextArray;
 use App\Domain\Catalogos\Parametros;
+use App\Domain\Establecimientos\Enums\Rol;
 use App\Domain\Establecimientos\Interdiccion;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Hacienda\Models\Evento;
@@ -52,7 +53,8 @@ final class RegistrarEvento
     ) {}
 
     /**
-     * @param  array{canal: 'web'|'push', huella?: string|null, confirmar_advertencias?: bool, motivo_revision?: string}  $op
+     * @param  array{canal: 'web'|'push', huella?: string|null, confirmar_advertencias?: bool, rol?: Rol, post_revocacion?: bool}  $op
+     *                                                                                                                                  `rol` + `post_revocacion`: carga de un usuario revocado dentro de las 72 h (§7.8)
      */
     public function handle(Establecimiento $est, User $autor, stdClass $sobre, array $op): ResultadoRegistro
     {
@@ -89,7 +91,8 @@ final class RegistrarEvento
             // 5. Permisos por rol y módulo.
             $correccion = (int) $sobre->version > 1;
             $ability = TiposEvento::ability($tipo->modulo, $correccion);
-            if (! Gate::forUser($autor)->allows($ability, $est)) {
+            $permitido = isset($op['rol']) ? $op['rol']->puede($ability) : Gate::forUser($autor)->allows($ability, $est);
+            if (! $permitido) {
                 throw new EventoRechazado('sin_permiso', 'Tu rol no permite registrar este tipo de evento.');
             }
 
@@ -125,6 +128,10 @@ final class RegistrarEvento
 
             // 10. Coherencia: advierte, no rechaza (en la web se confirma antes de guardar).
             $obs = $this->observaciones($ctx, $op['canal'], $autor);
+            if (! empty($op['post_revocacion'])) {
+                $obs[] = ['codigo' => 'carga_post_revocacion', 'mensaje' => 'Cargado antes de la revocación del acceso.', 'interna' => true, 'revision' => true,
+                    'detalle' => ['autor_id' => $autor->id]];
+            }
             $advertencias = array_values(array_filter($obs, fn ($o) => ! $o['interna']));
             if ($op['canal'] === 'web' && $advertencias !== [] && empty($op['confirmar_advertencias'])) {
                 throw new ApiException(422, 'requiere_confirmacion', __('Hay advertencias: confirmá para registrar igual.'), [], array_map(
