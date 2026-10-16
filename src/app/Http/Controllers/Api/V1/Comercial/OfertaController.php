@@ -41,7 +41,7 @@ class OfertaController extends Controller
     {
         Gate::authorize('ofertas.gestionar', $establecimiento);
         $d = $request->validate([
-            'tipo' => ['required', 'in:invernada,gordo,cria,reproductores'],
+            'tipo' => ['required', 'in:lote,invernada,gordo,cria,reproductores'],
             'lote_id' => ['required_without:animal_ids', 'nullable', 'uuid'],
             'animal_ids' => ['required_without:lote_id', 'array', 'max:1000'],
             'animal_ids.*' => ['uuid'],
@@ -102,7 +102,7 @@ class OfertaController extends Controller
     {
         return $request->validate([
             'row_version' => $patch ? ['required', 'integer'] : ['prohibited'],
-            'tipo' => [$patch ? 'sometimes' : 'required', 'in:invernada,gordo,cria,reproductores'],
+            'tipo' => [$patch ? 'sometimes' : 'required', 'in:lote,invernada,gordo,cria,reproductores'],
             'especie' => ['sometimes', 'nullable', 'exists:especies,codigo'],
             'lote_id' => ['sometimes', 'nullable', 'uuid'],
             'animal_ids' => ['sometimes', 'array', 'max:1000'],

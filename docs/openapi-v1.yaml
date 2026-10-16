@@ -8502,7 +8502,7 @@ components:
         id: {$ref: '#/components/schemas/Uuid'}
         codigo_publico: {type: string}
         url_publica: {type: string}
-        tipo: {type: string}
+        tipo: {type: string, enum: [lote, invernada, gordo, cria, reproductores]}
         especie: {type: string, enum: [BOV, BUB]}
         categorias:
           type: array
@@ -8544,7 +8544,7 @@ components:
     OfertaInput:
       type: object
       properties:
-        tipo: {type: string}
+        tipo: {type: string, enum: [lote, invernada, gordo, cria, reproductores]}
         especie: {type: string, enum: [BOV, BUB]}
         categorias:
           type: array
@@ -8575,7 +8575,7 @@ components:
         animal_ids:
           type: array
           items: {$ref: '#/components/schemas/Uuid'}
-        tipo: {type: string}
+        tipo: {type: string, enum: [lote, invernada, gordo, cria, reproductores]}
       required: [tipo]
       additionalProperties: false
     PublicarInput:
