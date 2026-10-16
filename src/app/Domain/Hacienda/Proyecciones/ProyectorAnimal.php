@@ -138,7 +138,9 @@ final class ProyectorAnimal
             'potrero_id' => $nuevo['potrero_id'] ?? null,
             'peso_kg' => null, 'peso_fecha' => null, 'peso_metodo' => null, 'peso_anterior_kg' => null, 'peso_anterior_fecha' => null, 'gdp_kg_dia' => null,
             'cc_valor' => null, 'cc_escala' => null, 'cc_fecha' => null,
-            'destetado' => false, 'destete_fecha' => null, 'destete_peso_kg' => null,
+            // Un animal que entra con una categoría que no es de cría ya está destetado (dato de `categorias.es_cria`).
+            'destetado' => ! (bool) DB::table('categorias')->where('codigo', $nuevo['categoria'])->value('es_cria'),
+            'destete_fecha' => null, 'destete_peso_kg' => null,
             'partos' => 0, 'ultimo_parto_fecha' => null, 'estado_reproductivo' => null,
             'servicio_fecha' => null, 'servicio_evento_id' => null, 'servicio_tipo' => null,
             'tacto_fecha' => null, 'dias_gestacion_al_tacto' => null, 'fecha_probable_parto' => null, 'fpp_precision' => null,

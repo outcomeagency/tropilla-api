@@ -36,3 +36,23 @@ Si tu UID no es 1000: `HOST_UID` / `HOST_GID`.
 
 Credenciales de dev: Postgres `tropilla` / `secret` · MinIO `tropilla` / `secretsecret` ·
 usuario seed `dev@tropilla.local` / `password` (solo `APP_ENV=local`).
+
+## Datos demo — «La Esperanza»
+
+En `APP_ENV=local` el seeder carga (idempotente) el establecimiento demo del brief de diseño:
+**Agropecuaria Don Ramón S.A.** · **La Esperanza** (General Paz, Corrientes, 2.400 ha), potreros Bañado Norte,
+Loma del Monte y Malezal 3, **1.240 bovinos y 380 bubalinos** en lotes por categoría, la búfala Murrah **U-0142**
+(preñada, parto probable 12/01/2027), la vaca Braford **1187**, 30 bubillos Mediterráneos en venta (468 kg promedio),
+4 partos probables esta semana y 8 recategorizaciones sugeridas. Todo entra como **eventos reales** (hasheados y encadenados).
+
+| Usuario | Contraseña | Rol |
+|---|---|---|
+| `demo@tropilla.ar` | `tropilla-demo` | Dueño de La Esperanza |
+
+```bash
+docker compose exec app php artisan db:seed --class=DemoLaEsperanzaSeeder   # cargarlo a mano
+curl -s localhost:8090/api/v1/auth/login -H 'Content-Type: application/json' \
+  -d '{"email":"demo@tropilla.ar","password":"tropilla-demo","cliente":"web"}'
+```
+
+Contrato de la API: [`docs/openapi-v1.yaml`](docs/openapi-v1.yaml). Avance por ticket: [`docs/PROGRESS.md`](docs/PROGRESS.md).

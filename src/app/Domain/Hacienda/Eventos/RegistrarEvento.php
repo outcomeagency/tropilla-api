@@ -479,7 +479,7 @@ final class RegistrarEvento
             ->where(fn ($q) => $q->whereNull('establecimiento_id')->orWhere('establecimiento_id', $est->id))->exists()) {
             throw new EventoRechazado('esquema_invalido', 'Causa de muerte desconocida.', ['payload.causa' => ['No está en el catálogo.']]);
         }
-        if (isset($p->identificacion) && $p->identificacion->tipo === 'rfid' && ! preg_match('/^\d{15}$/', $p->identificacion->valor)) {
+        if (isset($p->identificacion) && $p->identificacion->tipo === 'rfid' && ! preg_match('/^\d{15}$/', Identificaciones::normalizar($p->identificacion->valor))) {
             throw new EventoRechazado('regla_bloqueante', 'El RFID tiene 15 dígitos.', ['payload.identificacion.valor' => ['15 dígitos.']]);
         }
         if (isset($p->cambios) && $p->cambios instanceof stdClass && isset($p->cambios->raza)) {
@@ -590,7 +590,7 @@ final class RegistrarEvento
                 }
             }
             foreach ((array) ($n->identificaciones ?? []) as $j => $ident) {
-                if ($ident->tipo === 'rfid' && ! preg_match('/^\d{15}$/', $ident->valor)) {
+                if ($ident->tipo === 'rfid' && ! preg_match('/^\d{15}$/', Identificaciones::normalizar($ident->valor))) {
                     throw new EventoRechazado('regla_bloqueante', 'El RFID tiene 15 dígitos.', ["{$campo}.identificaciones.{$j}.valor" => ['15 dígitos.']]);
                 }
             }

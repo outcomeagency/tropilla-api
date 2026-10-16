@@ -42,11 +42,28 @@ final class SugeridorCategoria
 
         foreach ($this->reglas($s['especie_codigo'], $establecimientoId) as $r) {
             if (CondicionEvaluator::evaluar(json_decode($r->condiciones, true), $hechos, $param)) {
-                return $r->categoria_codigo === $s['categoria_codigo'] ? [null, null] : [$r->categoria_codigo, (int) $r->id];
+                // Nunca se sugiere «volver» a una categoría anterior (orden del catálogo): un animal cargado como
+                // vaca sin partos registrados no se sugiere vaquillona. Los pasos atrás (castración de un torito) los
+                // hace el evento con `categoria_nueva`.
+                $orden = $this->orden();
+                if ($r->categoria_codigo === $s['categoria_codigo'] || ($orden[$r->categoria_codigo] ?? 0) < ($orden[$s['categoria_codigo']] ?? 0)) {
+                    return [null, null];
+                }
+
+                return [$r->categoria_codigo, (int) $r->id];
             }
         }
 
         return [null, null];
+    }
+
+    /** @var array<string, int>|null */
+    private ?array $orden = null;
+
+    /** @return array<string, int> */
+    private function orden(): array
+    {
+        return $this->orden ??= DB::table('categorias')->pluck('orden', 'codigo')->map(fn ($o) => (int) $o)->all();
     }
 
     /** @return list<object> */

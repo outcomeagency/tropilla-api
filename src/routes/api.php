@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Establecimientos\InvitacionController;
 use App\Http\Controllers\Api\V1\Establecimientos\MembresiaController;
 use App\Http\Controllers\Api\V1\Establecimientos\OnboardingController;
 use App\Http\Controllers\Api\V1\Establecimientos\ProductorController;
+use App\Http\Controllers\Api\V1\Hacienda\AnimalController;
 use App\Http\Controllers\Api\V1\Hacienda\EventoController;
 use App\Http\Controllers\Api\V1\Hacienda\PotreroController;
 use App\Http\Controllers\Api\V1\HealthController;
@@ -75,6 +76,11 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('parametros', [ParametroController::class, 'index'])->name('parametros.index');
             Route::put('parametros/{clave}', [ParametroController::class, 'update'])->where('clave', '[a-z0-9_]+')->name('parametros.update');
             Route::post('catalogo-propio', [ParametroController::class, 'catalogoPropio'])->name('catalogo-propio');
+
+            // Animales (TPA-16..19)
+            Route::post('animales', [AnimalController::class, 'store'])->name('animales.store');
+            Route::get('animales/identificador', [AnimalController::class, 'identificador'])->name('animales.identificador');
+            Route::get('animales/{animal}', [AnimalController::class, 'show'])->name('animales.show');
 
             // Eventos (TPA-22, 26)
             Route::get('eventos', [EventoController::class, 'index'])->name('eventos.index');
