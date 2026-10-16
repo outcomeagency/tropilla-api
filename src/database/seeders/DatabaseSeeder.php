@@ -9,7 +9,6 @@ use Illuminate\Database\Seeder;
 /**
  * Seeders idempotentes: el entrypoint los corre en cada arranque.
  * Usar updateOrCreate / firstOrCreate, nunca create a secas.
- * Catálogos por especie (reglas como datos) se agregan acá en sus tickets.
  */
 class DatabaseSeeder extends Seeder
 {
@@ -17,6 +16,8 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        $this->call(CatalogosSeeder::class);
+
         if (app()->environment('local')) {
             User::firstOrCreate(
                 ['email' => 'dev@tropilla.local'],
