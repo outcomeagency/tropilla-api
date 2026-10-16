@@ -40,6 +40,18 @@ return [
         'fcm_credenciales' => env('TROPILLA_FCM_CREDENCIALES'),
     ],
 
+    // Alertas climáticas (TPA-70): fuentes gratuitas sin key, cache por punto y recálculo cada 6 h (scheduler `clima:actualizar`).
+    'clima' => [
+        'open_meteo_forecast_url' => env('TROPILLA_CLIMA_FORECAST_URL', 'https://api.open-meteo.com/v1/forecast'),
+        'open_meteo_archive_url' => env('TROPILLA_CLIMA_ARCHIVE_URL', 'https://archive-api.open-meteo.com/v1/archive'),
+        'noaa_oni_url' => env('TROPILLA_CLIMA_ONI_URL', 'https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt'),
+        'timeout_segundos' => 10,
+        'cache_pronostico_horas' => 3,
+        'cache_historico_horas' => 24,
+        'cache_enso_horas' => 24,
+        'vigencia_horas' => 6,
+    ],
+
     // Pepper del HMAC de CUIT (búsqueda exacta / unicidad sin descifrar). modelo-datos §2.3.
     'cuit_pepper' => env('TROPILLA_CUIT_PEPPER', env('APP_KEY')),
 ];
