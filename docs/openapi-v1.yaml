@@ -7765,7 +7765,8 @@ components:
         version: {type: [integer, 'null']}
         accesos: {type: integer}
         created_at: {$ref: '#/components/schemas/FechaHora'}
-        url: {type: [string, 'null'], description: 'Solo en la respuesta de creación: el token no se guarda'}
+        url: {type: [string, 'null'], description: 'Solo en la respuesta de creación: el token no se guarda. Forma `{web}/e/{token}` (TPA-38)'}
+        aviso: {type: [string, 'null'], description: 'Aditivo TPA-38: aviso al compartir un documento fiscal'}
       additionalProperties: false
     SubidaInput:
       type: object
@@ -9128,6 +9129,7 @@ components:
           additionalProperties: false
         leyenda: {type: string}
       additionalProperties: false
+      description: '`documento.estado = reemplazado` si el enlace está fijo a una versión que ya no es la vigente (TPA-38).'
     SitemapEntrada:
       type: object
       properties:
