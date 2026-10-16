@@ -5,6 +5,10 @@ namespace App\Providers;
 use App\Domain\Documentos\Almacen\AlmacenObjetos;
 use App\Domain\Documentos\Almacen\LocalAlmacen;
 use App\Domain\Documentos\Almacen\S3Almacen;
+use App\Domain\Documentos\Borradores\Extraccion\ClaudeExtractor;
+use App\Domain\Documentos\Borradores\Extraccion\Extractor;
+use App\Domain\Documentos\Borradores\Extraccion\ExtractorDeshabilitado;
+use App\Domain\Documentos\Borradores\Extraccion\FakeExtractor;
 use App\Domain\Establecimientos\Enums\Rol;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Establecimientos\Models\Productor;
@@ -40,6 +44,12 @@ class AppServiceProvider extends ServiceProvider
             ? new OpenTimestampsDriver(config('tropilla.anclaje.calendarios'), config('tropilla.anclaje.explorador'))
             : new StubDriver);
 
+        // Lectura asistida de planillas (TPA-61): claude | fake (tests) | deshabilitado (sin key).
+        $this->app->bind(Extractor::class, fn () => match (config('tropilla.extraccion.driver')) {
+            'claude' => new ClaudeExtractor((string) config('tropilla.extraccion.anthropic_key'), (string) config('tropilla.extraccion.modelo'), (int) config('tropilla.extraccion.max_tokens')),
+            'fake' => new FakeExtractor,
+            default => new ExtractorDeshabilitado,
+        });
         // Push (TPA-53): FCM o log. Singleton para que el log de los tests se pueda inspeccionar.
         $this->app->singleton(PushDriver::class, fn () => config('tropilla.push.driver') === 'fcm'
             ? FcmPushDriver::desdeArchivo(config('tropilla.push.fcm_credenciales'))
@@ -53,7 +63,7 @@ class AppServiceProvider extends ServiceProvider
     private const PARAMETROS_UUID = [
         'establecimiento', 'productor', 'membresia', 'invitacion', 'potrero', 'lote', 'animal', 'evento',
         'revision', 'producto', 'item', 'tarea', 'documento', 'enlace', 'subida', 'importacion', 'exportacion',
-        'operacion', 'oferta', 'consulta', 'contrato', 'toma', 'busco', 'organizacion', 'adhesion', 'notificacion',
+        'operacion', 'oferta', 'consulta', 'contrato', 'toma', 'busco', 'organizacion', 'adhesion', 'notificacion', 'borrador',
     ];
 
     public function boot(): void
@@ -61,6 +71,10 @@ class AppServiceProvider extends ServiceProvider
         // sync §6.3: con el driver stub en producción la app no arranca (sería «integridad registrada» falsa).
         if ($this->app->environment('production') && config('tropilla.anclaje.driver') === 'stub') {
             throw new RuntimeException('TROPILLA_ANCLAJE_DRIVER=stub no está permitido en producción.');
+        }
+        // TPA-61: el extractor fake devuelve datos programados; en producción sería inventar lecturas.
+        if ($this->app->environment('production') && config('tropilla.extraccion.driver') === 'fake') {
+            throw new RuntimeException('TROPILLA_EXTRACCION_DRIVER=fake no está permitido en producción.');
         }
 
         foreach (self::PARAMETROS_UUID as $parametro) {

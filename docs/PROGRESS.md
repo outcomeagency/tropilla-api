@@ -960,6 +960,35 @@ aditivos `POST /organizaciones` (solo staff) y `POST /organizaciones/{o}/miembro
 - Verificado: 2 tests (búsqueda, adhesión con huella recalculable desde el sobre y cadena del productor, 409, padrón con solo existencias, cambio → solo sanidad,
   revocación → fuera del padrón, re-adhesión v4, append-only, cadenas verificadas; encargado 403, ajeno 404, padrón ajeno 404, alta solo staff, 422, org inexistente 404).
 
+## TPA-61 + TPA-62 · Borrador de documento desde foto offline + extracción de acta de vacunación · ✅ (parte API)
+
+**Endpoints (aditivos):** `GET|POST /establecimientos/{e}/borradores`, `GET …/borradores/{b}`, `PATCH …/borradores/{b}/campos`,
+`POST …/borradores/{b}/confirmar|reextraer|descartar`.
+
+**Comentario del dev:**
+- La foto se captura offline con el módulo de documentos existente (sobre `tropilla.documento_version/1` en la outbox + páginas en la cola de archivos por
+  SHA-256, verificado en el servidor al completar la subida). El borrador referencia ese documento: la app lo encola con su UUIDv7 y lo manda después del push
+  (idempotente por id; 409 `dependencia_faltante` reintentable si el documento todavía no llegó). Si falta alguna página queda `esperando_archivos` y el hook
+  de `GestionarSubida::completar` lo pasa a `en_cola` solo.
+- Tablas `borradores_documento` (cabecera + proyección de campos), `borrador_extracciones` y `borrador_correcciones` (**append-only**, trigger
+  `tropilla_inmutable`): cada extracción guarda proveedor, modelo, esquema versionado, páginas, salida cruda, campos y advertencias; cada decisión humana
+  guarda ruta, estado, valor anterior y nuevo, usuario y fecha.
+- Proveedor detrás de `Extractor`: `ClaudeExtractor` (SDK oficial `anthropic-ai/sdk`, visión + `output_config.format` json_schema, modelo
+  `claude-haiku-4-5-20251001` por defecto vía `TROPILLA_EXTRACCION_MODELO`, key `ANTHROPIC_API_KEY`), `FakeExtractor` (tests; prohibido en producción) y
+  `ExtractorDeshabilitado` (sin key → `fallido` con mensaje, nunca datos inventados). Errores transitorios (429/5xx/red): 3 intentos con espera creciente.
+- Familia `acta_vacunacion` (TPA-62) con dos esquemas: `acta_vacunacion.711_2025/1` y `acta_vacunacion.879_2002/1` (sin tipo de acto ni alcance). Extrae
+  RENSPA, fecha, campaña, tipo/alcance, vacunas (enfermedad, marca, serie, vencimiento), categorías con existentes/vacunados aftosa/brucelosis, totales,
+  ente/vacunador/matrícula, responsable/DNI y firmas detectables. La categoría del catálogo es **sugerencia** (`sugerido: true`), no lectura.
+- Advertencias sin autocorregir: vacunados > existentes, totales que no cierran, existencias distintas a TROPILLA, RENSPA distinto/mal formado, fecha
+  faltante/futura, firma no detectada, problemas de imagen, formulario no reconocido; `categoria_otra_especie` bloquea.
+- Confirmar exige todo revisado (`revision_incompleta`) y `confirmar_advertencias`; crea un `sanidad.vacunacion` por vacuna por `ArmarSobreWeb` +
+  `RegistrarEvento` (sujetos: animales activos de las categorías vacunadas en tandas de 1000 + lotes anónimos con esas categorías; adjuntos = páginas) y
+  versiona el documento (`correccion_metadatos`) con vínculos a los eventos y fecha/emisor si faltaban. Alcance `cero` no crea eventos. Todo o nada, idempotente.
+- Pendiente fuera de alcance: Anexo IV de la 711/2025 no se verificó casillero por casillero (investigación §4); el payload de `sanidad.vacunacion` no
+  guarda cantidades por categoría (siguen en el borrador/documento).
+- Verificado: 6 tests (flujo completo con subida diferida, 879 con advertencias, fallas/reintento/reextraer/filas nuevas/sin proveedor/descartar,
+  permisos 403/404/409/422, normalización, request real del SDK con middleware).
+
 ---
 
 ## Desvíos del contrato

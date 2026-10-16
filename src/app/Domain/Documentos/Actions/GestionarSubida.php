@@ -4,6 +4,7 @@ namespace App\Domain\Documentos\Actions;
 
 use App\Domain\Documentos\Almacen\AlmacenObjetos;
 use App\Domain\Documentos\Archivos;
+use App\Domain\Documentos\Borradores\Borradores;
 use App\Domain\Documentos\Fotos;
 use App\Exceptions\ApiException;
 use App\Models\User;
@@ -106,6 +107,8 @@ final class GestionarSubida
             ]);
             DB::table('subidas')->where('id', $subida->id)->update(['estado' => 'completada', 'updated_at' => now()]);
         });
+
+        Borradores::archivoCompleto($subida->archivo_sha256); // TPA-61: el borrador que esperaba esta página pasa a la cola de lectura
 
         return DB::table('archivos')->where('sha256', $subida->archivo_sha256)->first();
     }
