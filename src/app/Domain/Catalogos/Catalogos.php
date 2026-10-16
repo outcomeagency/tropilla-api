@@ -62,25 +62,25 @@ final class Catalogos
                 'codigo' => $e->codigo, ...$conNombre($e), 'nombre_cientifico' => $e->nombre_cientifico, 'activa' => (bool) $e->activa,
             ])->all(),
             'razas' => DB::table('razas')->whereNull('establecimiento_id')->orderBy('especie_codigo')->orderBy('orden')->get()->map(fn ($r) => [
-                'codigo' => $r->codigo, 'especie' => $r->especie_codigo, ...$conNombre($r), 'prefijo_tatuaje' => $r->prefijo_tatuaje, 'activa' => (bool) $r->activa,
+                'codigo' => $r->codigo, 'especie_codigo' => $r->especie_codigo, 'especie' => $r->especie_codigo, ...$conNombre($r), 'prefijo_tatuaje' => $r->prefijo_tatuaje, 'activa' => (bool) $r->activa,
             ])->all(),
             'categorias' => DB::table('categorias')->orderBy('especie_codigo')->orderBy('orden')->get()->map(fn ($c) => [
-                'codigo' => $c->codigo, 'especie' => $c->especie_codigo, ...$conNombre($c), 'sexo' => $c->sexo,
+                'codigo' => $c->codigo, 'especie_codigo' => $c->especie_codigo, 'especie' => $c->especie_codigo, ...$conNombre($c), 'sexo' => $c->sexo,
                 'castrado' => $c->castrado === null ? null : (bool) $c->castrado, 'es_cria' => (bool) $c->es_cria,
                 'es_vientre' => (bool) $c->es_vientre, 'es_reproductor' => (bool) $c->es_reproductor, 'orden' => (int) $c->orden,
             ])->all(),
             'categorias_faena' => DB::table('categorias_faena')->orderBy('id')->get()->map(fn ($c) => [
-                'codigo' => $c->codigo, 'especie' => $c->especie_codigo, 'abreviatura' => $c->abreviatura, ...$conNombre($c),
+                'codigo' => $c->codigo, 'especie_codigo' => $c->especie_codigo, 'especie' => $c->especie_codigo, 'abreviatura' => $c->abreviatura, ...$conNombre($c),
                 'sexo' => $c->sexo, 'denticion' => $c->denticion_desde, 'categorias_manejo' => PgTextArray::parse($c->categorias_manejo),
                 'liviano_hasta_kg' => $c->liviano_hasta_kg === null ? null : rtrim(rtrim($c->liviano_hasta_kg, '0'), '.'), 'norma' => $c->norma,
             ])->all(),
             'reglas_categoria' => DB::table('reglas_categoria')->whereNull('establecimiento_id')->where('activa', true)
                 ->orderBy('especie_codigo')->orderByDesc('prioridad')->get()->map(fn ($r) => [
-                    'id' => (int) $r->id, 'especie' => $r->especie_codigo, 'categoria' => $r->categoria_codigo,
+                    'id' => (int) $r->id, 'especie_codigo' => $r->especie_codigo, 'especie' => $r->especie_codigo, 'categoria' => $r->categoria_codigo,
                     'prioridad' => (int) $r->prioridad, 'condiciones' => $j($r->condiciones), 'motivo' => $r->motivo, 'version' => (int) $r->version,
                 ])->all(),
             'parametros' => DB::table('parametros')->whereNull('establecimiento_id')->orderBy('clave')->orderBy('especie_codigo')->orderBy('raza_codigo')->get()->map(fn ($p) => [
-                'clave' => $p->clave, 'especie' => $p->especie_codigo, 'raza' => $p->raza_codigo, 'valor' => $j($p->valor),
+                'clave' => $p->clave, 'especie_codigo' => $p->especie_codigo, 'especie' => $p->especie_codigo, 'raza' => $p->raza_codigo, 'valor' => $j($p->valor),
                 'unidad' => $p->unidad, 'fuente' => $p->fuente, 'validado_por_vet' => (bool) $p->validado_por_vet, 'vigente_desde' => $p->vigente_desde,
             ])->all(),
             'tipos_evento' => DB::table('tipos_evento')->join('tipos_evento_versiones as v', 'v.tipo_codigo', '=', 'tipos_evento.codigo')
@@ -103,7 +103,7 @@ final class Catalogos
                     'codigo' => $i->codigo, ...$conNombre($i), 'especies' => $i->especies === null ? null : PgTextArray::parse($i->especies),
                 ])->values()->all())->all(),
             'plantillas_sanitarias' => DB::table('plantillas_sanitarias')->orderBy('id')->get()->map(fn ($p) => [
-                'codigo' => $p->codigo, 'especie' => $p->especie_codigo, ...$conNombre($p), 'tipo_evento' => $p->tipo_evento,
+                'codigo' => $p->codigo, 'especie_codigo' => $p->especie_codigo, 'especie' => $p->especie_codigo, ...$conNombre($p), 'tipo_evento' => $p->tipo_evento,
                 'enfermedad' => $p->enfermedad, 'alcance' => $j($p->alcance), 'disparador' => $j($p->disparador),
                 'repeticion' => $j($p->repeticion), 'condicion' => $j($p->condicion), 'nota' => $p->nota, 'aviso' => $p->aviso,
                 'fuente' => $p->fuente, 'version' => (int) $p->version, 'activa' => (bool) $p->activa,

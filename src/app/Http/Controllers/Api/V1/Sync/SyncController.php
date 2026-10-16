@@ -20,7 +20,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use stdClass;
 
-/** Sincronización offline (TPA-43): push idempotente por UUID, pull por cursor y snapshot. */
+/**
+ * Sincronización offline (TPA-43): push idempotente por UUID, pull por cursor y snapshot.
+ * Las tres respuestas van en el envoltorio estándar `{"data": …}` del OpenAPI (bugfix TPA-43); `cursor`,
+ * `hay_mas` y `catalogos_version` viajan dentro de `data` (son parte del recurso, no paginación de listado).
+ */
 class SyncController extends Controller
 {
     private const MAX_BYTES = 2 * 1024 * 1024;
@@ -58,10 +62,10 @@ class SyncController extends Controller
         }
         $acceso = $this->acceso($usuario, $est);
 
-        return response()->json([
+        return response()->json(['data' => [
             'resultados' => $push->handle($est, $usuario, $in, $acceso),
             'servidor_en' => Formato::fechaHora(now()),
-        ]);
+        ]]);
     }
 
     public function pull(Request $request, Pull $pull): JsonResponse
@@ -71,7 +75,7 @@ class SyncController extends Controller
         $rol = Membresia::query()->activas()->where('establecimiento_id', $est->id)->where('usuario_id', $request->user()->id)->value('rol');
         $limite = max(1, min(500, (int) ($request->query('limite') ?: 500)));
 
-        return response()->json($pull->handle($est, $rol, $request, $request->query('cursor'), $limite));
+        return response()->json(['data' => $pull->handle($est, $rol, $request, $request->query('cursor'), $limite)]);
     }
 
     public function snapshot(Request $request, Snapshot $snapshot): JsonResponse
@@ -79,7 +83,7 @@ class SyncController extends Controller
         $est = $this->establecimiento($request);
         Gate::authorize('sync.snapshot', $est);
 
-        return response()->json($snapshot->handle($est, $request), 200, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        return response()->json(['data' => $snapshot->handle($est, $request)], 200, [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
     /**

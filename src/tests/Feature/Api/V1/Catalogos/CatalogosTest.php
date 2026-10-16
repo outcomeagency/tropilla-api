@@ -14,9 +14,12 @@ it('GET /catalogos: paquete público con especies, categorías por especie, JSON
 
     $d = $res->json('data');
     expect(collect($d['especies'])->pluck('codigo')->all())->toBe(['BOV', 'BUB'])
-        ->and(collect($d['categorias'])->where('especie', 'BUB')->pluck('codigo')->all())->toContain('BUB_BUCERRA', 'BUB_BUFALA', 'BUB_BUFALO_TORO')
+        ->and(collect($d['categorias'])->where('especie_codigo', 'BUB')->pluck('codigo')->all())->toContain('BUB_BUCERRA', 'BUB_BUFALA', 'BUB_BUFALO_TORO')
         ->and(collect($d['categorias'])->firstWhere('codigo', 'BUB_BUFALA')['nombre'])->toBe('Búfala')
         ->and(collect($d['razas'])->firstWhere('codigo', 'BUB_MURRAH')['prefijo_tatuaje'])->toBe('U')
+        ->and(collect([...$d['razas'], ...$d['categorias'], ...$d['categorias_faena'], ...$d['reglas_categoria'], ...$d['plantillas_sanitarias']])
+            ->every(fn ($f) => array_key_exists('especie_codigo', $f) && $f['especie_codigo'] === $f['especie']))->toBeTrue()
+        ->and(collect($d['parametros'])->firstWhere('clave', 'gestacion_media_dias'))->toHaveKey('especie_codigo')
         ->and($d['categorias_faena'])->toHaveCount(10)
         ->and(collect($d['tipos_evento'])->firstWhere('codigo', 'hacienda.pesaje')['json_schema']['required'])->toBe(['modo', 'peso_kg', 'metodo'])
         ->and(collect($d['tipos_evento'])->firstWhere('codigo', 'reproduccion.parto')['requiere_sexo'])->toBe('H')
@@ -44,7 +47,17 @@ it('el seeder es idempotente: no sube la versión si el contenido no cambió', f
 it('/sync/catalogos exige token', function () {
     $this->getJson('/api/v1/sync/catalogos')->assertUnauthorized();
     Sanctum::actingAs(User::factory()->create());
-    $this->getJson('/api/v1/sync/catalogos')->assertOk()->assertJsonStructure(['data' => ['version', 'tipos_evento']]);
+    $this->getJson('/api/v1/sync/catalogos')->assertOk()->assertJsonStructure(['data' => ['version', 'tipos_evento']])
+        ->assertHeader('Cache-Control', 'no-cache, private');
+
+    // bugfix TPA-43 (app): `?version=<actual>` → 304 sin cuerpo; versión vieja o basura → 200 con el paquete.
+    $v = Catalogos::version();
+    $this->get("/api/v1/sync/catalogos?version={$v}")->assertStatus(304)->assertNoContent(304);
+    $this->get('/api/v1/sync/catalogos?version=v'.$v)->assertStatus(304);
+    $this->getJson('/api/v1/sync/catalogos?version='.($v - 1))->assertOk()->assertJsonPath('data.version', $v);
+    $this->getJson('/api/v1/sync/catalogos?version=abc')->assertOk();
+    $etag = $this->get('/api/v1/sync/catalogos')->headers->get('ETag');
+    $this->get('/api/v1/sync/catalogos', ['If-None-Match' => 'W/'.$etag])->assertStatus(304);
 });
 
 it('resuelve parámetros por especificidad: global, especie, raza y establecimiento (sin if especie)', function () {

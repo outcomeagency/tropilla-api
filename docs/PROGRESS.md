@@ -285,6 +285,19 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
   y resolución «reaplicada», evento posterior a baja aceptado con revisión, maestros + conflicto, pull/cursor/422, filtro por
   visibilidad, snapshot → pull vacío, revocación 72 h / lectura 403 / 404, 422 del envío).
 
+### TPA-43 · bugfix: desvíos reportados por la app Flutter · ✅
+
+**Comentario del dev:**
+- `/sync/push`, `/sync/pull` y `/sync/snapshot` ahora responden con el envoltorio `{"data": …}` que ya declaraba el YAML (la respuesta
+  estaba «desnuda»): `cursor`, `hay_mas` y `catalogos_version` viajan **dentro** de `data` (son parte del recurso, no `meta` de listado);
+  se corrigió la descripción del parámetro `cursor` en el YAML (decía `meta.next_cursor`). Cambio de forma: la app ya lee `data`.
+- `/sync/catalogos?version=<vigente>` → 304 sin cuerpo (el nombre de ruta real es `v1.sync.catalogos`; tolera `v3`, ETag débil `W/` y `*`);
+  versión vieja o basura → 200. `/sync/catalogos` va `Cache-Control: private, no-cache` (lleva token); `/catalogos` sigue público.
+- Paquete de catálogos: las filas por especie traen `especie_codigo`; `especie` queda como alias (la web y caches viejos no se rompen).
+- `GET …/animales/identificador` tolera ceros a la izquierda por tramo numérico («142» ≡ «0142», «U142» ≡ «U-0142»); `50`/`5000` no
+  coinciden con `0500`. Sin índice de expresión (filtra por establecimiento + vigente; alcanza para el volumen del MVP).
+- «Prenada» → «Preñada» ya estaba resuelto en TPA-28 (aserción en `TactoTest`). Verificado: SyncTest/CatalogosTest/AltaRapidaTest ampliados; suite 205 verde.
+
 ## TPA-20 · Lotes de manejo y lotes anónimos · ✅ (parte API)
 
 **Endpoints:** `GET|POST …/lotes` (`?especie&archivados`), `GET|PATCH …/lotes/{l}`, `POST …/lotes/{l}/archivar`, `GET …/lotes/{l}/eventos` (cursor).
@@ -526,3 +539,17 @@ y los **campos aditivos** `tacto_fecha` y `dias_gestacion` (hoy − concepción,
   verifica tablero y calendario (115 eventos).
 - Verificado: 4 tests (tablero BUB/BOV con mes de parto y alertas, calendario orden/días/vencido/filtros y parto registrado sale, tolerancia
   por parámetro del establecimiento, 422 ×4 / lectura ve / revocada 403 / ajeno 404) + demo. Suite completa verde.
+
+---
+
+## Desvíos del contrato
+
+Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
+
+- TPA-14: `poligono` (GeoJSON) en `Potrero`/`PotreroInput`.
+- TPA-21: `POST …/importaciones` acepta multipart `archivo` además de `archivo_sha256`.
+- TPA-27/28/29: campos `servicio_tipo`, `tacto_fecha`, `dias_gestacion`, `dias_posparto`, `destete` en `Animal`.
+- TPA-30: `sin_estado`, `partos_proximos`, `partos_vencidos` en `TableroVientres`.
+- TPA-48: `compromiso` en `AnimalResumen`; PDF público de oferta como `200 application/pdf` en vez de `302` a URL prefirmada.
+- TPA-43 (bugfix): catálogos con `especie_codigo` (+ alias `especie`); `/sync/catalogos` `private, no-cache`; identificador tolerante a ceros.
+
