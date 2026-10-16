@@ -81,6 +81,17 @@ final class ProyectorLote
             $gdp = $dias > 0 ? round(($ultimo['peso'] - $previo['peso']) / $dias, 3) : null;
         }
 
+        // Lote con animales individuales (modelo-datos §6.3): GDP = promedio de las GDP individuales; el peso promedio
+        // sale de los pesajes individuales si son más recientes que el último pesaje promedio del lote.
+        $ind = DB::table('animales_estado')->where('lote_id', $loteId)->where('estado', 'activo')->whereNotNull('peso_kg')
+            ->selectRaw('avg(peso_kg) as peso, max(peso_fecha) as fecha, avg(gdp_kg_dia) as gdp, count(gdp_kg_dia) as con_gdp')->first();
+        if ($ind && $ind->peso !== null && ($ultimo === null || $ind->fecha > $ultimo['fecha'])) {
+            $ultimo = ['peso' => round((float) $ind->peso, 1), 'fecha' => $ind->fecha, 'metodo' => 'individual'];
+        }
+        if ($ind && (int) $ind->con_gdp > 0) {
+            $gdp = round((float) $ind->gdp, 3);
+        }
+
         DB::table('lotes_estado')->updateOrInsert(['lote_id' => $loteId], [
             'establecimiento_id' => $lote->establecimiento_id,
             'potrero_id' => $potrero,

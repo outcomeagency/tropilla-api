@@ -317,3 +317,17 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
   y no `ingreso` porque el inventario inicial no es una compra (modelo-datos §12). `animal_id` y `evento_id` preasignados:
   reconfirmar no duplica. La alternativa «lote anónimo por categoría» ya existe con `hacienda.alta` sobre `sujetos.tipo = lote`.
 - Verificado: 4 tests (ciclo completo con errores/corrección/descarte/confirmación idempotente, plantilla + mapeo, XLSX, cancelar/422/403/404).
+
+## TPA-23 · Pesajes y ganancia diaria · ✅ (parte API)
+
+**Endpoints:** vía `POST …/eventos` (`hacienda.pesaje`, modo `individual` | `promedio` con `cantidad`); resultados en la ficha
+(`peso_kg`, `peso_fecha`, `gdp_kg_dia`), en el listado (orden por peso) y en `Lote` (`peso_promedio_kg`, `gdp_promedio_kg_dia`).
+
+**Comentario del dev:**
+- GDP individual = (peso − anterior) / días entre pesajes individuales (TPA-22). Lote con individuales: GDP = **promedio de las
+  GDP individuales** y peso promedio de los individuales si son más recientes que el último pesaje promedio; lote anónimo:
+  diferencia de promedios entre los dos últimos pesajes promedio (§6.3).
+- Un pesaje promedio no pisa el peso individual (va a `lotes_estado`); exige `cantidad`.
+- Alerta de pesaje atípico con `pesaje_atipico_pct`/`pesaje_atipico_dias` (parámetros por especie, editables por establecimiento):
+  web → `422 requiere_confirmacion`; app → observación en el evento.
+- Verificado: 3 tests (GDP individual 1,333 y de lote 0,967 = promedio, promedio de lote sin pisar individual + 422 sin cantidad, alerta dentro/fuera del plazo).
