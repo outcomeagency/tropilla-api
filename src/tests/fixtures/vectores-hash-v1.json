@@ -1,0 +1,193 @@
+{
+  "$comment": "Vectores TROPILLA-CJ/1. 'entrada' es el texto JSON exacto (parsear con el decoder de cada lenguaje, rechazando floats). 'canonico' es el string canónico; 'huella' = sha256(utf8(canonico)). Ver technical/sync-e-integridad.md §4.",
+  "version": "TROPILLA-CJ/1",
+  "vectores": [
+    {
+      "nombre": "01-pesaje",
+      "entrada": "{\n  \"esquema\": \"tropilla.evento/1\",\n  \"id\": \"01a13fa5-e880-7a01-8b01-000000000001\",\n  \"establecimiento_id\": \"01a13fa5-e880-7000-8000-000000000e01\",\n  \"evento_raiz_id\": \"01a13fa5-e880-7a01-8b01-000000000001\",\n  \"version\": 1,\n  \"accion\": \"alta\",\n  \"tipo\": \"hacienda.pesaje\",\n  \"tipo_version\": 1,\n  \"sujetos\": {\n    \"tipo\": \"animales\",\n    \"animal_ids\": [\n      \"01a13fa5-e880-7000-8000-00000000a001\"\n    ]\n  },\n  \"payload\": {\n    \"modo\": \"individual\",\n    \"peso_kg\": \"412.5\",\n    \"desbaste\": false,\n    \"metodo\": \"balanza\"\n  },\n  \"ocurrido_en\": \"2026-10-15T12:30:00.000Z\",\n  \"creado_en\": \"2026-10-15T12:31:07.250Z\",\n  \"autor_id\": \"01a13fa5-e880-7000-8000-0000000000a1\",\n  \"dispositivo_id\": \"01a13fa5-e880-7000-8000-0000000000d1\",\n  \"origen\": \"app\",\n  \"corrige_evento_id\": null,\n  \"hash_anterior\": null,\n  \"motivo\": null\n}",
+      "canonico": "{\"accion\":\"alta\",\"autor_id\":\"01a13fa5-e880-7000-8000-0000000000a1\",\"creado_en\":\"2026-10-15T12:31:07.250Z\",\"dispositivo_id\":\"01a13fa5-e880-7000-8000-0000000000d1\",\"esquema\":\"tropilla.evento/1\",\"establecimiento_id\":\"01a13fa5-e880-7000-8000-000000000e01\",\"evento_raiz_id\":\"01a13fa5-e880-7a01-8b01-000000000001\",\"id\":\"01a13fa5-e880-7a01-8b01-000000000001\",\"ocurrido_en\":\"2026-10-15T12:30:00.000Z\",\"origen\":\"app\",\"payload\":{\"desbaste\":false,\"metodo\":\"balanza\",\"modo\":\"individual\",\"peso_kg\":\"412.5\"},\"sujetos\":{\"animal_ids\":[\"01a13fa5-e880-7000-8000-00000000a001\"],\"tipo\":\"animales\"},\"tipo\":\"hacienda.pesaje\",\"tipo_version\":1,\"version\":1}",
+      "canonico_utf8_bytes": 632,
+      "huella": "6917edbf68b4749e3abd6d3f480b728dfcce40d956f9c1d1c9b9afd0a80b9bd3"
+    },
+    {
+      "nombre": "02-strings",
+      "entrada": "{\n  \"esquema\": \"tropilla.evento/1\",\n  \"id\": \"01a13fa5-e880-7a03-8b03-000000000003\",\n  \"establecimiento_id\": \"01a13fa5-e880-7000-8000-000000000e01\",\n  \"evento_raiz_id\": \"01a13fa5-e880-7a03-8b03-000000000003\",\n  \"version\": 1,\n  \"accion\": \"alta\",\n  \"tipo\": \"sanidad.observacion_clinica\",\n  \"tipo_version\": 1,\n  \"sujetos\": {\n    \"tipo\": \"animales\",\n    \"animal_ids\": [\n      \"01a13fa5-e880-7000-8000-00000000a002\"\n    ]\n  },\n  \"payload\": {\n    \"signos\": [\n      \"cojera\",\n      \"lesión podal\"\n    ],\n    \"descripcion\": \"Búfala «Ñata» cojea\\tmano izq.\\nVer \\\"foto\\\" C:\\\\campo/potrero 3  fin \\u001f  🐃\"\n  },\n  \"ocurrido_en\": \"2026-10-14\",\n  \"creado_en\": \"2026-10-15T09:05:00.000Z\",\n  \"autor_id\": \"01a13fa5-e880-7000-8000-0000000000a1\",\n  \"dispositivo_id\": \"01a13fa5-e880-7000-8000-0000000000d1\",\n  \"origen\": \"app\",\n  \"responsable\": \"Vet. Juan Pérez, MP 1234\",\n  \"ubicacion_carga\": {\n    \"lat\": \"-27.4692\",\n    \"lon\": \"-58.8306\"\n  }\n}",
+      "canonico": "{\"accion\":\"alta\",\"autor_id\":\"01a13fa5-e880-7000-8000-0000000000a1\",\"creado_en\":\"2026-10-15T09:05:00.000Z\",\"dispositivo_id\":\"01a13fa5-e880-7000-8000-0000000000d1\",\"esquema\":\"tropilla.evento/1\",\"establecimiento_id\":\"01a13fa5-e880-7000-8000-000000000e01\",\"evento_raiz_id\":\"01a13fa5-e880-7a03-8b03-000000000003\",\"id\":\"01a13fa5-e880-7a03-8b03-000000000003\",\"ocurrido_en\":\"2026-10-14\",\"origen\":\"app\",\"payload\":{\"descripcion\":\"Búfala «Ñata» cojea\\tmano izq.\\nVer \\\"foto\\\" C:\\\\campo/potrero 3  fin \\u001f  🐃\",\"signos\":[\"cojera\",\"lesión podal\"]},\"responsable\":\"Vet. Juan Pérez, MP 1234\",\"sujetos\":{\"animal_ids\":[\"01a13fa5-e880-7000-8000-00000000a002\"],\"tipo\":\"animales\"},\"tipo\":\"sanidad.observacion_clinica\",\"tipo_version\":1,\"ubicacion_carga\":{\"lat\":\"-27.4692\",\"lon\":\"-58.8306\"},\"version\":1}",
+      "canonico_utf8_bytes": 794,
+      "huella": "2174e2b12c6b8e500df922f38b3e224156aadcef9c7c7a9b22224c2031ed71ab"
+    },
+    {
+      "nombre": "03-generico",
+      "entrada": "{\n  \"zeta\": null,\n  \"b\": [\n    3,\n    -0,\n    0,\n    -17,\n    9007199254740991,\n    true,\n    false,\n    null,\n    {},\n    [],\n    \"\",\n    {\n      \"y\": null\n    }\n  ],\n  \"B\": \"mayúscula antes que _ y que minúsculas\",\n  \"_x\": {\n    \"a_b\": 1,\n    \"ab\": 2,\n    \"a1\": 3,\n    \"a.b\": 4,\n    \"a-b\": 5,\n    \"A\": 6\n  },\n  \"a\": {\n    \"nested\": {\n      \"k\": \"v\",\n      \"j\": null\n    }\n  }\n}",
+      "canonico": "{\"B\":\"mayúscula antes que _ y que minúsculas\",\"_x\":{\"A\":6,\"a-b\":5,\"a.b\":4,\"a1\":3,\"a_b\":1,\"ab\":2},\"a\":{\"nested\":{\"k\":\"v\"}},\"b\":[3,0,0,-17,9007199254740991,true,false,null,{},[],\"\",{}]}",
+      "canonico_utf8_bytes": 185,
+      "huella": "8eb2ac4171a321ab8e448f303b83dbb54bcd98f260c20c3c9842a7867f05aa46"
+    },
+    {
+      "nombre": "04-correccion",
+      "entrada": "{\n  \"esquema\": \"tropilla.evento/1\",\n  \"id\": \"01a13fa5-f0b4-7a02-8b02-000000000002\",\n  \"establecimiento_id\": \"01a13fa5-e880-7000-8000-000000000e01\",\n  \"evento_raiz_id\": \"01a13fa5-e880-7a01-8b01-000000000001\",\n  \"version\": 2,\n  \"accion\": \"correccion\",\n  \"tipo\": \"hacienda.pesaje\",\n  \"tipo_version\": 1,\n  \"sujetos\": {\n    \"tipo\": \"animales\",\n    \"animal_ids\": [\n      \"01a13fa5-e880-7000-8000-00000000a001\"\n    ]\n  },\n  \"payload\": {\n    \"modo\": \"individual\",\n    \"peso_kg\": \"421.5\",\n    \"desbaste\": false,\n    \"metodo\": \"balanza\"\n  },\n  \"ocurrido_en\": \"2026-10-15T12:30:00.000Z\",\n  \"creado_en\": \"2026-10-15T14:02:11.004Z\",\n  \"autor_id\": \"01a13fa5-e880-7000-8000-0000000000a1\",\n  \"dispositivo_id\": \"01a13fa5-e880-7000-8000-0000000000d1\",\n  \"origen\": \"app\",\n  \"corrige_evento_id\": \"01a13fa5-e880-7a01-8b01-000000000001\",\n  \"hash_anterior\": \"6917edbf68b4749e3abd6d3f480b728dfcce40d956f9c1d1c9b9afd0a80b9bd3\",\n  \"motivo\": \"Se cargó 412,5 en vez de 421,5 kg\"\n}",
+      "canonico": "{\"accion\":\"correccion\",\"autor_id\":\"01a13fa5-e880-7000-8000-0000000000a1\",\"corrige_evento_id\":\"01a13fa5-e880-7a01-8b01-000000000001\",\"creado_en\":\"2026-10-15T14:02:11.004Z\",\"dispositivo_id\":\"01a13fa5-e880-7000-8000-0000000000d1\",\"esquema\":\"tropilla.evento/1\",\"establecimiento_id\":\"01a13fa5-e880-7000-8000-000000000e01\",\"evento_raiz_id\":\"01a13fa5-e880-7a01-8b01-000000000001\",\"hash_anterior\":\"6917edbf68b4749e3abd6d3f480b728dfcce40d956f9c1d1c9b9afd0a80b9bd3\",\"id\":\"01a13fa5-f0b4-7a02-8b02-000000000002\",\"motivo\":\"Se cargó 412,5 en vez de 421,5 kg\",\"ocurrido_en\":\"2026-10-15T12:30:00.000Z\",\"origen\":\"app\",\"payload\":{\"desbaste\":false,\"metodo\":\"balanza\",\"modo\":\"individual\",\"peso_kg\":\"421.5\"},\"sujetos\":{\"animal_ids\":[\"01a13fa5-e880-7000-8000-00000000a001\"],\"tipo\":\"animales\"},\"tipo\":\"hacienda.pesaje\",\"tipo_version\":1,\"version\":2}",
+      "canonico_utf8_bytes": 826,
+      "huella": "da179498578b824c15a76ad4048fc8d8a629750a2f2becaac595a5116eb9afaa"
+    },
+    {
+      "nombre": "05-documento",
+      "entrada": "{\n  \"esquema\": \"tropilla.documento_version/1\",\n  \"id\": \"01a13fa6-1d40-7c01-9c01-000000000005\",\n  \"documento_id\": \"01a13fa6-1d40-7c00-9c00-000000000500\",\n  \"establecimiento_id\": \"01a13fa5-e880-7000-8000-000000000e01\",\n  \"version\": 1,\n  \"accion\": \"alta\",\n  \"tipo\": \"vacunacion_aftosa\",\n  \"privacidad\": \"sanitario\",\n  \"titulo\": \"Acta de vacunación aftosa — 1ª campaña 2026\",\n  \"emisor\": {\n    \"nombre\": \"Fundación de Lucha contra la Fiebre Aftosa (declarado)\",\n    \"identificacion\": null\n  },\n  \"emitido_en\": \"2026-05-20\",\n  \"vence_en\": null,\n  \"vinculos\": [\n    {\n      \"tipo\": \"establecimiento\",\n      \"id\": \"01a13fa5-e880-7000-8000-000000000e01\"\n    },\n    {\n      \"tipo\": \"lote\",\n      \"id\": \"01a13fa5-e880-7000-8000-0000000001a1\"\n    }\n  ],\n  \"archivos\": [\n    {\n      \"sha256\": \"97d4a60aa4a3aa0ff4aef2bb208e65fbd436ac7b911f92f9ff54c475cf908c35\",\n      \"bytes\": 8,\n      \"mime\": \"image/jpeg\"\n    },\n    {\n      \"sha256\": \"08d9d5fa4dbe3bd497bd024e48fda1f8d4f71239f1a91666447115bdb8b2e226\",\n      \"bytes\": 8,\n      \"mime\": \"image/jpeg\"\n    }\n  ],\n  \"creado_en\": \"2026-10-15T15:00:00.000Z\",\n  \"autor_id\": \"01a13fa5-e880-7000-8000-0000000000a1\",\n  \"dispositivo_id\": \"01a13fa5-e880-7000-8000-0000000000d1\"\n}",
+      "canonico": "{\"accion\":\"alta\",\"archivos\":[{\"bytes\":8,\"mime\":\"image/jpeg\",\"sha256\":\"97d4a60aa4a3aa0ff4aef2bb208e65fbd436ac7b911f92f9ff54c475cf908c35\"},{\"bytes\":8,\"mime\":\"image/jpeg\",\"sha256\":\"08d9d5fa4dbe3bd497bd024e48fda1f8d4f71239f1a91666447115bdb8b2e226\"}],\"autor_id\":\"01a13fa5-e880-7000-8000-0000000000a1\",\"creado_en\":\"2026-10-15T15:00:00.000Z\",\"dispositivo_id\":\"01a13fa5-e880-7000-8000-0000000000d1\",\"documento_id\":\"01a13fa6-1d40-7c00-9c00-000000000500\",\"emisor\":{\"nombre\":\"Fundación de Lucha contra la Fiebre Aftosa (declarado)\"},\"emitido_en\":\"2026-05-20\",\"esquema\":\"tropilla.documento_version/1\",\"establecimiento_id\":\"01a13fa5-e880-7000-8000-000000000e01\",\"id\":\"01a13fa6-1d40-7c01-9c01-000000000005\",\"privacidad\":\"sanitario\",\"tipo\":\"vacunacion_aftosa\",\"titulo\":\"Acta de vacunación aftosa — 1ª campaña 2026\",\"version\":1,\"vinculos\":[{\"id\":\"01a13fa5-e880-7000-8000-000000000e01\",\"tipo\":\"establecimiento\"},{\"id\":\"01a13fa5-e880-7000-8000-0000000001a1\",\"tipo\":\"lote\"}]}",
+      "canonico_utf8_bytes": 962,
+      "huella": "32118b9f088fde255270cc3f062e2e9670b78a601d9bba62b31050b7a3ad7603"
+    },
+    {
+      "nombre": "06-lote-anonimo",
+      "entrada": "{\n  \"esquema\": \"tropilla.evento/1\",\n  \"id\": \"01a13fa6-2a00-7d01-8d01-000000000006\",\n  \"establecimiento_id\": \"01a13fa5-e880-7000-8000-000000000e01\",\n  \"evento_raiz_id\": \"01a13fa6-2a00-7d01-8d01-000000000006\",\n  \"version\": 1,\n  \"accion\": \"alta\",\n  \"tipo\": \"sanidad.vacunacion\",\n  \"tipo_version\": 1,\n  \"sujetos\": {\n    \"tipo\": \"lote\",\n    \"lote_id\": \"01a13fa5-e880-7000-8000-0000000001a1\",\n    \"conteo\": {\n      \"BUB_BUCERRA\": 12,\n      \"BUB_BUCERRO\": 15\n    }\n  },\n  \"payload\": {\n    \"producto_id\": \"01a13fa5-e880-7000-8000-00000000f001\",\n    \"producto_nombre\": \"Vacuna antiaftosa oleosa\",\n    \"enfermedad\": \"aftosa\",\n    \"dosis_aplicada\": \"2 ml\",\n    \"via\": \"subcutanea\",\n    \"numero_dosis\": \"primera\",\n    \"envase_lote\": \"A-2231\",\n    \"envase_vence\": \"2027-03-31\",\n    \"campana\": \"2026-1\",\n    \"vacunador\": \"Ramón Gómez\",\n    \"tarea_id\": null\n  },\n  \"ocurrido_en\": \"2026-10-16T11:00:00.000Z\",\n  \"creado_en\": \"2026-10-16T11:42:00.000Z\",\n  \"autor_id\": \"01a13fa5-e880-7000-8000-0000000000a1\",\n  \"dispositivo_id\": \"01a13fa5-e880-7000-8000-0000000000d1\",\n  \"origen\": \"app\"\n}",
+      "canonico": "{\"accion\":\"alta\",\"autor_id\":\"01a13fa5-e880-7000-8000-0000000000a1\",\"creado_en\":\"2026-10-16T11:42:00.000Z\",\"dispositivo_id\":\"01a13fa5-e880-7000-8000-0000000000d1\",\"esquema\":\"tropilla.evento/1\",\"establecimiento_id\":\"01a13fa5-e880-7000-8000-000000000e01\",\"evento_raiz_id\":\"01a13fa6-2a00-7d01-8d01-000000000006\",\"id\":\"01a13fa6-2a00-7d01-8d01-000000000006\",\"ocurrido_en\":\"2026-10-16T11:00:00.000Z\",\"origen\":\"app\",\"payload\":{\"campana\":\"2026-1\",\"dosis_aplicada\":\"2 ml\",\"enfermedad\":\"aftosa\",\"envase_lote\":\"A-2231\",\"envase_vence\":\"2027-03-31\",\"numero_dosis\":\"primera\",\"producto_id\":\"01a13fa5-e880-7000-8000-00000000f001\",\"producto_nombre\":\"Vacuna antiaftosa oleosa\",\"vacunador\":\"Ramón Gómez\",\"via\":\"subcutanea\"},\"sujetos\":{\"conteo\":{\"BUB_BUCERRA\":12,\"BUB_BUCERRO\":15},\"lote_id\":\"01a13fa5-e880-7000-8000-0000000001a1\",\"tipo\":\"lote\"},\"tipo\":\"sanidad.vacunacion\",\"tipo_version\":1,\"version\":1}",
+      "canonico_utf8_bytes": 883,
+      "huella": "0988ea932d1eb9582d401fb120792972086d45af754946308a244dd9c671eeb7"
+    }
+  ],
+  "negativos": [
+    {
+      "entrada": "{\"peso_kg\":412.5}",
+      "motivo": "float: los decimales viajan como string"
+    },
+    {
+      "entrada": "{\"a\":1.0}",
+      "motivo": "float aunque sea entero"
+    },
+    {
+      "entrada": "{\"a\":1e3}",
+      "motivo": "exponente"
+    },
+    {
+      "entrada": "{\"n\":9007199254740992}",
+      "motivo": "entero fuera de ±(2^53−1)"
+    },
+    {
+      "entrada": "{\"clave con espacio\":1}",
+      "motivo": "clave fuera de [A-Za-z0-9_.-]"
+    },
+    {
+      "entrada": "{\"x\":\"\\ud800\"}",
+      "motivo": "surrogate UTF-16 suelto"
+    }
+  ],
+  "cadena": [
+    {
+      "seq": 1,
+      "vector": "01-pesaje",
+      "huella": "6917edbf68b4749e3abd6d3f480b728dfcce40d956f9c1d1c9b9afd0a80b9bd3",
+      "eslabon_anterior": "0000000000000000000000000000000000000000000000000000000000000000",
+      "eslabon": "3693b4f3dd9b79879544516c1d4b48c6c79d6037e9f7888910fa484352464c39"
+    },
+    {
+      "seq": 2,
+      "vector": "02-strings",
+      "huella": "2174e2b12c6b8e500df922f38b3e224156aadcef9c7c7a9b22224c2031ed71ab",
+      "eslabon_anterior": "3693b4f3dd9b79879544516c1d4b48c6c79d6037e9f7888910fa484352464c39",
+      "eslabon": "57e55ce4e51ce39de099188d69612c6dcd518a74426ba322cfeed6b16c15c432"
+    },
+    {
+      "seq": 3,
+      "vector": "04-correccion",
+      "huella": "da179498578b824c15a76ad4048fc8d8a629750a2f2becaac595a5116eb9afaa",
+      "eslabon_anterior": "57e55ce4e51ce39de099188d69612c6dcd518a74426ba322cfeed6b16c15c432",
+      "eslabon": "dddfcf77f846edbf95a8067daf98bce9bd6837bf68e251695b76494390e97581"
+    },
+    {
+      "seq": 4,
+      "vector": "05-documento",
+      "huella": "32118b9f088fde255270cc3f062e2e9670b78a601d9bba62b31050b7a3ad7603",
+      "eslabon_anterior": "dddfcf77f846edbf95a8067daf98bce9bd6837bf68e251695b76494390e97581",
+      "eslabon": "59fd90fe24761dbc8adfb399b27c5c699a36f7cda9966bdba8417fe2dc0f7135"
+    },
+    {
+      "seq": 5,
+      "vector": "06-lote-anonimo",
+      "huella": "0988ea932d1eb9582d401fb120792972086d45af754946308a244dd9c671eeb7",
+      "eslabon_anterior": "59fd90fe24761dbc8adfb399b27c5c699a36f7cda9966bdba8417fe2dc0f7135",
+      "eslabon": "d14ddd08c4c5eea0c51ede6fbad1565f64534941505d0dca9ddbc70e45ea728a"
+    }
+  ],
+  "merkle": {
+    "hojas": [
+      "3693b4f3dd9b79879544516c1d4b48c6c79d6037e9f7888910fa484352464c39",
+      "57e55ce4e51ce39de099188d69612c6dcd518a74426ba322cfeed6b16c15c432",
+      "dddfcf77f846edbf95a8067daf98bce9bd6837bf68e251695b76494390e97581",
+      "59fd90fe24761dbc8adfb399b27c5c699a36f7cda9966bdba8417fe2dc0f7135",
+      "d14ddd08c4c5eea0c51ede6fbad1565f64534941505d0dca9ddbc70e45ea728a"
+    ],
+    "raiz": "22e51f32d3744d7bf83f8f5fa2da6c670caa045dd135aa662959848807a64b3a",
+    "pruebas": {
+      "0": [
+        {
+          "lado": "d",
+          "hash": "25ec8aec9fb5f64c6ee14765f9d788f84a9e732476af93621a24c055571c38d2"
+        },
+        {
+          "lado": "d",
+          "hash": "7f0e08e6ff1b71482c149f1c641ce273926b07852057e8a13e810bc08fe2533c"
+        },
+        {
+          "lado": "d",
+          "hash": "9c4cdba8b4507f8cedf27ab1bb5952fb63b78e108c61d85b7692bad9e3e5dd1c"
+        }
+      ],
+      "1": [
+        {
+          "lado": "i",
+          "hash": "0d31e83e8e2141f017da26c80359dda03215531679ab167e310ebd86b9952f27"
+        },
+        {
+          "lado": "d",
+          "hash": "7f0e08e6ff1b71482c149f1c641ce273926b07852057e8a13e810bc08fe2533c"
+        },
+        {
+          "lado": "d",
+          "hash": "9c4cdba8b4507f8cedf27ab1bb5952fb63b78e108c61d85b7692bad9e3e5dd1c"
+        }
+      ],
+      "2": [
+        {
+          "lado": "d",
+          "hash": "eb10855e0f15afe16c187c90ca9173247bc9e682d509b1fbbec729e8fa931ad4"
+        },
+        {
+          "lado": "i",
+          "hash": "2b9c0a97f630536912d8efe31b8ac70a36993a26c021952971e40df882b9294f"
+        },
+        {
+          "lado": "d",
+          "hash": "9c4cdba8b4507f8cedf27ab1bb5952fb63b78e108c61d85b7692bad9e3e5dd1c"
+        }
+      ],
+      "3": [
+        {
+          "lado": "i",
+          "hash": "905d95e33f3f26eec1607bfad79f4b7bc4c00c47a36d5c86f2be8cd1a346ddac"
+        },
+        {
+          "lado": "i",
+          "hash": "2b9c0a97f630536912d8efe31b8ac70a36993a26c021952971e40df882b9294f"
+        },
+        {
+          "lado": "d",
+          "hash": "9c4cdba8b4507f8cedf27ab1bb5952fb63b78e108c61d85b7692bad9e3e5dd1c"
+        }
+      ],
+      "4": [
+        {
+          "lado": "i",
+          "hash": "665b61ba7a978c3fc7c5f65501155cd4c0fa886079ff497728f41668e8098a45"
+        }
+      ]
+    },
+    "raiz_3": "78127a44c99b223857b790643e0bedf76dc3466fe6fda97b7ffc66da537843d5",
+    "prueba_3_idx2": [
+      {
+        "lado": "i",
+        "hash": "2b9c0a97f630536912d8efe31b8ac70a36993a26c021952971e40df882b9294f"
+      }
+    ],
+    "raiz_1": "0d31e83e8e2141f017da26c80359dda03215531679ab167e310ebd86b9952f27"
+  }
+}
