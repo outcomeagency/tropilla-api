@@ -4,6 +4,7 @@ namespace App\Domain\Establecimientos\Models;
 
 use App\Casts\PgTextArray;
 use App\Casts\PuntoGeografico;
+use App\Support\Concerns\BindingHijosEnEspanol;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -36,7 +37,7 @@ use Illuminate\Support\Carbon;
  */
 class Establecimiento extends Model
 {
-    use HasUuids;
+    use BindingHijosEnEspanol, HasUuids;
 
     protected $table = 'establecimientos';
 
@@ -71,5 +72,11 @@ class Establecimiento extends Model
     public function membresias(): HasMany
     {
         return $this->hasMany(Membresia::class);
+    }
+
+    /** @return HasMany<Invitacion, $this> */
+    public function invitaciones(): HasMany
+    {
+        return $this->hasMany(Invitacion::class);
     }
 }
