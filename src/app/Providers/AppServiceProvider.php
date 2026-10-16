@@ -49,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('auth', fn (Request $request) => Limit::perMinute(5)->by('auth|'.$request->ip()));
         RateLimiter::for('publico', fn (Request $request) => Limit::perMinute(120)->by('publico|'.$request->ip()));
         RateLimiter::for('sync-push', fn (Request $request) => Limit::perMinute(60)->by('push|'.($request->user()?->currentAccessToken()?->getKey() ?? $request->ip())));
+        RateLimiter::for('consultas', fn (Request $request) => Limit::perHour(3)->by('consultas|'.$request->ip()));
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(300)->by($request->user()?->getAuthIdentifier() ?: $request->ip()));
 
         // Token web: vencimiento deslizante de N días (se extiende como mucho una vez por hora).

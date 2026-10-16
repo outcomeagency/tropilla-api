@@ -36,6 +36,11 @@ return [
     ],
 
     // Render HTML → PDF (fichas, resúmenes con QR).
+    // Cloudflare Turnstile (captcha del contacto público, TPA-55). Sin secreto: solo local/testing.
+    'turnstile' => [
+        'secret' => env('TURNSTILE_SECRET'),
+    ],
+
     'gotenberg' => [
         'url' => env('GOTENBERG_URL', 'http://gotenberg:3000'),
     ],

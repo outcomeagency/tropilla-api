@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\V1\Hacienda\ImportacionController;
 use App\Http\Controllers\Api\V1\Hacienda\LoteController;
 use App\Http\Controllers\Api\V1\Hacienda\PotreroController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\Publico\ConsultaPublicaController;
 use App\Http\Controllers\Api\V1\Publico\OfertaPublicaController;
 use App\Http\Controllers\Api\V1\Sistema\AuditoriaController;
 use App\Http\Controllers\Api\V1\Sync\SyncController;
@@ -56,6 +57,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::middleware('throttle:publico')->prefix('public')->name('public.')->group(function () {
         Route::get('ofertas/{codigo}', [OfertaPublicaController::class, 'show'])->name('ofertas.show');
         Route::get('ofertas/{codigo}/pdf', [OfertaPublicaController::class, 'pdf'])->name('ofertas.pdf');
+        Route::post('consultas', ConsultaPublicaController::class)->middleware('throttle:consultas')->name('consultas.store');
     });
     Route::get('public/invitaciones/{token}', [InvitacionController::class, 'publica'])->middleware('throttle:publico')->name('public.invitaciones.show');
 

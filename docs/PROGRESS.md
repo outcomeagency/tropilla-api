@@ -386,3 +386,18 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
 - Solo dueño/admin (`consultas.ver/gestionar`): el asesor y el encargado no ven datos personales del comprador (T12, duda 21).
   El aviso por email al recibir una consulta sale en TPA-55; el push (FCM) queda para alertas (TPA-53).
 - Verificado: 2 tests (bandeja/filtros/links/vista/estados/422; 403 por rol, admin ve, 404 ajeno).
+
+## TPA-55 · Contacto desde el exterior sin cuenta · ✅ (parte API)
+
+**Endpoints:** `POST /public/consultas` (ConsultaPublicaInput → 201 `{recibida, mensaje}`).
+
+**Comentario del dev:**
+- Destino por `oferta_codigo` (oferta publicada/reservada) o `establecimiento_slug` (perfil **publicado**); `contrato_codigo`
+  → 404 hasta TPA-56. Llega a la bandeja de TPA-49 con país, tipo de comprador, volumen e **idioma** (campo o Accept-Language);
+  sesión opcional (si viene token se guarda `usuario_id`). Respuesta en el idioma del comprador.
+- Anti-spam: honeypot `website` (responde 201 igual y guarda como `spam`, sin aviso), Cloudflare **Turnstile**
+  (`TURNSTILE_SECRET`; sin secreto se acepta en local/testing y en producción el formulario responde 503) y **3/h por IP**.
+  IP guardada solo como HMAC.
+- Aviso por email a dueño/admin (`NuevaConsultaNotification`, en cola) con link a la bandeja; el detalle personal solo en el panel.
+- Demo: 2 consultas sin responder sobre la oferta de bubillos (un exportador chino en inglés y un frigorífico local).
+- Verificado: 5 tests (feliz con idioma y mail, honeypot, captcha inválido, rate limit 429, 422/404).
