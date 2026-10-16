@@ -143,3 +143,34 @@ acá y en la sección «Desvíos del contrato» al final.
 - Trigger `tropilla_inmutable` en `registros_integridad` (+ `cambios`, `auditoria` de TPA-10): UPDATE/DELETE/TRUNCATE → error de Postgres.
 - La verificación de la huella enviada por el dispositivo se aplica en el push (TPA-43) con estas mismas piezas.
 - Verificado: 15 tests unitarios de vectores + 7 de feature (cadena = vectores, cadenas independientes, sujeto único, append-only ×3, detección de fila alterada con trigger deshabilitado).
+
+## TPA-22 · Eventos de hacienda · ✅
+
+**Endpoints:** `POST …/eventos` (web: el servidor arma el sobre), `GET …/eventos` (actividad, cursor; filtros tipo/modulo/desde/hasta/autor_id/lote_id).
+**Comandos:** `proyecciones:reconstruir {establecimiento?}`.
+
+**Comentario del dev:**
+- Tablas `eventos` + `evento_animales` (append-only con trigger y guard en el modelo; CHECKs de versión de §4.4, índice único
+  parcial de versión vigente, FK diferida a la raíz), vista `eventos_vigentes`, `animales` (identidad), `lotes` (maestro mínimo,
+  endpoints en TPA-20), `animal_identificaciones`, `animales_estado`, `lotes_estado`, `lote_conteos` (sin CHECK ≥ 0, revisión
+  `conteo_negativo`), `existencias` y `revisiones`.
+- **Una sola Action `RegistrarEvento`** para web y push (§7.4 en orden): canonicalización/huella → estructura y pertenencia →
+  idempotencia (duplicado / `id_reutilizado`) → lock de la cadena → ability por módulo del tipo → JSON Schema del payload
+  (`opis/json-schema` contra `tipos_evento_versiones`) → sujetos admitidos (dato del tipo) → referencias (`dependencia_faltante`)
+  → reglas bloqueantes desde catálogos (sexo requerido por tipo, categoría/raza de la especie y sexo, lote de otra especie,
+  RFID 15 dígitos, especie declarada en el establecimiento) → conflicto de versión → coherencia (pesaje atípico con parámetros,
+  retiro vigente, interdicción, evento posterior a baja, identificación duplicada, tatuaje sin prefijo de raza).
+  En la web las advertencias devuelven `422 requiere_confirmacion` hasta `confirmar_advertencias: true`; online, «posterior a baja»
+  es `regla_bloqueante` e identificación duplicada `409`; por push se aceptan con observación + revisión.
+- **Proyector**: recalcula cada animal afectado **desde cero** re-aplicando sus eventos vigentes en orden (más simple que
+  incremental y equivalente; test «reconstruir ≡ en línea» fila por fila). Cubre alta/ingreso/nacimiento/parto (crías con madre),
+  traslado, cambio de lote, identificación (colocación/reposición/retiro, una vigente por tipo), pesaje + GDP, CC, recategorización,
+  castración, dentición, ficha, bajas (estado + fecha), reproducción (servida/preñada/vacía/parida, FPP con gestación por
+  especie/raza/establecimiento) y sanidad (retiro con snapshot de días; reactor). Lotes anónimos: conteo por categoría
+  (+/−/movimientos), potrero del último traslado, peso promedio y GDP. Ocupación de potreros ya real (TPA-14).
+- Trampas: el sobre se guarda y se hashea desde el stdClass (nunca `json_decode(…, true)`): `{}` ≠ `[]`; el body web se lee con
+  `$request->getContent()`. Fechas solo-día → 12:00 de la zona del establecimiento. Parámetros seed con `vigente_desde = 2000-01-01`
+  (con 2026 los eventos históricos no encontraban gestación).
+- Verificado: 14 tests de feature (alta + cadena + verificación de huella desde el sobre guardado, lote anónimo + traslado +
+  movimientos + ocupación, GDP y advertencia, baja y bloqueo posterior, reglas por especie/sexo, parto con FPP Murrah 303 d,
+  422 de schema/sujetos, 409 identificación, 403/404, idempotencia, append-only, reconstrucción, actividad con cursor, interdicción).

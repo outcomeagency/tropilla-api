@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Hacienda\Eventos\EventoRechazado;
 use App\Exceptions\ApiException;
 use App\Http\Middleware\AsignarRequestId;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -56,6 +57,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return match (true) {
+                $e instanceof EventoRechazado => $error($request, ...[...$e->aHttp(), $e->getMessage(), $e->errors]),
                 $e instanceof ApiException => $error($request, $e->status, $e->codigo, $e->getMessage(), $e->errors, $e->advertencias),
                 $e instanceof ValidationException => $error($request, 422, 'validacion', __('Los datos enviados no son válidos.'), $e->errors()),
                 $e instanceof AuthenticationException => $error($request, 401, 'no_autenticado', __('No autenticado.')),

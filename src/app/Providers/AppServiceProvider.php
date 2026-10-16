@@ -7,6 +7,7 @@ use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Establecimientos\Models\Productor;
 use App\Domain\Establecimientos\Policies\EstablecimientoPolicy;
 use App\Domain\Establecimientos\Policies\ProductorPolicy;
+use App\Domain\Hacienda\Proyecciones\SugeridorCategoria;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -21,7 +22,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        // Memoiza reglas de categoría por request/job.
+        $this->app->scoped(SugeridorCategoria::class);
     }
 
     /** Parámetros de ruta que son UUID: un valor mal formado da 404 (y no un error de Postgres). */
