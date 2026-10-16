@@ -6725,6 +6725,10 @@ components:
           type: array
           items: {$ref: '#/components/schemas/EventoResumen'}
       additionalProperties: false
+      description: '`pendientes.items[].tipo`: tarea | tarea_vencida | parto_proximo | parto_vencido | recategorizacion | documento_por_vencer |
+        documento_vencido | consulta | toma | revision; semana = próximos 7 días (documentos: 30). `actividad` = últimos 10 eventos por fecha
+        de carga. `variacion_mes` = nacimientos/partos/ingresos − muertes/egresos/faenas/pérdidas del mes ± movimientos de categoría de lotes
+        anónimos; las altas de inventario no cuentan (TPA-52).'
     Existencia:
       type: object
       properties:
