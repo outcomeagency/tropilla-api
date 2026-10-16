@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\V1\Publico\ConsultaPublicaController;
 use App\Http\Controllers\Api\V1\Publico\DirectorioController;
 use App\Http\Controllers\Api\V1\Publico\OfertaPublicaController;
 use App\Http\Controllers\Api\V1\Publico\PerfilPublicoController;
+use App\Http\Controllers\Api\V1\Publico\VerificacionController;
 use App\Http\Controllers\Api\V1\Sistema\AuditoriaController;
 use App\Http\Controllers\Api\V1\Sync\SyncController;
 use Illuminate\Support\Facades\Route;
@@ -60,6 +61,10 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::middleware('throttle:publico')->prefix('public')->name('public.')->group(function () {
         Route::get('ofertas/{codigo}', [OfertaPublicaController::class, 'show'])->name('ofertas.show');
         Route::get('ofertas/{codigo}/pdf', [OfertaPublicaController::class, 'pdf'])->name('ofertas.pdf');
+        Route::get('verificaciones/archivo/{sha256}', [VerificacionController::class, 'archivo'])->name('verificaciones.archivo');
+        Route::post('verificaciones/archivo', [VerificacionController::class, 'subirArchivo'])->name('verificaciones.archivo.subir');
+        Route::get('verificaciones/{huella}', [VerificacionController::class, 'show'])->name('verificaciones.show');
+        Route::get('verificaciones/{huella}/prueba', [VerificacionController::class, 'prueba'])->name('verificaciones.prueba');
         Route::get('directorio', [DirectorioController::class, 'index'])->name('directorio');
         Route::get('directorio/facetas', [DirectorioController::class, 'facetas'])->name('directorio.facetas');
         Route::get('sitemap', [DirectorioController::class, 'sitemap'])->name('sitemap');

@@ -435,3 +435,21 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
 - Facetas (provincias, especies, razas, categorías, con oferta) sobre el conjunto filtrado; sitemap solo con lo indexable
   (perfiles del directorio y sus ofertas activas) con idiomas.
 - Verificado: 3 tests (filtros/búsqueda/oculto fuera, paginado + facetas, sitemap).
+
+## TPA-41 · Página pública de verificación · ✅ (parte API)
+
+**Endpoints:** `GET /public/verificaciones/{huella}?locale`, `GET /public/verificaciones/{huella}/prueba` (prueba.json),
+`GET /public/verificaciones/archivo/{sha256}`, `POST /public/verificaciones/archivo` (multipart ≤ 25 MB, no se guarda).
+
+**Comentario del dev:**
+- Por huella: tipo, descripción (tipo de evento y fecha / título de la oferta), fecha de registro, **autor solo por rol**
+  (nunca nombres de empleados), versiones y si es la vigente, `confianza`, e `IntegridadRegistro` (huella, eslabón anterior,
+  eslabón, seq; anclaje y prueba de Merkle cuando exista TPA-40). **Verificar ≠ ver**: el sobre solo se publica para registros
+  que ya son públicos (publicaciones de oferta y de perfil, T9); de un evento no sale ni el id del animal; el establecimiento
+  aparece solo si su perfil está publicado (o si el registro es público).
+- `prueba.json` trae fórmulas y datos para recalcular sin confiar en TROPILLA (§6.4). Leyenda obligatoria es/en/pt
+  («prueba que no cambió desde la fecha de anclaje; no certifica que sea verdadero»).
+- Archivo: el navegador calcula el SHA-256 (WebCrypto) o se sube y solo se hashea; coincide únicamente con versiones de documentos
+  **publicados** (la carpeta documental es TPA-36: hasta entonces siempre «No coincide»). Un archivo privado responde igual que uno inexistente.
+- Verificado: 4 tests (evento sin contenido + eslabón recalculable + prueba.json, versión no vigente y sobre público de oferta
+  re-hasheable, 404, archivo por hash/subida sin guardar/422).
