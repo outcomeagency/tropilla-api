@@ -47,6 +47,8 @@ class AnimalResource extends JsonResource
                 'vigente' => (bool) $i->vigente, 'en_conflicto' => (bool) $i->en_conflicto,
                 'colocada_en' => $i->colocada_en, 'retirada_en' => $i->retirada_en,
             ])->all(),
+            // Bugfix TPA-25: categorías cuya sugerencia el usuario descartó (la app no las vuelve a sugerir offline).
+            'categorias_descartadas' => DB::table('sugerencias_descartadas')->where('animal_id', $a->animal_id)->orderBy('descartada_en')->pluck('categoria_codigo')->all(),
             'gdp_kg_dia' => Formato::decimal($a->gdp_kg_dia),
             'condicion_corporal' => $a->cc_valor === null ? null : ['valor' => Formato::decimal($a->cc_valor), 'escala' => $a->cc_escala, 'fecha' => $a->cc_fecha],
             'partos' => (int) $a->partos,

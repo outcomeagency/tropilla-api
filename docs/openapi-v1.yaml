@@ -1612,6 +1612,59 @@ paths:
         '403': {$ref: '#/components/responses/Prohibido'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
         '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/animales/sugerencias/descartar:
+    post:
+      tags: [Hacienda]
+      summary: Descartar sugerencias de recategorización en bloque
+      operationId: post_establecimientos_establecimiento_animales_sugerencias_descartar
+      description: >-
+        **Ability:** `hacienda.crear` (modelo-datos.md §13). Desvío aditivo (TPA-25 bugfix). Cada ítem descarta la
+        sugerencia **vigente** del animal (`categoria` = la `categoria_sugerida` que vio el usuario): esa categoría no se
+        vuelve a sugerir para ese animal (ni al proyectar ni en el job diario); si las reglas sugieren otra, aparece. No es
+        un evento: queda en auditoría y viaja por pull como cambio del animal (`Animal.categorias_descartadas`). Todo o
+        nada; idempotente. 422 si el animal no es del establecimiento o la sugerencia cambió.
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items:
+                    type: object
+                    properties:
+                      animal_id: {$ref: '#/components/schemas/Uuid'}
+                      categoria: {type: string}
+                    required: [animal_id, categoria]
+                    additionalProperties: false
+              required: [items]
+              additionalProperties: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: {$ref: '#/components/schemas/AnimalResumen'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
   /establecimientos/{establecimiento}/animales/{animal}:
     get:
       tags: [Hacienda]
@@ -7080,6 +7133,10 @@ components:
       - {$ref: '#/components/schemas/AnimalResumen'}
       - type: object
         properties:
+          categorias_descartadas:
+            type: array
+            items: {type: string}
+            description: Aditivo (TPA-25 bugfix). Categorías cuya sugerencia se descartó para este animal; la app no las sugiere offline.
           identificaciones:
             type: array
             items: {$ref: '#/components/schemas/Identificacion'}

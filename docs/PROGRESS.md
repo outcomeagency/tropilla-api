@@ -395,6 +395,22 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
   `sugerida: true`, `regla_id` y el motivo de la regla; si el usuario elige otra, `motivo: manual`.
 - Verificado: 5 tests (destete/castración/dentición/parto por especie, confirmación en bloque, atomicidad + 403, job por edad, evaluador del DSL).
 
+### TPA-25 · bugfix: descartar sugerencia y sugerencia en altas por push · ✅
+
+**Endpoint nuevo:** `POST …/animales/sugerencias/descartar` (`{items: [{animal_id, categoria}]}` → 200 AnimalResumen[]);
+aditivo `Animal.categorias_descartadas`; parámetro nuevo `edad_destete_meses` (BOV 7 / BUB 7).
+
+**Comentario del dev:**
+- Causa real del hueco «push sin sugerencia»: el push sí proyecta y evalúa, pero una cría dada de alta grande (bucerro de 2 años) quedaba
+  `destetado = false` sin evento de destete y ninguna regla cumplía. Ahora el sugeridor la considera destetada si su edad ≥ `edad_destete_meses`
+  (dato por especie, mismo valor que la semilla de la app); vale igual para web, push y el job diario (que la sugiere al cumplir la edad).
+- Descartar = tabla `sugerencias_descartadas` (animal, categoría): el sugeridor no propone esa categoría mientras la regla la siga dando;
+  otra sugerencia distinta sí aparece. No es evento (no cambia el animal): auditoría `descartar_sugerencia` + cambio del animal para el pull.
+  Todo o nada, idempotente; 422 si el animal es ajeno o la sugerencia cambió desde que el usuario la vio.
+- Trampa: crías cargadas con fecha de nacimiento > 7 meses ahora salen sugeridas (se ajustó el test que usaba 8 meses). Base de dev: migrate + `CatalogosSeeder` + job (0 cambios en el demo).
+- Verificado: 3 tests nuevos (alta por push con bucerro de 24 m → butorito y el de 3 m recién a los 7 m vía job; descartar con reproyección/job/parto
+  posterior e idempotencia; 422 ×3 sin efectos, 403 lectura, 404 ajeno) + suite verde.
+
 ## TPA-48 · Ofertas de animales y lotes · ✅ (parte API)
 
 **Endpoints:** `GET|POST …/ofertas`, `POST …/ofertas/desde-lote`, `GET|PATCH …/ofertas/{o}`, `GET …/ofertas/{o}/avisos`,
@@ -922,6 +938,7 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-14: `poligono` (GeoJSON) en `Potrero`/`PotreroInput`.
 - TPA-21: `POST …/importaciones` acepta multipart `archivo` además de `archivo_sha256`; (bugfix) `ImportacionFila.original` con los valores crudos de la planilla.
 - TPA-23 (bugfix): `GET …/animales/{a}/pesajes` + schema `PuntoPeso`.
+- TPA-25 (bugfix): `POST …/animales/sugerencias/descartar`; `Animal.categorias_descartadas`; parámetro `edad_destete_meses`.
 - TPA-27/28/29: campos `servicio_tipo`, `tacto_fecha`, `dias_gestacion`, `dias_posparto`, `destete` en `Animal`.
 - TPA-30: `sin_estado`, `partos_proximos`, `partos_vencidos` en `TableroVientres`.
 - TPA-48: `compromiso` en `AnimalResumen`; PDF público de oferta como `200 application/pdf` en vez de `302` a URL prefirmada.
