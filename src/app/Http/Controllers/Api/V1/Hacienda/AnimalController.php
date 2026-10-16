@@ -25,6 +25,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 
 /** Animales (TPA-16 alta rápida, TPA-17 ficha, TPA-18 listado, TPA-19 identificador). */
 class AnimalController extends Controller
@@ -149,10 +150,41 @@ class AnimalController extends Controller
             ->where(fn ($q) => $q->where('a.madre_id', $animal)->orWhere('a.padre_id', $animal))
             ->orderBy('a.fecha_nacimiento')->get();
 
+        $pedigri = function (?string $id, ?string $externoId, ?string $texto, int $nivel, array $ruta = []) use (&$pedigri, $establecimiento) {
+            if ($nivel > 5) {
+                return null;
+            }
+            $key = $id ? 'i:'.$id : ($externoId ? 'e:'.$externoId : null);
+            if ($key && in_array($key, $ruta, true)) {
+                return null;
+            }
+            if ($id) {
+                $fila = ConsultasAnimales::uno($establecimiento->id, $id);
+                if (! $fila) {
+                    return null;
+                }
+                $next = [...$ruta, $key];
+
+                return ['tipo' => 'interno', 'animal' => AnimalResumenResource::campos($fila), 'madre' => $pedigri($fila->madre_id, $fila->madre_externa_id ?? null, $fila->madre_externa ?? null, $nivel + 1, $next), 'padre' => $pedigri($fila->padre_id, $fila->padre_externo_id ?? null, $fila->padre_externo ?? null, $nivel + 1, $next)];
+            }
+            if ($externoId && Schema::hasTable('reproductores_externos')) {
+                $fila = DB::table('reproductores_externos')->where('establecimiento_id', $establecimiento->id)->where('id', $externoId)->first();
+                if (! $fila) {
+                    return null;
+                }
+                $next = [...$ruta, $key];
+
+                return ['tipo' => 'externo', 'reproductor' => $fila, 'madre' => $pedigri($fila->madre_id, $fila->madre_externa_id, null, $nivel + 1, $next), 'padre' => $pedigri($fila->padre_id, $fila->padre_externa_id, null, $nivel + 1, $next)];
+            }
+
+            return $texto ? ['tipo' => 'legado', 'nombre' => $texto] : null;
+        };
+
         return response()->json(['data' => [
             'animal' => AnimalResumenResource::campos($a),
             'madre' => $pariente($a->madre_id, $a->madre_externa),
             'padre' => $pariente($a->padre_id, $a->padre_externo),
+            'pedigri' => $pedigri($animal, null, null, 0),
             'crias' => $crias->map(fn ($c) => AnimalResumenResource::campos($c))->all(),
         ]]);
     }

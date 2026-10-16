@@ -39,6 +39,7 @@ use App\Http\Controllers\Api\V1\Publico\OfertaPublicaController;
 use App\Http\Controllers\Api\V1\Publico\PerfilPublicoController;
 use App\Http\Controllers\Api\V1\Publico\VerificacionController;
 use App\Http\Controllers\Api\V1\Reproduccion\ReproduccionController;
+use App\Http\Controllers\Api\V1\Reproduccion\ReproductorExternoController;
 use App\Http\Controllers\Api\V1\Sanidad\PlanSanitarioController;
 use App\Http\Controllers\Api\V1\Sanidad\ProductoSanitarioController;
 use App\Http\Controllers\Api\V1\Sanidad\SanidadController;
@@ -172,6 +173,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
         // Usuarios y roles (TPA-11)
         Route::post('invitaciones/{token}/aceptar', [InvitacionController::class, 'aceptar'])->name('invitaciones.aceptar');
         Route::prefix('establecimientos/{establecimiento}')->name('establecimientos.')->scopeBindings()->group(function () {
+            Route::get('reproductores-externos', [ReproductorExternoController::class, 'index'])->name('reproductores-externos.index');
+            Route::post('reproductores-externos', [ReproductorExternoController::class, 'store'])->name('reproductores-externos.store');
+            Route::patch('reproductores-externos/{reproductor}', [ReproductorExternoController::class, 'update'])->name('reproductores-externos.update');
             Route::get('membresias', [MembresiaController::class, 'index'])->name('membresias.index');
             Route::post('membresias/{membresia}/rol', [MembresiaController::class, 'rol'])->name('membresias.rol');
             Route::post('membresias/{membresia}/revocar', [MembresiaController::class, 'revocar'])->name('membresias.revocar');
