@@ -719,6 +719,27 @@ pull `entidad: anclaje` (estado + `evento_ids` del establecimiento).
 - Verificado: 2 tests (caso 30 bubillos 14.040 kg con todas las líneas a mano, una sola modalidad + IVA 21 + desbaste ignorado + default BOV,
   guardar/listar/inmutable, 422 ×7, 403 encargado/asesor/lectura, 404 ajeno).
 
+## TPA-46 · Registrar venta con condiciones del trato · ✅ (parte API)
+
+**Endpoints:** `GET|POST …/operaciones` (`?especie&categoria&tipo&desde&hasta`, cursor), `GET …/operaciones/{o}`,
+`POST …/operaciones/{o}/correcciones`, `POST …/operaciones/{o}/anulaciones`. Ability `comercial.precios` (dueño/admin).
+
+**Comentario del dev:**
+- Tablas `operaciones` (cabecera = proyección para «Mis precios»), `operacion_versiones` (**append-only**, sobre `tropilla.operacion_version/1`
+  hasheado y encadenado con `hash_anterior`), `operacion_animales` (aditivo) y `precios_referencia` (para TPA-47). Alta/corrección/anulación =
+  versiones nuevas; nada se borra. `integridad:verificar-cadenas` re-hashea también estas versiones.
+- Liquidación con la **misma fórmula del simulador** sobre los valores reales; si el flete es del comprador no se descuenta. Trato completo
+  (comprador, destino del catálogo, lugar/hora de pesada, modalidad, desbaste, tolerancias, plazo, flete, comisión, intermediario) y
+  trazabilidad declarada (DT-e, tropa, RENSPA origen/destino).
+- **PDF del trato** con Gotenberg (plantilla `pdf/trato`) → archivo por SHA-256 → Documento `resumen_trato` (comercial, vinculado a la operación)
+  por la puerta única de documentos; su hash va dentro del sobre de la versión. Corrección → nueva versión del documento; anulación → revocación.
+  Si Gotenberg no responde, la operación se registra igual sin PDF (log). Smoke real contra el Gotenberg del stack.
+- Compromiso: los animales del trato quedan **vendido** (aunque no hayan salido); en contrato a futuro o ya vendidos → 409 `comprometido`;
+  la oferta de origen pasa a vendida; retiro vigente/reactor → `422 requiere_confirmacion` (TPA-35). Anular libera el compromiso.
+- Precios siempre privados: no hay `cambios` de operaciones y el resumen PDF (comercial) no baja por sync a encargado/asesor.
+- Verificado: 4 tests (advertencia + alta con todas las líneas + PDF/Documento/huella + vendido + 409 + cadena; corrección encadenada con flete
+  del comprador + anulación que revoca y libera; sin Gotenberg + al gancho 53 %; 422 ×8, 403 encargado/asesor, sync sin operaciones, 404).
+
 ---
 
 ## Desvíos del contrato
@@ -740,3 +761,4 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-38: `Enlace.aviso` para fiscales; URL pública `{web}/e/{token}`; `estado: reemplazado` en enlaces a versión fija.
 - TPA-40: `GET /public/anclajes/{a}/recibo` (.ots); pull `anclaje` con `evento_ids`; verificación de archivo también por enlace vigente.
 - TPA-45: rendimiento al gancho sobre el **bruto** y desbaste solo en pie (modelo-datos §9.1 decía sobre el neto); `formula` aditiva en `SimulacionResultado`.
+- TPA-46: `Operacion`/`OperacionInput` + `animal_ids`, `oferta_id` (+ `lote_id`, `contrato_id`, `confirmar_advertencias`, `id`); liquidación calculada por el servidor.

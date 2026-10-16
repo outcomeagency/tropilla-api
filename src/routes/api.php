@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Catalogos\CatalogoController;
 use App\Http\Controllers\Api\V1\Catalogos\ParametroController;
 use App\Http\Controllers\Api\V1\Comercial\ConsultaController;
 use App\Http\Controllers\Api\V1\Comercial\OfertaController;
+use App\Http\Controllers\Api\V1\Comercial\OperacionController;
 use App\Http\Controllers\Api\V1\Comercial\SimulacionController;
 use App\Http\Controllers\Api\V1\Documentos\DocumentoController;
 use App\Http\Controllers\Api\V1\Establecimientos\EstablecimientoController;
@@ -204,6 +205,13 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::post('simulaciones/calcular', [SimulacionController::class, 'calcular'])->name('simulaciones.calcular');
             Route::get('simulaciones', [SimulacionController::class, 'index'])->name('simulaciones.index');
             Route::post('simulaciones', [SimulacionController::class, 'store'])->name('simulaciones.store');
+
+            // Operaciones con trato (TPA-46)
+            Route::get('operaciones', [OperacionController::class, 'index'])->name('operaciones.index');
+            Route::post('operaciones', [OperacionController::class, 'store'])->name('operaciones.store');
+            Route::get('operaciones/{operacion}', [OperacionController::class, 'show'])->name('operaciones.show');
+            Route::post('operaciones/{operacion}/correcciones', [OperacionController::class, 'correccion'])->name('operaciones.correcciones');
+            Route::post('operaciones/{operacion}/anulaciones', [OperacionController::class, 'anulacion'])->name('operaciones.anulaciones');
 
             // Consultas de compradores (TPA-49)
             Route::get('consultas', [ConsultaController::class, 'index'])->name('consultas.index');

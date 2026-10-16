@@ -36,6 +36,13 @@ final class Compromisos
                 $out[$id] = 'en_contrato';
             }
         }
+        // Venta registrada con el trato (TPA-46): el animal queda vendido aunque todavía no salió del campo.
+        if (DB::getSchemaBuilder()->hasTable('operacion_animales')) {
+            foreach (DB::table('operacion_animales as oa')->join('operaciones as o', 'o.id', '=', 'oa.operacion_id')->whereIn('oa.animal_id', $animalIds)
+                ->where('o.tipo', 'venta')->where('o.estado', 'registrada')->pluck('oa.animal_id') as $id) {
+                $out[$id] = 'vendido';
+            }
+        }
         foreach (DB::table('animales_estado')->whereIn('animal_id', $animalIds)->where('estado', '<>', 'activo')->pluck('animal_id') as $id) {
             $out[$id] = 'vendido';
         }
