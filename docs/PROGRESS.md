@@ -297,3 +297,23 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
 - Lote anónimo recibe eventos grupales con `sujetos.tipo = lote` (+ `conteo` parcial); individualizar
   (`hacienda.individualizacion`) descuenta del conteo y el animal hereda en su timeline los eventos grupales previos.
 - Verificado: 4 tests (ciclo completo de lote anónimo con muerte e individualización, especies, edición/archivo, 422/idempotencia/403/404).
+
+## TPA-21 · Carga inicial de stock por planilla · ✅ (parte API)
+
+**Endpoints:** `POST …/importaciones` (202), `GET …/importaciones/{i}`, `GET …/importaciones/{i}/filas?con_errores` (cursor),
+`PATCH …/importaciones/{i}/filas/{numero}`, `POST …/importaciones/{i}/confirmar` (202), `POST …/importaciones/{i}/cancelar`,
+`GET /importaciones/plantilla?especie` (CSV).
+
+**Comentario del dev:**
+- Tablas `importaciones`, `importacion_filas` y la base de `archivos` (direccionado por SHA-256, clave
+  `archivos/sha256/aa/bb/<hash>`, nunca se sobrescribe; la subida diferida completa es TPA-44). CSV (`,`/`;`, BOM) y XLSX
+  (`openspout/openspout`, primera hoja). **Desvío aditivo del contrato:** además de `archivo_sha256`, el POST acepta
+  multipart `archivo` (documentado en `docs/openapi-v1.yaml`) — sin eso no hay forma de subir la planilla hasta TPA-44.
+- Validación en cola (job; `sync` en tests) fila por fila: especie/sexo/categoría/raza por código **o nombre del catálogo**
+  (datos), fecha `AAAA-MM-DD` o `DD/MM/AAAA`, dentición, RFID 15 dígitos, identificaciones repetidas en el archivo o ya
+  vigentes, lote/potrero por nombre (lote de la misma especie); advertencias (tatuaje sin prefijo, sin identificación).
+  `mapeo` para columnas con otros nombres. Corregir una fila la revalida; descartarla la saca del conteo.
+- Confirmar = **un `hacienda.alta` por fila** (`motivo: importacion`, `importacion_id`, `origen: importacion`) — se usa `alta`
+  y no `ingreso` porque el inventario inicial no es una compra (modelo-datos §12). `animal_id` y `evento_id` preasignados:
+  reconfirmar no duplica. La alternativa «lote anónimo por categoría» ya existe con `hacienda.alta` sobre `sujetos.tipo = lote`.
+- Verificado: 4 tests (ciclo completo con errores/corrección/descarte/confirmación idempotente, plantilla + mapeo, XLSX, cancelar/422/403/404).
