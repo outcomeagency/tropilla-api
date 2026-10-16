@@ -2,6 +2,7 @@
 
 namespace App\Domain\Reproduccion;
 
+use App\Domain\Catalogos\Parametros;
 use App\Domain\Hacienda\Eventos\ContextoEvento;
 use App\Domain\Hacienda\Eventos\EventoRechazado;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,7 @@ final class ReglasReproductivas
         match ($ctx->sobre->tipo) {
             'reproduccion.servicio_natural' => $this->servicioNatural($ctx, $p),
             'reproduccion.inseminacion' => $this->inseminacion($ctx, $p),
+            'reproduccion.tacto' => $this->tacto($ctx, $p),
             default => null,
         };
     }
@@ -52,7 +54,44 @@ final class ReglasReproductivas
             }
         }
 
+        if ($tipo === 'reproduccion.tacto' && $p->resultado === 'prenada' && isset($p->dias_gestacion)) {
+            foreach ($this->hembras($ctx) as $h) {
+                if ((int) $p->dias_gestacion > $this->gestacion('gestacion_media_dias', $ctx, $h)) {
+                    $obs[] = ['codigo' => 'fpp_pasada', 'mensaje' => 'Con esos días de gestación la fecha probable de parto ya pasó.',
+                        'interna' => false, 'detalle' => ['animal_id' => $h->animal_id]];
+                }
+            }
+        }
+
         return $obs;
+    }
+
+    /**
+     * TPA-28: preñada lleva días de gestación (o tamaño); los días no superan la gestación máxima de la especie/raza
+     * (`gestacion_max_dias`, parámetro).
+     */
+    private function tacto(ContextoEvento $ctx, stdClass $p): void
+    {
+        if ($p->resultado !== 'prenada') {
+            return;
+        }
+        if (! isset($p->dias_gestacion) && ! isset($p->tamano)) {
+            throw new EventoRechazado('esquema_invalido', 'Una preñez lleva los días de gestación (o el tamaño).', ['payload.dias_gestacion' => ['Obligatorio si está preñada.']]);
+        }
+        if (isset($p->dias_gestacion)) {
+            foreach ($this->hembras($ctx) as $h) {
+                $max = $this->gestacion('gestacion_max_dias', $ctx, $h);
+                if ((int) $p->dias_gestacion > $max) {
+                    throw new EventoRechazado('regla_bloqueante', "La gestación de la especie no supera {$max} días.", ['payload.dias_gestacion' => ["Máximo {$max}."]]);
+                }
+            }
+        }
+    }
+
+    /** Parámetro de gestación (días) resuelto por especie/raza/establecimiento a la fecha del evento. */
+    private function gestacion(string $clave, ContextoEvento $ctx, object $hembra): int
+    {
+        return (int) Parametros::valor($clave, $hembra->especie_codigo, $hembra->raza_codigo, $ctx->est->id, $ctx->ocurridoEn());
     }
 
     /** TPA-27: período (fin ≥ inicio), al menos una hembra, toros machos enteros de la especie. */

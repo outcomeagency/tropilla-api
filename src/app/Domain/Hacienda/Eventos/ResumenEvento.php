@@ -42,7 +42,8 @@ final class ResumenEvento
             'hacienda.identificacion' => ucfirst($p['accion']).": {$p['identificacion']['tipo']} {$p['identificacion']['valor']}",
             'hacienda.denticion' => "Dentición: {$p['denticion']}",
             'hacienda.condicion_corporal' => "CC {$p['valor']} (escala {$p['escala']})",
-            'reproduccion.tacto' => ucfirst($p['resultado']).(isset($p['dias_gestacion']) ? " ({$p['dias_gestacion']} días)" : ''),
+            'reproduccion.tacto' => (['prenada' => 'Preñada', 'vacia' => 'Vacía'][$p['resultado']] ?? $p['resultado'])
+                .(isset($p['dias_gestacion']) ? " ({$p['dias_gestacion']} días)" : (isset($p['tamano']) ? " ({$p['tamano']})" : '')),
             'reproduccion.parto' => 'Parto '.$p['tipo'].': '.count($p['crias']).' cría(s)',
             'reproduccion.inseminacion' => strtoupper($p['tipo']),
             'reproduccion.servicio_natural' => "Servicio natural desde {$p['inicio']}",

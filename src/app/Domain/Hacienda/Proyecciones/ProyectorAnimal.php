@@ -261,15 +261,19 @@ final class ProyectorAnimal
                 $s['fpp_precision'] = 'ia';
                 break;
             case 'reproduccion.tacto':
-                $s['tacto_fecha'] = $fecha;
                 if ($p['resultado'] === 'prenada') {
+                    // Un tacto preñada solo por tamaño confirma la preñez pero no pisa la referencia (tacto con días o servicio) anterior.
+                    if (isset($p['dias_gestacion']) || $s['estado_reproductivo'] !== 'prenada') {
+                        $s['tacto_fecha'] = $fecha;
+                        $s['dias_gestacion_al_tacto'] = $p['dias_gestacion'] ?? null;
+                    }
                     $s['estado_reproductivo'] = 'prenada';
-                    $s['dias_gestacion_al_tacto'] = $p['dias_gestacion'] ?? null;
                     if (isset($p['dias_gestacion'])) {
                         $s['fecha_probable_parto'] = $this->sumarDias($fecha, $this->gestacion($s, $animal, $fecha) - (int) $p['dias_gestacion']);
                         $s['fpp_precision'] = 'tacto';
                     }
                 } else {
+                    $s['tacto_fecha'] = $fecha;
                     $s['estado_reproductivo'] = 'vacia';
                     $s['dias_gestacion_al_tacto'] = null;
                     $s['fecha_probable_parto'] = null;

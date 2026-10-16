@@ -469,3 +469,21 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
 - Advertencias: `servicio_en_prenada` (la FPP nueva reemplaza a la del tacto) y `toro_no_activo`; en la web piden confirmación, por sync quedan como observación.
 - Verificado: 5 tests (servicio natural con toro adentro y FPP Murrah desde el inicio, IA/IATF bovina 283 d y semen propio, 10 reglas bloqueantes/422,
   advertencia + confirmación, 403 lectura / 404 ajeno). Suite completa verde.
+
+## TPA-28 · Tacto y fecha probable de parto · ✅ (parte API)
+
+**Endpoints:** vía `POST …/eventos` / push (`reproduccion.tacto`); en la ficha `estado_reproductivo`, `fecha_probable_parto`, `fpp_precision`
+y los **campos aditivos** `tacto_fecha` y `dias_gestacion` (hoy − concepción, calculado al leer) en `Animal` (ya en el YAML).
+
+**Comentario del dev:**
+- La FPP ya la calculaba el proyector de TPA-22 con `gestacion_media_dias` resuelto por especie/raza/establecimiento a la fecha del tacto
+  (dato: Murrah 303, Mediterránea 313, Jafarabadi 330, búfalo sin raza 310, bovino 283); un override del establecimiento por
+  `PUT …/parametros/gestacion_media_dias` cambia los tactos siguientes. Lo que faltaba eran las reglas (en `ReglasReproductivas`).
+- Preñada exige `dias_gestacion` o `tamano` (422); días > `gestacion_max_dias` de la especie bloquea (bovino 295, búfalo 335);
+  días > media advierte `fpp_pasada`. Vacía limpia FPP y días.
+- Decisión: un tacto preñada **solo por tamaño** confirma la preñez pero no inventa días (no hay tabla tamaño→días validada): conserva la
+  FPP del servicio/IA o del tacto anterior con días. Queda como dato a cargar si un vet la define.
+- Arreglo pedido por la app: el resumen del tacto decía «Prenada»; ahora «Preñada (N días)» / «Preñada (chica)» / «Vacía» (aserción en el test).
+- Modo manga = app (búsqueda por identificador + tactos en lote por `POST /sync/push`, misma `RegistrarEvento`); no requiere endpoint nuevo.
+- Verificado: 5 tests (FPP de las 5 gestaciones + ficha con `dias_gestacion` + timeline, override del establecimiento, preñada sin días 422 /
+  tamaño conserva la FPP de la IA, máximo por especie y advertencia, tacto en macho / 403 / 404). Suite completa verde.

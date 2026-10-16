@@ -6986,6 +6986,11 @@ components:
             - {$ref: '#/components/schemas/Fecha'}
             - {type: 'null'}
           servicio_tipo: {type: [string, 'null'], enum: [natural, ia, iatf, null], description: 'TPA-27 (aditivo): tipo del último servicio'}
+          tacto_fecha:
+            oneOf:
+            - {$ref: '#/components/schemas/Fecha'}
+            - {type: 'null'}
+          dias_gestacion: {type: [integer, 'null'], description: 'TPA-28 (aditivo): hoy − concepción (tacto con días o servicio); solo servidas/preñadas'}
           fpp_precision: {type: [string, 'null']}
           retiro_carne_hasta:
             oneOf:
