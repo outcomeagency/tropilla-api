@@ -1724,6 +1724,53 @@ paths:
         '401': {$ref: '#/components/responses/NoAutenticado'}
         '403': {$ref: '#/components/responses/Prohibido'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
+  /establecimientos/{establecimiento}/animales/{animal}/pesajes:
+    get:
+      tags: [Hacienda]
+      summary: Serie de pesos del animal (curva de la ficha)
+      operationId: get_establecimientos_establecimiento_animales_animal_pesajes
+      description: >-
+        **Ability:** `hacienda.ver` (modelo-datos.md §13). Desvío aditivo (TPA-23 bugfix): puntos ascendentes por fecha,
+        leídos del payload de los eventos vigentes (no del `resumen`). Fuentes: `pesaje` (individual, o promedio que incluye
+        al animal o del lote anónimo de origen previo a la individualización → `heredado_de_lote`), `nacimiento` (peso de la
+        cría en el parto) y `destete`. `gdp_kg_dia` solo en puntos individuales de pesaje/nacimiento, contra el anterior de
+        fecha menor (misma regla que `Animal.gdp_kg_dia`; el destete no cuenta). Sin paginar.
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: animal
+        in: path
+        required: true
+        schema: {type: string}
+      - name: desde
+        in: query
+        schema: {$ref: '#/components/schemas/Fecha'}
+      - name: hasta
+        in: query
+        schema: {$ref: '#/components/schemas/Fecha'}
+      - name: incluir_lote
+        in: query
+        description: '`false` excluye los promedios heredados del lote anónimo (default `true`).'
+        schema: {type: boolean, default: true}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: {$ref: '#/components/schemas/PuntoPeso'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
   /establecimientos/{establecimiento}/animales/{animal}/documentos:
     get:
       tags: [Hacienda]
@@ -7186,6 +7233,22 @@ components:
             additionalProperties: false
         ocurrido_en: {type: string}
       required: [items]
+      additionalProperties: false
+    PuntoPeso:
+      type: object
+      description: Punto de la serie de pesos (TPA-23 bugfix).
+      properties:
+        evento_id: {$ref: '#/components/schemas/Uuid'}
+        fecha: {$ref: '#/components/schemas/Fecha'}
+        peso_kg: {$ref: '#/components/schemas/Decimal'}
+        fuente: {type: string, enum: [pesaje, nacimiento, destete]}
+        modo: {type: string, enum: [individual, promedio]}
+        metodo: {type: [string, 'null'], enum: [balanza, cinta, estimado, null]}
+        cantidad: {type: [integer, 'null']}
+        gdp_kg_dia: {oneOf: [{$ref: '#/components/schemas/Decimal'}, {type: 'null'}]}
+        heredado_de_lote: {type: boolean}
+        lote_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+      required: [evento_id, fecha, peso_kg, fuente, modo, metodo, cantidad, gdp_kg_dia, heredado_de_lote, lote_id]
       additionalProperties: false
     Genealogia:
       type: object

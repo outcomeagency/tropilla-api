@@ -367,6 +367,19 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
   web → `422 requiere_confirmacion`; app → observación en el evento.
 - Verificado: 3 tests (GDP individual 1,333 y de lote 0,967 = promedio, promedio de lote sin pisar individual + 422 sin cantidad, alerta dentro/fuera del plazo).
 
+### TPA-23 · bugfix: serie de pesos por animal · ✅
+
+**Endpoint nuevo:** `GET …/animales/{a}/pesajes?desde&hasta&incluir_lote` → `PuntoPeso[]` (ascendente, sin paginar).
+
+**Comentario del dev:**
+- `SeriePesos` lee el **payload** de los eventos vigentes del timeline del animal (no el `resumen`): pesajes individuales y promedio
+  que lo incluyen, promedios del lote anónimo de origen previos a la individualización (`heredado_de_lote`), peso al nacer y al destete.
+- Decisión: la GDP por punto replica la regla del proyector (pesajes individuales + peso al nacer, contra el anterior de fecha menor;
+  el destete se muestra pero no cuenta), así el último punto coincide con `gdp_kg_dia` de la ficha. Los filtros se aplican después de calcular.
+- Trampa: `hacienda.ver` lo tienen todos los roles; el único 403 posible es `membresia_revocada` (es lo que cubre el test).
+- Verificado: 3 tests (serie completa 38→98→150→200→210,5 con GDP 1 / 0,85 = ficha, la madre no hereda el peso de la cría, filtro con GDP
+  del anterior, herencia de lote y `incluir_lote=false`, 422 ×2, 404 inexistente/ajeno, lectura OK, 403 revocada) + suite verde.
+
 ## TPA-25 · Recategorización sugerida · ✅ (parte API)
 
 **Endpoints:** `GET …/animales?sugerencia_categoria=true` (lista, con `categoria_sugerida`), `POST …/animales/recategorizar` (201 EventoResumen[]).
@@ -908,6 +921,7 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 
 - TPA-14: `poligono` (GeoJSON) en `Potrero`/`PotreroInput`.
 - TPA-21: `POST …/importaciones` acepta multipart `archivo` además de `archivo_sha256`; (bugfix) `ImportacionFila.original` con los valores crudos de la planilla.
+- TPA-23 (bugfix): `GET …/animales/{a}/pesajes` + schema `PuntoPeso`.
 - TPA-27/28/29: campos `servicio_tipo`, `tacto_fecha`, `dias_gestacion`, `dias_posparto`, `destete` en `Animal`.
 - TPA-30: `sin_estado`, `partos_proximos`, `partos_vencidos` en `TableroVientres`.
 - TPA-48: `compromiso` en `AnimalResumen`; PDF público de oferta como `200 application/pdf` en vez de `302` a URL prefirmada.

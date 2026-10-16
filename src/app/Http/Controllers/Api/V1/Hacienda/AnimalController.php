@@ -9,6 +9,7 @@ use App\Domain\Hacienda\Actions\ConfirmarRecategorizaciones;
 use App\Domain\Hacienda\ConsultasAnimales;
 use App\Domain\Hacienda\Eventos\ConsultasEventos;
 use App\Domain\Hacienda\Proyecciones\Identificaciones;
+use App\Domain\Hacienda\SeriePesos;
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Hacienda\AltaRapidaRequest;
@@ -98,6 +99,22 @@ class AnimalController extends Controller
         $q = ConsultasEventos::timelineAnimal($a, $request->only(['tipo', 'modulo', 'incluir_anulados']));
 
         return CursorRespuesta::make($q->cursorPaginate(CursorRespuesta::limite($request), cursorName: 'cursor'), EventoResumenResource::class, $request);
+    }
+
+    /** Serie de pesos para la curva de la ficha (bugfix TPA-23): ascendente por fecha, desde el payload de los eventos. */
+    public function pesajes(Request $request, Establecimiento $establecimiento, string $animal): JsonResponse
+    {
+        Gate::authorize('hacienda.ver', $establecimiento);
+        $a = DB::table('animales')->where('id', $animal)->where('establecimiento_id', $establecimiento->id)->first() ?? throw ApiException::noEncontrado();
+        $f = $request->validate([
+            'desde' => ['nullable', 'date_format:Y-m-d'],
+            'hasta' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:desde'],
+            'incluir_lote' => ['nullable', 'in:true,false,1,0'],
+        ]);
+
+        return response()->json(['data' => SeriePesos::de($a, $establecimiento->zona_horaria, [
+            'desde' => $f['desde'] ?? null, 'hasta' => $f['hasta'] ?? null, 'incluir_lote' => ! $request->has('incluir_lote') || $request->boolean('incluir_lote'),
+        ])]);
     }
 
     /** Genealogía: madre, padre (del sistema o externos) y crías. */

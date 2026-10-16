@@ -186,6 +186,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('animales/identificador', [AnimalController::class, 'identificador'])->name('animales.identificador');
             Route::get('animales/{animal}', [AnimalController::class, 'show'])->name('animales.show');
             Route::get('animales/{animal}/eventos', [AnimalController::class, 'eventos'])->name('animales.eventos');
+            Route::get('animales/{animal}/pesajes', [AnimalController::class, 'pesajes'])->name('animales.pesajes');
             Route::get('animales/{animal}/genealogia', [AnimalController::class, 'genealogia'])->name('animales.genealogia');
             Route::get('animales/{animal}/documentos', [AnimalController::class, 'documentos'])->name('animales.documentos');
 
