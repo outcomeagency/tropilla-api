@@ -651,6 +651,24 @@ push `clase: documento_version`; `GET …/animales/{a}/documentos` ya real; secc
 - Verificado: 5 tests (alta con 2 archivos y vínculos, huella desde el sobre guardado, v2/corrección/revocación, append-only, cadena verificada;
   fiscal/publicación/verificación por archivo/encargado; vencimientos y 8 filtros; push idempotente + conflicto + 2 rechazos + pull/snapshot; 422/403/404).
 
+## TPA-44 · Subida diferida de fotos y archivos · ✅ (parte API)
+
+**Endpoints:** `POST /archivos/subidas`, `POST /archivos/subidas/{s}/completar`, `GET /archivos/{sha256}` (302 a URL firmada 5 min),
+`GET /archivos/{sha256}/estado`; dev/tests: `PUT /archivos/subidas/{s}/partes/{n}` (ruta firmada). **Comando:** `archivos:expirar-subidas` (horario).
+
+**Comentario del dev:**
+- El teléfono sube **directo al almacén** con URLs prefirmadas (la API no pasa bytes): simple < 8 MiB, si no multipart de 5 MiB; la cola de
+  archivos de la app es independiente de la de eventos (el sobre referencia el SHA-256 y el archivo queda `pendiente` hasta completar).
+  Dedupe por hash: si ya está `completo` responde 200 y no se sube. Reintento de una parte = volver a hacer PUT; de la subida = iniciar otra.
+- Completar **verifica SHA-256 y bytes** del objeto; si no coincide se borra (la clave es el hash, nunca puede quedar otro contenido) →
+  422 `archivo_corrupto`. Vencidas a las 24 h: el job aborta el multipart.
+- Interfaz `AlmacenObjetos`: `S3Almacen` (MinIO/S3/R2; presigna con un cliente apuntado a `AWS_PUBLIC_ENDPOINT` porque SigV4 firma el host
+  — `minio:9000` no es alcanzable desde el teléfono) y `LocalAlmacen` (URLs firmadas de la API; tests y dev sin MinIO).
+- Descarga solo si el usuario ve algo que referencia el archivo (versión de documento según fiscal/rol, adjunto de evento, planilla, o lo subió él);
+  si no 404. Contrato de la app respetado (`subida_id`, `modo`, `url`, `parte_bytes`, `partes[{numero,url}]`, completar con `{partes:[{numero,etag}]}`).
+- Verificado: 3 tests (simple + dedupe + descarga; multipart 4 partes con reintento de una parte, partes faltantes 422, corrupto descartado;
+  firma obligatoria, vencimiento, 422/403/404) + **smoke real contra MinIO**: multipart 12 MB y simple con PUT prefirmado, verificación y descarga.
+
 ---
 
 ## Desvíos del contrato

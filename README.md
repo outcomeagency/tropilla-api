@@ -37,6 +37,9 @@ Si tu UID no es 1000: `HOST_UID` / `HOST_GID`.
 Credenciales de dev: Postgres `tropilla` / `secret` · MinIO `tropilla` / `secretsecret` ·
 usuario seed `dev@tropilla.local` / `password` (solo `APP_ENV=local`).
 
+Subida diferida (TPA-44): las URLs prefirmadas salen con el host de `AWS_PUBLIC_ENDPOINT` (por defecto `http://localhost:9010`;
+en el emulador Android usar `http://10.0.2.2:9010`). Sin MinIO, `TROPILLA_ARCHIVOS_DRIVER=local` firma URLs de la propia API.
+
 ## Datos demo — «La Esperanza»
 
 En `APP_ENV=local` el seeder carga (idempotente) el establecimiento demo del brief de diseño:

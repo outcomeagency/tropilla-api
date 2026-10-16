@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Domain\Documentos\Almacen\AlmacenObjetos;
+use App\Domain\Documentos\Almacen\LocalAlmacen;
+use App\Domain\Documentos\Almacen\S3Almacen;
 use App\Domain\Establecimientos\Enums\Rol;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Establecimientos\Models\Productor;
@@ -22,6 +25,9 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // Almacén de la subida diferida (TPA-44): S3/MinIO o local (dev sin MinIO, tests).
+        $this->app->bind(AlmacenObjetos::class, fn () => config('tropilla.archivos.driver') === 's3' ? new S3Almacen : new LocalAlmacen);
+
         // Memoiza reglas de categoría por request/job.
         $this->app->scoped(SugeridorCategoria::class);
     }
