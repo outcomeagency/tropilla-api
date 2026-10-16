@@ -6772,6 +6772,7 @@ components:
         recurso_forrajero: {type: [string, 'null']}
         agua: {type: boolean}
         revolcadero: {type: boolean}
+        poligono: {type: [object, 'null'], description: 'GeoJSON Polygon (lon, lat) en WGS84. Desvío aditivo de tropilla-api (TPA-14): PostGIS geography(Polygon). Si no hay superficie_ha, se calcula del polígono al crear.'}
         notas: {type: [string, 'null']}
         ocupacion:
           type: object
@@ -6805,6 +6806,7 @@ components:
         recurso_forrajero: {type: [string, 'null']}
         agua: {type: boolean}
         revolcadero: {type: boolean}
+        poligono: {type: [object, 'null'], description: 'GeoJSON Polygon (lon, lat) en WGS84. Desvío aditivo de tropilla-api (TPA-14): PostGIS geography(Polygon). Si no hay superficie_ha, se calcula del polígono al crear.'}
         notas: {type: [string, 'null']}
         row_version: {type: string, description: Obligatorio en PATCH}
       additionalProperties: false
