@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\V1\Archivos\ArchivoController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\DispositivoController;
+use App\Http\Controllers\Api\V1\Busco\BuscoController;
+use App\Http\Controllers\Api\V1\Busco\ProfesionalController;
 use App\Http\Controllers\Api\V1\Catalogos\CatalogoController;
 use App\Http\Controllers\Api\V1\Catalogos\ParametroController;
 use App\Http\Controllers\Api\V1\Comercial\ConsultaController;
@@ -88,6 +90,8 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('establecimientos/{slug}/ofertas', [PerfilPublicoController::class, 'ofertas'])->name('establecimientos.ofertas');
         Route::get('establecimientos/{slug}/contratos', [PerfilPublicoController::class, 'contratos'])->name('establecimientos.contratos');
         Route::get('contratos/{codigo}', [ContratoPublicoController::class, 'show'])->where('codigo', '[0-9A-Za-z]{10}')->name('contratos.show');
+        Route::get('buscos', [BuscoController::class, 'publicos'])->name('buscos.index');
+        Route::get('profesionales/{slug}', [ProfesionalController::class, 'publico'])->where('slug', '[a-z0-9-]{3,60}')->name('profesionales.show');
         Route::get('enlaces/{token}', EnlacePublicoController::class)->where('token', '[A-Za-z0-9_-]{20,100}')->name('enlaces.show');
         Route::post('consultas', ConsultaPublicaController::class)->middleware('throttle:consultas')->name('consultas.store');
     });
@@ -107,6 +111,15 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('seguimientos', [CompradorController::class, 'seguimientos'])->name('seguimientos.index');
         Route::post('seguimientos', [CompradorController::class, 'seguir'])->name('seguimientos.store');
         Route::delete('seguimientos/{slug}', [CompradorController::class, 'dejar'])->where('slug', '[a-z0-9-]{3,60}')->name('seguimientos.destroy');
+
+        // «Busco» y perfil de profesional (TPA-58)
+        Route::get('comprador/buscos', [BuscoController::class, 'index'])->name('comprador.buscos.index');
+        Route::post('comprador/buscos', [BuscoController::class, 'store'])->name('comprador.buscos.store');
+        Route::patch('comprador/buscos/{busco}', [BuscoController::class, 'update'])->name('comprador.buscos.update');
+        Route::post('comprador/buscos/{busco}/cerrar', [BuscoController::class, 'cerrar'])->name('comprador.buscos.cerrar');
+        Route::get('comprador/buscos/{busco}/respuestas', [BuscoController::class, 'respuestas'])->name('comprador.buscos.respuestas');
+        Route::get('me/profesional', [ProfesionalController::class, 'show'])->name('me.profesional');
+        Route::put('me/profesional', [ProfesionalController::class, 'update'])->name('me.profesional.guardar');
 
         // Notificaciones (TPA-53)
         Route::get('me/notificaciones', [NotificacionController::class, 'index'])->name('me.notificaciones');
@@ -258,6 +271,11 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::post('contratos/{contrato}/entrega', [ContratoController::class, 'entrega'])->name('contratos.entrega');
             Route::post('contratos/{contrato}/entrega/confirmar', [ContratoController::class, 'confirmarEntrega'])->name('contratos.entrega.confirmar');
             Route::get('apalancamiento', [ContratoController::class, 'apalancamiento'])->name('apalancamiento');
+
+            // Demandas «Busco» y profesionales vinculados (TPA-58)
+            Route::get('demandas', [BuscoController::class, 'demandas'])->name('demandas.index');
+            Route::post('demandas/{busco}/respuestas', [BuscoController::class, 'responder'])->name('demandas.responder');
+            Route::post('profesionales', [ProfesionalController::class, 'autorizar'])->name('profesionales.autorizar');
 
             // Consultas de compradores (TPA-49)
             Route::get('consultas', [ConsultaController::class, 'index'])->name('consultas.index');
