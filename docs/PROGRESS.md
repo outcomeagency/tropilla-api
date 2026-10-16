@@ -614,6 +614,22 @@ editables por establecimiento con `PUT …/parametros/tuberculina_<tipo>_{negati
 - Verificado: 4 tests (anocaudal negativo/sospechoso/positivo→reactor + override por especie del establecimiento, cervical simple,
   declarado≠calculado, calculado incoherente/sin lecturas/prueba inexistente/varios animales, análisis con adjunto, 403/404, push con revisión).
 
+## TPA-35 · Retiro vigente y reactores · ✅ (parte API)
+
+**Endpoints:** `GET …/sanidad/retiros?especie` (AnimalResumen[] + aditivo `lotes[]`), `GET …/sanidad/reactores?especie`;
+aditivo `retiro_carne_hasta`/`retiro_leche_hasta` en `Lote`.
+
+**Comentario del dev:**
+- Retiro individual ya proyectado (TPA-22/32); lo nuevo es el **lote anónimo**: `Retiros::deLote` lo deriva al leer de sus aplicaciones
+  vigentes (`sujeto_tipo = lote`, fecha local + duración del tratamiento + días del payload). Vence solo: «hoy» de la zona del establecimiento.
+- Venta: `hacienda.egreso` advierte `reactor` (salvo destino faena, que es la salida sugerida) y `retiro_vigente` también para lotes
+  anónimos; web → `422 requiere_confirmacion`, app → observación. Ofertas desde lote anónimo con retiro → aviso `retiro_vigente`.
+  La operación con trato (TPA-46) reutiliza los mismos chequeos.
+- Privacidad: listas solo para miembros (`sanidad.ver`); perfil y ofertas públicas siguen con su whitelist (reactor nunca sale; el retiro
+  solo como hecho agregado si el productor muestra el bloque sanidad). Autoriza antes de validar (ajeno → 404 con filtro inválido).
+- Pendiente: animales individualizados desde un lote anónimo no heredan el retiro del lote (heredan el timeline, no la proyección).
+- Verificado: 3 tests (listas por especie + lote + vencimiento al pasar la fecha, advertencias de venta/faena/lote/oferta, 422/lectura/404).
+
 ---
 
 ## Desvíos del contrato
@@ -630,3 +646,4 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-32: la web expande sanidad a lote no anónimo y completa el snapshot del producto en el payload; sujeto potrero resuelto a animales presentes.
 - TPA-33: `PlanItem` + `nota`, `aplica`, `requiere_configuracion`, `archivado_en`; `Tarea.reprogramada`; filtro `estado=abiertas`; formato de `disparador` documentado.
 - TPA-34: parámetros `tuberculina_*_mm` por especie; resultado calculado por el servidor en la web; revisión `resultado_prueba_discrepante`.
+- TPA-35: `lotes[]` aditivo en `…/sanidad/retiros`; `retiro_*_hasta` en `Lote`; advertencia `reactor` en egreso.

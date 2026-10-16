@@ -3,6 +3,7 @@
 namespace App\Domain\Comercial\Services;
 
 use App\Domain\Catalogos\Parametros;
+use App\Domain\Sanidad\Retiros;
 use App\Http\Resources\V1\Hacienda\AnimalResource;
 use App\Support\Formato;
 use Illuminate\Support\Carbon;
@@ -91,7 +92,8 @@ final class ContenidoOferta
             'denticion' => $dent === [] ? null : $dent,
             'clase_faena' => $clase,
             'sanidad' => self::sanidad($establecimientoId, $animalIds, $loteId),
-            'sin_retiro_vigente' => $total === 0 ? null : ! $animales->contains(fn ($a) => ($a->retiro_carne_hasta && $a->retiro_carne_hasta >= $hoy) || ($a->retiro_leche_hasta && $a->retiro_leche_hasta >= $hoy)),
+            'sin_retiro_vigente' => ($total === 0 && $conteo === []) ? null : ! ($animales->contains(fn ($a) => ($a->retiro_carne_hasta && $a->retiro_carne_hasta >= $hoy) || ($a->retiro_leche_hasta && $a->retiro_leche_hasta >= $hoy))
+                || ($loteId !== null && Retiros::loteVigente($loteId, $hoy))),
             'origen' => $total === 0 ? null : [
                 'nacidos_pct' => self::dec(100 * ($origenes['nacido'] ?? 0) / $total, 0),
                 'comprados_pct' => self::dec(100 * ($origenes['comprado'] ?? 0) / $total, 0),
