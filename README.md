@@ -33,6 +33,8 @@ el PHP del host no trae `pdo_pgsql`.
 Los puertos se cambian con `API_PORT`, `FORWARD_DB_PORT`, `FORWARD_REDIS_PORT`, `FORWARD_MINIO_PORT`,
 `FORWARD_MINIO_CONSOLE_PORT`, `FORWARD_GOTENBERG_PORT` en un `.env` en la raíz del repo.
 Si tu UID no es 1000: `HOST_UID` / `HOST_GID`.
+MinIO usa las imágenes comunitarias `pgsty/minio` / `pgsty/mc` (MinIO retiró las suyas de Docker Hub/quay).
+El entrypoint va dentro de la imagen `tropilla/php`: si cambia `docker/php/entrypoint.sh`, `docker compose up -d --build`.
 
 Credenciales de dev: Postgres `tropilla` / `secret` · MinIO `tropilla` / `secretsecret` ·
 usuario seed `dev@tropilla.local` / `password` (solo `APP_ENV=local`).
