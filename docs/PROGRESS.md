@@ -342,6 +342,17 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
   reconfirmar no duplica. La alternativa «lote anónimo por categoría» ya existe con `hacienda.alta` sobre `sujetos.tipo = lote`.
 - Verificado: 4 tests (ciclo completo con errores/corrección/descarte/confirmación idempotente, plantilla + mapeo, XLSX, cancelar/422/403/404).
 
+### TPA-21 · bugfix: valor original de cada fila · ✅
+
+**Comentario del dev:**
+- Columna aditiva `importacion_filas.original` (jsonb, nullable) con lo que vino en la planilla, solo columnas de la plantilla y
+  con el `mapeo` ya aplicado (mismas claves que acepta el PATCH). `ImportacionFila.original` sale en el listado de filas y en el PATCH.
+- Decisión: `original` es del archivo y **no cambia** al corregir; lo corregido queda en `datos` (normalizado). Importaciones
+  previas al cambio devuelven `null` (no se re-leen los archivos). La web puede dejar de releer el CSV en el navegador y anda con XLSX.
+- Trampa: jsonb no conserva el orden de las claves; el cliente no debe depender del orden de `original`.
+- Verificado: test nuevo (categoría que no corresponde a la especie, fecha inválida, sexo «X» y columna mapeada: `original` intacto
+  y `datos` sin lo no entendido; PATCH no lo pisa; 422 acción inválida; 403 encargado; 404 ajeno) + suite verde.
+
 ## TPA-23 · Pesajes y ganancia diaria · ✅ (parte API)
 
 **Endpoints:** vía `POST …/eventos` (`hacienda.pesaje`, modo `individual` | `promedio` con `cantidad`); resultados en la ficha
@@ -896,7 +907,7 @@ aditivos `POST /organizaciones` (solo staff) y `POST /organizaciones/{o}/miembro
 Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 
 - TPA-14: `poligono` (GeoJSON) en `Potrero`/`PotreroInput`.
-- TPA-21: `POST …/importaciones` acepta multipart `archivo` además de `archivo_sha256`.
+- TPA-21: `POST …/importaciones` acepta multipart `archivo` además de `archivo_sha256`; (bugfix) `ImportacionFila.original` con los valores crudos de la planilla.
 - TPA-27/28/29: campos `servicio_tipo`, `tacto_fecha`, `dias_gestacion`, `dias_posparto`, `destete` en `Animal`.
 - TPA-30: `sin_estado`, `partos_proximos`, `partos_vencidos` en `TableroVientres`.
 - TPA-48: `compromiso` en `AnimalResumen`; PDF público de oferta como `200 application/pdf` en vez de `302` a URL prefirmada.
