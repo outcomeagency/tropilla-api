@@ -8082,7 +8082,14 @@ components:
           - {$ref: '#/components/schemas/Decimal'}
           - {type: 'null'}
         conviene: {type: [string, 'null'], enum: [en_pie, al_gancho, igual]}
+        formula:
+          type: object
+          description: 'Aditivo TPA-45: la fórmula aplicada, en texto ({en_pie[], al_gancho[], comun[]}).'
+          additionalProperties: true
       additionalProperties: false
+      description: 'Decisión asumida (duda 4 de Claude Design): desbaste **solo en pie**; rendimiento al gancho **sobre el peso bruto**
+        (desvío respecto de modelo-datos §9.1, que lo aplicaba sobre el neto); flete, arranque, seguro y comisión **a cargo del vendedor**
+        en ambas modalidades; IVA informativo. Defaults por especie: `rendimiento_gancho_ref_pct`, `iva_hacienda_pct`.'
     Simulacion:
       type: object
       properties:

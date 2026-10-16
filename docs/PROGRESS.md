@@ -705,6 +705,20 @@ pull `entidad: anclaje` (estado + `evento_ids` del establecimiento).
   incremental, append-only; fallido ×5 y re-anclaje; OpenTimestamps con calendarios falsos verificando el commitment calculado y la
   confirmación en v2; stub + producción no arranca) + smoke real contra los calendarios públicos.
 
+## TPA-45 · Simulador de liquidación en pie vs al gancho · ✅ (parte API)
+
+**Endpoints:** `POST …/simulaciones/calcular` (sin guardar), `GET|POST …/simulaciones` (cursor; guardadas inmutables). Ability `comercial.precios`.
+
+**Comentario del dev:**
+- `SimuladorLiquidacion` con **fórmula explícita** que también viaja en la respuesta (`formula`). Decisión de la duda 4: desbaste **solo en pie**,
+  rendimiento al gancho **sobre el bruto** (desvío respecto de modelo-datos §9.1, que lo aplicaba sobre el neto: ≈ $1,5 M de diferencia en 30
+  bubillos), flete/arranque/seguro/comisión **del vendedor** en las dos, IVA 10,5/21 % informativo. Si mandan desbaste al gancho se ignora.
+- Defaults por especie como datos: rendimiento `rendimiento_gancho_ref_pct` (BUB 53 = NEA, BOV 55) e IVA `iva_hacienda_pct`. Todo con `bcmath`
+  (decimales string, sin floats), redondeo half-up: dinero a 2, kg a 1. `conviene` + `diferencia_neto` cuando hay ambas modalidades.
+- `simulaciones` privadas e inmutables (trigger); calcular no guarda («usable sin registrar una venta»).
+- Verificado: 2 tests (caso 30 bubillos 14.040 kg con todas las líneas a mano, una sola modalidad + IVA 21 + desbaste ignorado + default BOV,
+  guardar/listar/inmutable, 422 ×7, 403 encargado/asesor/lectura, 404 ajeno).
+
 ---
 
 ## Desvíos del contrato
@@ -725,3 +739,4 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-36: `DocumentoInput.privacidad` opcional (default del tipo); `emisor_nombre` en `Documento`; `versiones` solo en ficha/alta/sync.
 - TPA-38: `Enlace.aviso` para fiscales; URL pública `{web}/e/{token}`; `estado: reemplazado` en enlaces a versión fija.
 - TPA-40: `GET /public/anclajes/{a}/recibo` (.ots); pull `anclaje` con `evento_ids`; verificación de archivo también por enlace vigente.
+- TPA-45: rendimiento al gancho sobre el **bruto** y desbaste solo en pie (modelo-datos §9.1 decía sobre el neto); `formula` aditiva en `SimulacionResultado`.
