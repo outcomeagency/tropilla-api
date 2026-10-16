@@ -225,3 +225,18 @@ acá y en la sección «Desvíos del contrato» al final.
   columnas nulas, el cursor opaco es posición + huella de filtros (`CursorOffset`); un cursor con otros filtros/orden → 400
   `request_invalido` (api-v1 §4). Selección múltiple para eventos grupales = del lado del cliente (`animal_ids`).
 - Verificado: 5 tests (búsqueda caravana/RFID parcial, 8 filtros, orden + paginado + cursor inválido, estados, lectura/404).
+
+## TPA-19 · Identificaciones múltiples por animal · ✅ (parte API)
+
+**Endpoints:** vía eventos (`POST …/eventos` tipo `hacienda.identificacion`, o `identificaciones[]` en altas) + lectura en la ficha
+y en `GET …/animales/identificador`.
+
+**Comentario del dev:**
+- Tipos del catálogo: caravana visual, oficial/CUIG, RFID (15 dígitos **normalizados**: el bastón en modo teclado puede meter
+  espacios), tatuaje con prefijo de la raza (E/U/A desde `razas.prefijo_tatuaje`: si no coincide, advertencia
+  `tatuaje_prefijo`, también para animales existentes), marca/señal y registro genealógico (exige `entidad`, con `tipo_registro`).
+- Única vigente por tipo y establecimiento: índice único parcial + 409 online / revisión por sync (TPA-22). Colocar otra del
+  mismo tipo reemplaza la anterior (salvo marca y registro, que pueden ser varios).
+- Reposición exige `reemplaza` y que esa identificación esté vigente en el animal (si no, `regla_bloqueante`); reposición y retiro
+  dejan la anterior **no vigente con fecha** (historial completo en la ficha); la caravana liberada puede usarse en otro animal.
+- Verificado: 6 tests (todos los tipos, prefijo/RFID/entidad, historial de reposición, reglas de reposición/retiro, 409, 403/404).

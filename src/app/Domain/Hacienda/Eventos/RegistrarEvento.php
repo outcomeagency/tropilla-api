@@ -482,6 +482,16 @@ final class RegistrarEvento
         if (isset($p->identificacion) && $p->identificacion->tipo === 'rfid' && ! preg_match('/^\d{15}$/', Identificaciones::normalizar($p->identificacion->valor))) {
             throw new EventoRechazado('regla_bloqueante', 'El RFID tiene 15 dígitos.', ['payload.identificacion.valor' => ['15 dígitos.']]);
         }
+        if ($s->tipo === 'hacienda.identificacion') {
+            $this->reglasIdentificacion($ctx, $p);
+        }
+        foreach ($ctx->nuevos as $n) {
+            foreach ((array) ($n->identificaciones ?? []) as $j => $ident) {
+                if ($ident->tipo === 'registro_genealogico' && empty($ident->entidad)) {
+                    throw new EventoRechazado('esquema_invalido', 'El registro genealógico lleva la entidad (AACB, SRA…).', ["payload.animales.identificaciones.{$j}.entidad" => ['Obligatoria.']]);
+                }
+            }
+        }
         if (isset($p->cambios) && $p->cambios instanceof stdClass && isset($p->cambios->raza)) {
             foreach ($ctx->sujetosExistentes as $a) {
                 $this->raza($p->cambios->raza, $a->especie_codigo, 'payload.cambios.raza', $est->id);
@@ -494,6 +504,29 @@ final class RegistrarEvento
                 if ($a->estado !== 'activo' && $a->baja_en !== null && $a->baja_en < $fecha) {
                     throw new EventoRechazado('regla_bloqueante', __('El animal ya no está en el establecimiento (baja del :f).', ['f' => $a->baja_en]), ['sujetos.animal_ids' => [$a->id]]);
                 }
+            }
+        }
+    }
+
+    /**
+     * TPA-19: reposición y retiro actúan sobre una identificación **vigente** del animal (la anterior queda en el
+     * historial como no vigente); la reposición exige `reemplaza`; registro genealógico con entidad.
+     */
+    private function reglasIdentificacion(ContextoEvento $ctx, stdClass $p): void
+    {
+        $animalId = $ctx->sobre->sujetos->animal_ids[0];
+        if ($p->identificacion->tipo === 'registro_genealogico' && empty($p->identificacion->entidad)) {
+            throw new EventoRechazado('esquema_invalido', 'El registro genealógico lleva la entidad (AACB, SRA…).', ['payload.identificacion.entidad' => ['Obligatoria.']]);
+        }
+        if ($p->accion === 'reposicion' && ! isset($p->reemplaza)) {
+            throw new EventoRechazado('esquema_invalido', 'La reposición indica qué identificación reemplaza.', ['payload.reemplaza' => ['Obligatorio en reposición.']]);
+        }
+        if ($p->accion !== 'colocacion') {
+            $objetivo = $p->reemplaza ?? $p->identificacion;
+            $vigente = DB::table('animal_identificaciones')->where('animal_id', $animalId)->where('vigente', true)
+                ->where('tipo', $objetivo->tipo)->where('valor_normalizado', Identificaciones::normalizar($objetivo->valor))->exists();
+            if (! $vigente) {
+                throw new EventoRechazado('regla_bloqueante', "El animal no tiene vigente {$objetivo->tipo} {$objetivo->valor}.", ['payload.reemplaza' => ['No es una identificación vigente del animal.']]);
             }
         }
     }
@@ -666,8 +699,9 @@ final class RegistrarEvento
                 $obs[] = ['codigo' => 'identificacion_duplicada', 'mensaje' => "La identificación {$i->valor} ya está en otro animal.", 'interna' => true, 'revision' => true,
                     'detalle' => ['tipo' => $i->tipo, 'valor' => $i->valor, 'animal_id' => $animalId, 'otro_animal_id' => $otro]];
             }
-            if ($i->tipo === 'tatuaje' && $nuevo !== null && isset($nuevo->raza)) {
-                $prefijo = DB::table('razas')->where('codigo', $nuevo->raza)->value('prefijo_tatuaje');
+            $raza = $nuevo !== null ? ($nuevo->raza ?? null) : ($ctx->sujetosExistentes[$animalId]->raza_codigo ?? null);
+            if ($i->tipo === 'tatuaje' && $raza !== null) {
+                $prefijo = DB::table('razas')->where('codigo', $raza)->value('prefijo_tatuaje');
                 if ($prefijo && ! str_starts_with(strtoupper($i->valor), $prefijo)) {
                     $obs[] = ['codigo' => 'tatuaje_prefijo', 'mensaje' => "El tatuaje de esta raza empieza con {$prefijo}.", 'interna' => false, 'detalle' => ['prefijo' => $prefijo]];
                 }
