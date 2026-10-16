@@ -59,6 +59,22 @@ final class ReglasReproductivas
             foreach (DB::table('animales_estado')->whereIn('animal_id', $toros)->where('estado', '<>', 'activo')->get(['animal_id', 'estado']) as $t) {
                 $obs[] = ['codigo' => 'toro_no_activo', 'mensaje' => "El toro ya no está activo ({$t->estado}).", 'interna' => false, 'detalle' => ['animal_id' => $t->animal_id]];
             }
+
+            $torosTipados = array_map(fn ($id) => ['tipo' => 'interno', 'id' => $id], $toros);
+            if (isset($p->semen->reproductor_externo_id)) {
+                $torosTipados[] = ['tipo' => 'externo', 'id' => $p->semen->reproductor_externo_id];
+            }
+            foreach ($this->hembras($ctx) as $hembra) {
+                $ancestrosHembra = $this->ancestros('interno', $hembra->animal_id, $ctx->est->id);
+                foreach ($torosTipados as $toro) {
+                    $compartidos = array_intersect_key($ancestrosHembra, $this->ancestros($toro['tipo'], $toro['id'], $ctx->est->id));
+                    if ($compartidos !== []) {
+                        $obs[] = ['codigo' => 'consanguinidad_3_generaciones', 'mensaje' => 'El macho y la hembra comparten ancestros en las últimas tres generaciones.',
+                            'interna' => false, 'no_bloqueante' => true, 'detalle' => ['animal_id' => $hembra->animal_id, 'toro_id' => $toro['id'], 'ancestros_compartidos' => array_keys($compartidos)]];
+                        break;
+                    }
+                }
+            }
         }
 
         if ($tipo === 'reproduccion.tacto' && $p->resultado === 'prenada' && isset($p->dias_gestacion)) {
@@ -101,6 +117,36 @@ final class ReglasReproductivas
         }
 
         return $obs;
+    }
+
+    /** @return array<string, true> */
+    private function ancestros(string $tipo, string $id, string $establecimientoId): array
+    {
+        $vistos = [];
+        $frontera = [['tipo' => $tipo, 'id' => $id]];
+        for ($generacion = 1; $generacion <= 3 && $frontera !== []; $generacion++) {
+            $siguiente = [];
+            foreach ($frontera as $nodo) {
+                $tabla = $nodo['tipo'] === 'interno' ? 'animales_estado' : 'reproductores_externos';
+                $claveId = $nodo['tipo'] === 'interno' ? 'animal_id' : 'id';
+                $fila = DB::table($tabla)->where($claveId, $nodo['id'])->where('establecimiento_id', $establecimientoId)->first();
+                if ($fila === null) {
+                    continue;
+                }
+                foreach ([['madre_id', 'interno'], ['padre_id', 'interno'], ['madre_externa_id', 'externo'], ['padre_externo_id', 'externo']] as [$campo, $tipoPadre]) {
+                    $parentId = $fila->{$campo} ?? null;
+                    if ($parentId === null) {
+                        continue;
+                    }
+                    $clave = $tipoPadre[0].':'.$parentId;
+                    $vistos[$clave] = true;
+                    $siguiente[$clave] = ['tipo' => $tipoPadre, 'id' => $parentId];
+                }
+            }
+            $frontera = array_values($siguiente);
+        }
+
+        return $vistos;
     }
 
     /**
@@ -231,7 +277,7 @@ final class ReglasReproductivas
             $this->toro($ctx, $p->semen->toro_id, $especies, 'payload.semen.toro_id', exigirEntero: false);
         }
         if (isset($p->semen->reproductor_externo_id)) {
-            $externo = DB::table('reproductores_externos')->where('id', $p->semen->reproductor_externo_id)->where('establecimiento_id', $ctx->est->id)->first();
+            $externo = DB::table('reproductores_externos')->where('id', $p->semen->reproductor_externo_id)->where('establecimiento_id', $ctx->est->id)->whereNull('archivado_en')->first();
             if (! $externo) {
                 throw new EventoRechazado('dependencia_faltante', 'El reproductor externo no está sincronizado.', ['payload.semen.reproductor_externo_id' => [$p->semen->reproductor_externo_id]]);
             }

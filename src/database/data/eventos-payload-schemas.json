@@ -161,7 +161,9 @@
         "padre_id": {
           "$ref": "#/$defs/uuid"
         },
-        "madre_externa_id": {"$ref":"#/$defs/uuid"},
+        "madre_externa_id": {
+            "$ref": "#/$defs/uuid"
+          },
         "padre_externo_id": {"$ref":"#/$defs/uuid"},
         "madre_externa": {
           "$ref": "#/$defs/texto_corto"
@@ -267,6 +269,9 @@
             }
           },
           "madre_id": {
+            "$ref": "#/$defs/uuid"
+          },
+          "madre_externa_id": {
             "$ref": "#/$defs/uuid"
           },
           "madre_externa": {

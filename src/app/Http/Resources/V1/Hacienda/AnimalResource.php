@@ -42,6 +42,8 @@ class AnimalResource extends JsonResource
             'padre' => $pariente($a->padre_id),
             'madre_externa' => $a->madre_externa,
             'padre_externo' => $a->padre_externo,
+            'madre_externa_id' => $a->madre_externa_id,
+            'padre_externo_id' => $a->padre_externo_id,
             'senas' => $a->senas,
             'foto' => Fotos::privada($a->foto_sha256), // bugfix TPA-54
             'identificaciones' => $idents->map(fn ($i) => [

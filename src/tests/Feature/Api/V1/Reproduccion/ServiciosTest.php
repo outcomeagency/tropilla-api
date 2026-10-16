@@ -98,6 +98,18 @@ it('servicio sobre una hembra preñada pide confirmación en la web', function (
     expect(estRep($this->hembra['animal_id']))->estado_reproductivo->toBe('servida');
 });
 
+it('registra sin confirmación y deja observación cuando toro y hembra comparten ancestro en tres generaciones', function () {
+    $ancestro = animalNuevo(['sexo' => 'H', 'categoria' => 'BUB_BUFALA']);
+    $this->postJson($this->url, altaBody([$ancestro], '2025-01-01'))->assertCreated();
+    $hembra = animalNuevo(['madre_id' => $ancestro['animal_id']]);
+    $toro = animalNuevo(['sexo' => 'M', 'categoria' => 'BUB_BUFALO_TORO', 'madre_id' => $ancestro['animal_id']]);
+    $this->postJson($this->url, altaBody([$hembra, $toro], '2025-01-02'))->assertCreated();
+
+    $this->postJson($this->url, repEvento('reproduccion.servicio_natural', [$hembra['animal_id']], [
+        'inicio' => '2025-03-01', 'toro_ids' => [$toro['animal_id']],
+    ], '2025-03-01'))->assertCreated()->assertJsonPath('data.observaciones_validacion.0', 'consanguinidad_3_generaciones');
+});
+
 it('permisos: lectura 403, otro establecimiento 404', function () {
     $body = repEvento('reproduccion.inseminacion', [$this->hembra['animal_id']], ['tipo' => 'ia'], '2025-03-01');
     Sanctum::actingAs(miembro($this->est, 'lectura'));

@@ -2236,6 +2236,18 @@ paths:
         '401': {$ref: '#/components/responses/NoAutenticado'}
         '403': {$ref: '#/components/responses/Prohibido'}
         '422': {$ref: '#/components/responses/Validacion'}
+    delete:
+      tags: [Reproducción]
+      summary: Archivar reproductor externo sin borrar su historial
+      operationId: delete_establecimientos_establecimiento_reproductores_externos_reproductor
+      parameters:
+      - {name: establecimiento, in: path, required: true, schema: {type: string}}
+      - {name: reproductor, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+      responses:
+        '204': {description: Archivado; se conserva el historial y se publica en sync}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
   /establecimientos/{establecimiento}/reproduccion/tablero:
     get:
       tags: [Reproducción]
