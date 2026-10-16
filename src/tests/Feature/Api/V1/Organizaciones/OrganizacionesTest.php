@@ -75,3 +75,22 @@ it('permisos: solo dueño/admin del productor; padrón solo para la organizació
     $this->postJson($this->url, ['organizacion_id' => (string) Str::uuid7(), 'alcances' => $this->alcances, 'texto_version' => 'v1x'])->assertNotFound();
     $this->postJson($this->url, ['organizacion_id' => $this->org['id'], 'alcances' => $this->alcances, 'texto_version' => 'consentimiento-org-v1'])->assertCreated();
 });
+
+it('administra integrantes: listar, cambiar rol y dar de baja con permisos de organización', function () {
+    Sanctum::actingAs($this->adminOrg);
+    $id = $this->adminOrg->id;
+    $this->getJson("/api/v1/organizaciones/{$this->org['id']}/miembros")
+        ->assertOk()->assertJsonPath('data.0.usuario.id', $id)->assertJsonPath('data.0.rol', 'admin');
+
+    $operador = User::factory()->create(['email' => 'operador@aacb.example']);
+    $this->postJson("/api/v1/organizaciones/{$this->org['id']}/miembros", ['email' => $operador->email, 'rol' => 'operador'])->assertNoContent();
+    $this->patchJson("/api/v1/organizaciones/{$this->org['id']}/miembros/{$operador->id}", ['rol' => 'admin'])->assertNoContent();
+    $this->getJson("/api/v1/organizaciones/{$this->org['id']}/miembros")
+        ->assertJsonPath('data.1.usuario.id', $operador->id)->assertJsonPath('data.1.rol', 'admin');
+    $this->deleteJson("/api/v1/organizaciones/{$this->org['id']}/miembros/{$operador->id}")->assertNoContent();
+    $this->getJson("/api/v1/organizaciones/{$this->org['id']}/miembros")->assertJsonCount(1, 'data');
+
+    Sanctum::actingAs(User::factory()->create());
+    $this->postJson("/api/v1/organizaciones/{$this->org['id']}/miembros", ['email' => $operador->email, 'rol' => 'admin'])->assertNotFound();
+    $this->patchJson("/api/v1/organizaciones/{$this->org['id']}/miembros/{$id}", ['rol' => 'operador'])->assertNotFound();
+});
