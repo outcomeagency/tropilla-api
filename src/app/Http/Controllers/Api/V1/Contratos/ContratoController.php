@@ -136,14 +136,14 @@ class ContratoController extends Controller
         Gate::authorize('comercial.precios', $establecimiento);
         $tomas = DB::table('tomas as t')->join('contratos_futuro as c', 'c.id', '=', 't.contrato_id')->where('c.establecimiento_id', $establecimiento->id)
             ->whereNotIn('c.estado', ['cancelado', 'incumplido', 'liquidado'])->get(['t.*', 'c.kg_por_token']);
-        $cobrados = D::sum('0', ...$tomas->where('estado', 'confirmada')->map(fn ($t) => D::sub((string) $t->anticipo_monto, (string) $t->anticipo_a_devolver))->all());
+        $cobrados = D::sum('0', ...$tomas->whereIn('estado', GestionarTomas::CONFIRMADAS)->map(fn ($t) => D::sub((string) $t->anticipo_monto, (string) $t->anticipo_a_devolver))->all());
         $pendientes = D::sum('0', ...$tomas->whereIn('estado', ['reservada', 'pago_informado'])->pluck('anticipo_monto')->map(fn ($x) => (string) $x)->all());
         $contratos = DB::table('contratos_futuro')->where('establecimiento_id', $establecimiento->id)->whereNotIn('estado', ['borrador', 'cancelado', 'liquidado', 'incumplido'])
             ->orderBy('fecha_entrega')->get();
 
         return response()->json(['data' => [
             'anticipos_cobrados' => D::redondear($cobrados, 2), 'anticipos_pendientes' => D::redondear($pendientes, 2),
-            'kg_comprometidos' => (int) $tomas->where('estado', 'confirmada')->sum(fn ($t) => $t->tokens_vigentes * $t->kg_por_token),
+            'kg_comprometidos' => (int) $tomas->whereIn('estado', GestionarTomas::CONFIRMADAS)->sum(fn ($t) => $t->tokens_vigentes * $t->kg_por_token),
             'moneda' => (string) ($contratos->first()->moneda ?? 'ARS'),
             'contratos' => $contratos->map(fn ($c) => ['id' => $c->id, 'lote' => (string) DB::table('lotes')->where('id', $c->lote_id)->value('nombre'),
                 'pct_tomado' => Formato::decimal(D::redondear(D::mul(D::div((string) $c->tokens_comprometidos, (string) $c->tokens_totales), '100'), 2)),

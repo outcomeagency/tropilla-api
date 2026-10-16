@@ -74,6 +74,8 @@ services:
     image: postgis/postgis:16-3.5
     container_name: tropilla_postgres
     restart: unless-stopped
+    # Más locks por transacción: la suite en paralelo (RefreshDatabase × 8 procesos × ~100 tablas) agotaba la tabla de locks (TPA-57).
+    command: ["postgres", "-c", "max_locks_per_transaction=256"]
     environment:
       POSTGRES_DB: tropilla
       POSTGRES_USER: tropilla

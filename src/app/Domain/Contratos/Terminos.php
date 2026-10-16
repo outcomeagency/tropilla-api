@@ -57,7 +57,7 @@ final class Terminos
         if ($comprometidos <= $total) {
             return ['liberar' => [], 'recortes' => []];
         }
-        $noConfirmadas = array_values(array_filter($tomas, fn ($t) => $t->estado !== 'confirmada'));
+        $noConfirmadas = array_values(array_filter($tomas, fn ($t) => ! in_array($t->estado, ['confirmada', 'devuelta_parcial'], true)));
         usort($noConfirmadas, fn ($a, $b) => [$b->created_at, $b->id] <=> [$a->created_at, $a->id]);
         foreach ($noConfirmadas as $t) {
             if ($comprometidos <= $total) {
@@ -69,7 +69,7 @@ final class Terminos
         if ($comprometidos <= $total) {
             return ['liberar' => $liberar, 'recortes' => []];
         }
-        $conf = array_values(array_filter($tomas, fn ($t) => $t->estado === 'confirmada'));
+        $conf = array_values(array_filter($tomas, fn ($t) => in_array($t->estado, ['confirmada', 'devuelta_parcial'], true)));
         usort($conf, fn ($a, $b) => [$a->created_at, $a->id] <=> [$b->created_at, $b->id]);
         $s = array_sum(array_map(fn ($t) => (int) $t->tokens_vigentes, $conf));
         $nuevo = [];

@@ -40,7 +40,7 @@ final class GestionarEntrega
         $factor = D::div((string) $reales, (string) $t['kg_gancho_totales']);
         $dentro = D::cmp(D::sub($factor, '1'), D::div($t['tolerancia_pct'], '100')) <= 0 && D::cmp(D::sub('1', $factor), D::div($t['tolerancia_pct'], '100')) <= 0;
         $liq = [];
-        foreach (DB::table('tomas')->where('contrato_id', $c->id)->where('estado', 'confirmada')->where('tokens_vigentes', '>', 0)->orderBy('created_at')->get() as $tm) {
+        foreach (DB::table('tomas')->where('contrato_id', $c->id)->whereIn('estado', GestionarTomas::CONFIRMADAS)->where('tokens_vigentes', '>', 0)->orderBy('created_at')->get() as $tm) {
             $kgEf = D::redondear(D::mul((string) ($tm->tokens_vigentes * $c->kg_por_token), $factor), 1);
             $importe = D::redondear(D::mul($kgEf, (string) $c->precio_especial_kg), 2);
             $anticipo = D::redondear(D::sub((string) $tm->anticipo_monto, (string) $tm->anticipo_a_devolver), 2);

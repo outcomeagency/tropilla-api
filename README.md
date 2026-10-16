@@ -42,6 +42,8 @@ en el emulador Android usar `http://10.0.2.2:9010`). Sin MinIO, `TROPILLA_ARCHIV
 
 ## Datos demo — «La Esperanza»
 
+Comprador demo (contratos a futuro): `comprador@tropilla.ar` / `tropilla-demo` (40 tokens confirmados del contrato de las bubillas).
+
 En `APP_ENV=local` el seeder carga (idempotente) el establecimiento demo del brief de diseño:
 **Agropecuaria Don Ramón S.A.** · **La Esperanza** (General Paz, Corrientes, 2.400 ha), potreros Bañado Norte,
 Loma del Monte y Malezal 3, **1.240 bovinos y 380 bubalinos** en lotes por categoría, la búfala Murrah **U-0142**

@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\Comercial\OfertaController;
 use App\Http\Controllers\Api\V1\Comercial\OperacionController;
 use App\Http\Controllers\Api\V1\Comercial\PrecioController;
 use App\Http\Controllers\Api\V1\Comercial\SimulacionController;
+use App\Http\Controllers\Api\V1\Comprador\CompradorController;
 use App\Http\Controllers\Api\V1\Contratos\ContratoController;
 use App\Http\Controllers\Api\V1\Cuenta\NotificacionController;
 use App\Http\Controllers\Api\V1\Documentos\DocumentoController;
@@ -95,6 +96,18 @@ Route::prefix('v1')->name('v1.')->group(function () {
     Route::get('public/invitaciones/{token}', [InvitacionController::class, 'publica'])->middleware('throttle:publico')->name('public.invitaciones.show');
 
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
+        // Comprador y toma de tokens (TPA-57)
+        Route::get('me/comprador', [CompradorController::class, 'perfil'])->name('me.comprador');
+        Route::put('me/comprador', [CompradorController::class, 'guardarPerfil'])->name('me.comprador.guardar');
+        Route::post('contratos/{codigo}/tomas', [CompradorController::class, 'tomar'])->where('codigo', '[0-9A-Za-z]{10}')->name('contratos.tomar');
+        Route::get('comprador/tomas', [CompradorController::class, 'tomas'])->name('comprador.tomas');
+        Route::post('comprador/tomas/{toma}/pago-informado', [CompradorController::class, 'pagoInformado'])->name('comprador.tomas.pago');
+        Route::post('comprador/tomas/{toma}/devolucion-confirmada', [CompradorController::class, 'devolucionConfirmada'])->name('comprador.tomas.devolucion');
+        Route::post('comprador/tomas/{toma}/entrega/confirmar', [CompradorController::class, 'confirmarEntrega'])->name('comprador.tomas.entrega');
+        Route::get('seguimientos', [CompradorController::class, 'seguimientos'])->name('seguimientos.index');
+        Route::post('seguimientos', [CompradorController::class, 'seguir'])->name('seguimientos.store');
+        Route::delete('seguimientos/{slug}', [CompradorController::class, 'dejar'])->where('slug', '[a-z0-9-]{3,60}')->name('seguimientos.destroy');
+
         // Notificaciones (TPA-53)
         Route::get('me/notificaciones', [NotificacionController::class, 'index'])->name('me.notificaciones');
         Route::post('me/notificaciones/{notificacion}/leer', [NotificacionController::class, 'leer'])->name('me.notificaciones.leer');

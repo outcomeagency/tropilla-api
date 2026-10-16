@@ -6,6 +6,7 @@ use App\Domain\Catalogos\Catalogos;
 use App\Domain\Comercial\Models\Oferta;
 use App\Domain\Comercial\Services\Compromisos;
 use App\Domain\Comercial\Services\ContenidoOferta;
+use App\Domain\Contratos\Seguidores;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Integridad\Actions\RegistrarEnCadena;
 use App\Domain\Integridad\CanonicalJson;
@@ -130,6 +131,11 @@ final class GestionarOferta
                 'avisos' => array_map(fn ($a) => [...$a, 'confirmado' => true], $avisos)])->save();
             Perfiles::asegurar(Establecimiento::query()->findOrFail($o->establecimiento_id));
             $this->auditoria->handle($o->establecimiento_id, $u->id, 'oferta', $o->id, 'publicar', null, ['version' => $version, 'huella' => $huella]);
+            if ($version === 1) {
+                $est = Establecimiento::query()->findOrFail($o->establecimiento_id);
+                Seguidores::avisar($est, 'oferta_nueva', "{$est->nombre} publicó una oferta", ($o->textos['es']['titulo'] ?? null) ?: "{$o->cantidad} cabezas",
+                    ['oferta_codigo' => $o->codigo_publico, 'ruta' => '/o/'.$o->codigo_publico], "oferta:{$o->id}:publicada");
+            }
 
             return $o;
         });

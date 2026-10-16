@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Domain\Comercial\Actions\GestionarOferta;
 use App\Domain\Comercial\Actions\RecibirConsultaPublica;
 use App\Domain\Contratos\Actions\GestionarContrato;
+use App\Domain\Contratos\Actions\GestionarTomas;
 use App\Domain\Establecimientos\Actions\RealizarOnboarding;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Hacienda\Actions\GuardarPotrero;
@@ -385,6 +386,17 @@ class DemoLaEsperanzaSeeder extends Seeder
         $id = $g->crear($this->est, $this->dueno, ['lote_id' => $this->lotes['bubillas'], 'peso_vivo_estimado_kg' => '450', 'precio_referencia_kg' => '5200',
             'descuento_pct' => '8', 'anticipo_pct' => '30', 'fecha_entrega' => now()->addMonths(8)->startOfMonth()->toDateString()]);
         $g->publicar($this->est, $this->dueno, DB::table('contratos_futuro')->where('id', $id)->first());
+
+        // Comprador demo (TPA-57): frigorífico que sigue a La Esperanza y tomó 40 tokens con el anticipo ya confirmado.
+        $comprador = User::query()->firstOrCreate(['email' => 'comprador@tropilla.ar'], ['nombre' => 'Marcelo Duarte', 'password' => self::PASSWORD,
+            'email_verificado_en' => now(), 'idioma' => 'es']);
+        DB::table('compradores')->updateOrInsert(['usuario_id' => $comprador->id], ['empresa' => 'Frigorífico del Litoral', 'tipo' => 'frigorifico', 'pais' => 'AR',
+            'idiomas' => '{es}', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('seguimientos')->insertOrIgnore(['usuario_id' => $comprador->id, 'establecimiento_id' => $this->est->id, 'created_at' => now()]);
+        $tomas = app(GestionarTomas::class);
+        $toma = $tomas->tomar(DB::table('contratos_futuro')->where('id', $id)->value('codigo_publico'), $comprador, 40, 'demo');
+        $tomas->informarPago(DB::table('tomas')->where('id', $toma)->first(), $comprador, ['referencia' => 'Transferencia demo']);
+        $tomas->confirmarPago(DB::table('tomas')->where('id', $toma)->first(), $this->dueno);
     }
 
     /** Perfil público publicado y en el directorio (`/p/la-esperanza`). */

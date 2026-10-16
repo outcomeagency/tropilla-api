@@ -817,6 +817,29 @@ pull `entidad: anclaje` (estado + `evento_ids` del establecimiento).
   «recibí», apalancamiento, economía fija 422, recorte 60/30 → 33/17 con $3.875.040 y $1.865.760 a devolver, devolución informada; entrega a resolver y
   dentro de tolerancia → liquidación exacta → operación; compromiso 409, cancelar devuelve y libera, 422, asesor sin montos, encargado 403, 404) + demo.
 
+## TPA-57 · Cuenta de comprador y toma de tokens · ✅ (parte API) + seeder DEMO
+
+**Endpoints:** `GET|PUT /me/comprador`, `POST /contratos/{codigo}/tomas` (Idempotency-Key), `GET /comprador/tomas?estado` (cursor; `vigentes` aditivo),
+`POST /comprador/tomas/{t}/pago-informado|devolucion-confirmada`, `POST /comprador/tomas/{t}/entrega/confirmar`, `GET|POST /seguimientos`,
+`DELETE /seguimientos/{slug}`. **Comando:** `contratos:liberar-tomas` (cada 15 min).
+
+**Comentario del dev:**
+- `compradores` (cuenta liviana 1:1: empresa, tipo, país, idiomas, volumen) y `seguimientos` (dejar de seguir = `dejado_en`, api-v1 A8). Con perfil de
+  comprador y sesión, `/public/contratos/{codigo}` y la lista del perfil muestran precio especial y anticipo (excepción explícita); sin cuenta, null.
+- Tomar: perfil + email verificado, ≤ libres bajo lock del contrato (409 `tokens_insuficientes`), nunca del propio establecimiento; `Idempotency-Key`
+  por comprador. Flujo «pagué» (comprador) → «recibí» (productor, TPA-56); cada paso es un movimiento hasheado y encadenado y avisa a la otra parte.
+- Vencimiento: reservas sin «recibí» pasadas `toma_vencimiento_horas` (48) → `liberada` por el sistema y los tokens vuelven a estar libres (aviso al
+  comprador). Duda 7 (2 días hábiles) queda como parámetro del contrato; no se cuentan hábiles.
+- «Mis contratos» = tomas con contrato (código, establecimiento, fecha de entrega, estado) y su propia línea de la liquidación; devolución de anticipo
+  confirmada → `devuelta_parcial` (sigue confirmada por los tokens que le quedan: entra en la liquidación). El comprador confirma la entrega → liquidado.
+- Seguir productores: aviso de **oferta** (primera publicación) y **contrato** nuevos a los seguidores (solo con perfil publicado).
+- Demo: `comprador@tropilla.ar` / `tropilla-demo` (Frigorífico del Litoral) con 40 tokens confirmados del contrato de las bubillas y siguiendo a La Esperanza.
+- Infra: la suite paralela agotaba `max_locks_per_transaction` (64) de Postgres; `compose.yaml` lo sube a 256 (aplica al recrear el contenedor) y,
+  mientras tanto, se corre con `--processes=4`.
+- Verificado: 3 tests (perfil → precio visible → toma 40 idempotente → 409 → pago → pendiente en Inicio → recibí → Mis contratos; liberación a las 48 h y
+  tokens libres, recorte + devolución informada/confirmada, entrega confirmada por el comprador con liquidación exacta, ajeno 404; seguir/aviso de contrato
+  nuevo/dejar, 404 sin perfil, 422 ×5) + demo.
+
 ---
 
 ## Desvíos del contrato
@@ -842,3 +865,4 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-47: query `referencia` (serie por descripción, admite otra especie) en `…/precios/historial`.
 - TPA-53: `GET /me/preferencias-notificacion` aditivo; `meta.no_leidas` en la bandeja.
 - TPA-56: `Contrato.documento_id`; `huella` null en borrador; respuesta de `?simular=true` = {terminos, recorte}; vínculo de documentos `contrato` → tabla `contratos_futuro`.
+- TPA-57: `Toma.contrato` y `Toma.entrega` (solo la línea del comprador) aditivos; `estado=vigentes` en `/comprador/tomas`; códigos 403 `perfil_comprador_requerido` / `email_no_verificado`.

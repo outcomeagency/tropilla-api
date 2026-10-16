@@ -4888,7 +4888,8 @@ paths:
       tags: [Comprador]
       summary: Tomar N tokens
       operationId: post_contratos_codigo_tomas
-      description: Requiere perfil comprador y email verificado. 409 tokens_insuficientes. Idempotency-Key
+      description: 'Requiere perfil comprador (403 `perfil_comprador_requerido`) y email verificado (403 `email_no_verificado`). 409 tokens_insuficientes.
+        Header `Idempotency-Key`: un reintento con la misma clave devuelve la misma toma (200). La reserva vence a las `toma_vencimiento_horas` sin «recibí».'
       parameters:
       - name: codigo
         in: path
@@ -8558,7 +8559,17 @@ components:
               created_at: {$ref: '#/components/schemas/FechaHora'}
             additionalProperties: false
         created_at: {$ref: '#/components/schemas/FechaHora'}
+        contrato:
+          type: object
+          description: 'Aditivo TPA-57 (solo en /comprador/tomas y la toma recién creada): {codigo, establecimiento, especie, categoria, fecha_entrega, estado, moneda}'
+          additionalProperties: true
+        entrega:
+          type: [object, 'null']
+          description: 'Aditivo TPA-57: la entrega con **solo la línea de liquidación de este comprador**'
+          additionalProperties: true
       additionalProperties: false
+      description: 'Sin `comercial.precios` (asesor) vienen null `comprador` y los montos. Estados: una `devuelta_parcial` sigue confirmada por los tokens
+        que le quedan (entra en la liquidación).'
     TomaInput:
       type: object
       properties:
