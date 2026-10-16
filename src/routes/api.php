@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\Catalogos\ParametroController;
 use App\Http\Controllers\Api\V1\Comercial\ConsultaController;
 use App\Http\Controllers\Api\V1\Comercial\OfertaController;
 use App\Http\Controllers\Api\V1\Comercial\OperacionController;
+use App\Http\Controllers\Api\V1\Comercial\PrecioController;
 use App\Http\Controllers\Api\V1\Comercial\SimulacionController;
 use App\Http\Controllers\Api\V1\Documentos\DocumentoController;
 use App\Http\Controllers\Api\V1\Establecimientos\EstablecimientoController;
@@ -212,6 +213,11 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('operaciones/{operacion}', [OperacionController::class, 'show'])->name('operaciones.show');
             Route::post('operaciones/{operacion}/correcciones', [OperacionController::class, 'correccion'])->name('operaciones.correcciones');
             Route::post('operaciones/{operacion}/anulaciones', [OperacionController::class, 'anulacion'])->name('operaciones.anulaciones');
+
+            // Historial de precios propio (TPA-47)
+            Route::get('precios/historial', [PrecioController::class, 'historial'])->name('precios.historial');
+            Route::get('precios-referencia', [PrecioController::class, 'referencias'])->name('precios-referencia.index');
+            Route::post('precios-referencia', [PrecioController::class, 'crearReferencia'])->name('precios-referencia.store');
 
             // Consultas de compradores (TPA-49)
             Route::get('consultas', [ConsultaController::class, 'index'])->name('consultas.index');

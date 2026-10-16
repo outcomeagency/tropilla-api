@@ -740,6 +740,20 @@ pull `entidad: anclaje` (estado + `evento_ids` del establecimiento).
 - Verificado: 4 tests (advertencia + alta con todas las líneas + PDF/Documento/huella + vendido + 409 + cadena; corrección encadenada con flete
   del comprador + anulación que revoca y libera; sin Gotenberg + al gancho 53 %; 422 ×8, 403 encargado/asesor, sync sin operaciones, 404).
 
+## TPA-47 · Historial de precios propio · ✅ (parte API)
+
+**Endpoints:** `GET …/precios/historial?especie&categoria&desde&hasta&referencia`, `GET|POST …/precios-referencia` (cursor). Solo dueño/admin.
+
+**Comentario del dev:**
+- Puntos = ventas **registradas** (las anuladas no cuentan) agrupadas por especie y categoría, con precio, modalidad, referencia y diferencial %
+  = (precio − referencia) / referencia × 100 (bcmath, 2 decimales) + promedio por grupo.
+- Referencia por punto: la elegida en la operación; si no, la última **declarada** a esa fecha de la misma especie (misma categoría primero) y la
+  **misma modalidad** (en pie y gancho no se comparan → `null`). `?referencia=<descripción>` compara contra una serie de otra especie: el búfalo
+  contra el «novillo overo» (duda 10 de Claude Design: no hay referencia pública bubalina).
+- `precios_referencia` inmutables (trigger; una nueva por fecha), fecha no futura. Nada de esto es público ni viaja por sync.
+- Verificado: 2 tests (+5 / −2 / null al gancho / −11,54 overo, promedio 1,5, búfalo vs overo −5,77, referencia elegida +10, anulada fuera,
+  listado de referencias; 422 ×5, inmutable, admin ve, encargado/asesor/lectura 403, 404 ajeno).
+
 ---
 
 ## Desvíos del contrato
@@ -762,3 +776,4 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-40: `GET /public/anclajes/{a}/recibo` (.ots); pull `anclaje` con `evento_ids`; verificación de archivo también por enlace vigente.
 - TPA-45: rendimiento al gancho sobre el **bruto** y desbaste solo en pie (modelo-datos §9.1 decía sobre el neto); `formula` aditiva en `SimulacionResultado`.
 - TPA-46: `Operacion`/`OperacionInput` + `animal_ids`, `oferta_id` (+ `lote_id`, `contrato_id`, `confirmar_advertencias`, `id`); liquidación calculada por el servidor.
+- TPA-47: query `referencia` (serie por descripción, admite otra especie) en `…/precios/historial`.
