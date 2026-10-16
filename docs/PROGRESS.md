@@ -507,3 +507,22 @@ y los **campos aditivos** `tacto_fecha` y `dias_gestacion` (hoy − concepción,
 - Pendiente fuera de alcance: GDP predestete (no se guarda el peso al nacer aparte del primer peso), padre de la cría desde el servicio.
 - Verificado: 7 tests (mellizos + muerta con madre/peso/existencias/genealogía/días posparto, 5 rechazos del parto, gestación corta y parto
   reciente con confirmación + bovino sin aviso, aborto, destete individual con/sin categoría, destete de lote anónimo, 403/404). Suite verde.
+
+## TPA-30 · Tablero de vientres y calendario de partos · ✅ (parte API)
+
+**Endpoints:** `GET …/reproduccion/tablero?especie` (TableroVientres[]), `GET …/reproduccion/partos?desde&hasta&especie&vencidos` (PartoCalendario[]).
+
+**Comentario del dev:**
+- Lecturas sobre `animales_estado` en `App\Domain\Reproduccion\TableroReproductivo` (controller fino + `ReproduccionRequest`, que autoriza
+  `reproduccion.ver` **antes** de validar: un ajeno recibe 404 aunque mande filtros inválidos). Vientre = hembra activa con categoría de
+  vientre (`categorias.es_vientre`, dato) o con estado reproductivo; una por especie del establecimiento (o la filtrada).
+- Tablero: vacías, servidas, preñadas, paridas y preñadas por mes de FPP. **Desvío aditivo** (en el YAML): `sin_estado` (vientres sin
+  eventos reproductivos, para que los estados cierren con el total), `partos_proximos` y `partos_vencidos` (la alerta, lista para Inicio/TPA-53).
+- Calendario: servidas y preñadas con FPP, por fecha, con `fpp_precision`, `dias_para_parto` (negativo si pasó) y `vencido` = FPP +
+  `parto_vencido_tolerancia_dias` (15, parámetro por especie/raza/establecimiento) < hoy sin parto registrado; `vencidos=true|false` filtra.
+  «Hoy» es el de la zona horaria del establecimiento. La agrupación por semana la hace el cliente. El push/email de la alerta queda para TPA-53.
+- Demo: 2 vacas Braford individualizadas del rodeo (anónimo 619 → 617, total BOV sigue 1.240): 0904 con IATF (servida) y 0731 con el parto
+  vencido hace 20 días (relativo a la carga). U-0142, las 4 búfalas ≤ 7 días y las 8 sugerencias no cambian; el test del demo ahora también
+  verifica tablero y calendario (115 eventos).
+- Verificado: 4 tests (tablero BUB/BOV con mes de parto y alertas, calendario orden/días/vencido/filtros y parto registrado sale, tolerancia
+  por parámetro del establecimiento, 422 ×4 / lectura ve / revocada 403 / ajeno 404) + demo. Suite completa verde.

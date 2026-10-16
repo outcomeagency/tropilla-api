@@ -2106,6 +2106,7 @@ paths:
         '401': {$ref: '#/components/responses/NoAutenticado'}
         '403': {$ref: '#/components/responses/Prohibido'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
   /establecimientos/{establecimiento}/reproduccion/partos:
     get:
       tags: [Reproducción]
@@ -2132,7 +2133,8 @@ paths:
       - name: vencidos
         in: query
         required: false
-        schema: {type: string}
+        description: '`true` solo vencidos (FPP + tolerancia < hoy), `false` sin vencidos, ausente = todos. Fechas `desde`/`hasta` filtran la FPP (YYYY-MM-DD).'
+        schema: {type: string, enum: ['true', 'false', '1', '0']}
       responses:
         '200':
           description: OK
@@ -2149,6 +2151,7 @@ paths:
         '401': {$ref: '#/components/responses/NoAutenticado'}
         '403': {$ref: '#/components/responses/Prohibido'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
   /establecimientos/{establecimiento}/productos-sanitarios:
     get:
       tags: [Sanidad]
@@ -7326,6 +7329,9 @@ components:
         servidas: {type: integer}
         prenadas: {type: integer}
         paridas: {type: integer}
+        sin_estado: {type: integer, description: 'TPA-30 (aditivo): vientres sin evento reproductivo (no suman en los estados)'}
+        partos_proximos: {type: integer, description: 'TPA-30 (aditivo): FPP entre hoy y hoy + parto_proximo_aviso_dias'}
+        partos_vencidos: {type: integer, description: 'TPA-30 (aditivo): FPP + parto_vencido_tolerancia_dias < hoy sin parto registrado'}
         prenadas_por_mes_parto:
           type: array
           items:

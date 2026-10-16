@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\User;
 use Database\Seeders\DemoLaEsperanzaSeeder;
 use Illuminate\Support\Facades\DB;
+use Laravel\Sanctum\Sanctum;
 
 it('carga el demo de La Esperanza por eventos reales, con las existencias del brief y cadena íntegra', function () {
     $this->seed(DemoLaEsperanzaSeeder::class);
@@ -17,6 +19,15 @@ it('carga el demo de La Esperanza por eventos reales, con las existencias del br
     expect($u0142)->estado_reproductivo->toBe('prenada')->fecha_probable_parto->toBe('2027-01-12')->peso_kg->toBe('590.0');
     expect(DB::table('animales_estado')->whereNotNull('categoria_sugerida_codigo')->count())->toBe(8);
     expect(DB::table('lotes_estado')->where('peso_promedio_kg', '468.0')->count())->toBe(1);
+
+    Sanctum::actingAs(User::query()->where('email', 'demo@tropilla.ar')->sole());
+    // Reproducción (TPA-30): 4 búfalas con parto en ≤ 7 días, una vaca IATF y una con el parto vencido.
+    $tablero = collect($this->getJson("/api/v1/establecimientos/{$u0142->establecimiento_id}/reproduccion/tablero")->assertOk()->json('data'))->keyBy('especie');
+    expect($tablero['BOV'])->toMatchArray(['servidas' => 1, 'prenadas' => 1, 'vacias' => 1, 'partos_vencidos' => 1])
+        ->and($tablero['BUB']['prenadas'])->toBe(5);
+    $hoy = now('America/Argentina/Buenos_Aires');
+    $this->getJson("/api/v1/establecimientos/{$u0142->establecimiento_id}/reproduccion/partos?desde={$hoy->toDateString()}&hasta={$hoy->copy()->addDays(7)->toDateString()}&especie=BUB")
+        ->assertOk()->assertJsonCount(4, 'data');
 
     $this->artisan('integridad:verificar-cadenas')->assertSuccessful();
 
