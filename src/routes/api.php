@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\DispositivoController;
 use App\Http\Controllers\Api\V1\Catalogos\CatalogoController;
 use App\Http\Controllers\Api\V1\Catalogos\ParametroController;
+use App\Http\Controllers\Api\V1\Comercial\ConsultaController;
 use App\Http\Controllers\Api\V1\Comercial\OfertaController;
 use App\Http\Controllers\Api\V1\Establecimientos\EstablecimientoController;
 use App\Http\Controllers\Api\V1\Establecimientos\InvitacionController;
@@ -131,6 +132,11 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('ofertas/{oferta}/preview', [OfertaController::class, 'preview'])->name('ofertas.preview');
             Route::post('ofertas/{oferta}/publicar', [OfertaController::class, 'publicar'])->name('ofertas.publicar');
             Route::post('ofertas/{oferta}/estado', [OfertaController::class, 'estado'])->name('ofertas.estado');
+
+            // Consultas de compradores (TPA-49)
+            Route::get('consultas', [ConsultaController::class, 'index'])->name('consultas.index');
+            Route::get('consultas/{consulta}', [ConsultaController::class, 'show'])->name('consultas.show');
+            Route::post('consultas/{consulta}/estado', [ConsultaController::class, 'estado'])->name('consultas.estado');
 
             // Lotes (TPA-20)
             Route::get('lotes', [LoteController::class, 'index'])->name('lotes.index');

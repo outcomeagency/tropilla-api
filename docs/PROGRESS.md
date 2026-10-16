@@ -373,3 +373,16 @@ versiones + integridad), `GET …/eventos/{e}/integridad`, `GET …/revisiones?e
 - Demo: la oferta «30 bubillos Mediterráneos» queda publicada en el seeder.
 - Verificado: 6 tests (desde lote → preview en → publicar hasheado → ficha pública sin precio/privados, avisos, compromisos 409 y
   venta → vendida, estados/republicar/retirada 404, PDF con QR, permisos asesor/encargado/404 y 422) + smoke del PDF real.
+
+## TPA-49 · Consultas de compradores · ✅ (parte API)
+
+**Endpoints:** `GET …/consultas?estado` (cursor; por defecto sin spam), `GET …/consultas/{c}` (marca vista), `POST …/consultas/{c}/estado`.
+
+**Comentario del dev:**
+- Tabla `consultas` (§9.6) con `vista_en` (ver no cambia el estado: sigue «nueva» hasta responder), estados
+  nueva/respondida/cerrada/spam, `respondida_por`, `canal_respuesta`; IP solo como HMAC. Las crea el formulario público (TPA-55).
+- Responder abre WhatsApp/email: la Resource arma `whatsapp_url` (`wa.me` con el teléfono normalizado) y `mailto_url` con un
+  saludo **en el idioma del comprador** y el título de la oferta.
+- Solo dueño/admin (`consultas.ver/gestionar`): el asesor y el encargado no ven datos personales del comprador (T12, duda 21).
+  El aviso por email al recibir una consulta sale en TPA-55; el push (FCM) queda para alertas (TPA-53).
+- Verificado: 2 tests (bandeja/filtros/links/vista/estados/422; 403 por rol, admin ve, 404 ajeno).
