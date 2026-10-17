@@ -85,6 +85,7 @@ class TiposYListasSeeder extends Seeder
             ['constancia_renspa', 'Constancia de RENSPA', 'general', true],
             ['dte_copia', 'Copia de DT-e', 'comercial', true], ['guia_provincial', 'Guía provincial / DUT', 'comercial', false],
             ['boleto_compraventa', 'Boleto de compraventa', 'comercial', true],
+            ['resultado_faena', 'Resultado de faena / romaneo', 'comercial', false], ['liquidacion_hacienda', 'Liquidación de hacienda', 'comercial', false],
             ['factura', 'Factura', 'fiscal', false], ['constancia_fiscal', 'Constancia fiscal', 'fiscal', false],
             ['impuesto_tasa', 'Impuesto o tasa', 'fiscal', false], ['certificado_bienestar_organico', 'Certificado de bienestar / orgánico', 'general', true],
             ['registro_genealogico', 'Registro genealógico', 'general', true], ['habilitacion', 'Habilitación', 'general', true],

@@ -9,7 +9,8 @@ final class Familias
 {
     /** @var array<string, class-string<Familia>> */
     public const TODAS = ['acta_vacunacion' => ActaVacunacion::class, 'dte' => Dte::class, 'guia_provincial' => GuiaProvincial::class,
-        'protocolo_sanitario' => ProtocoloSanitario::class, 'libro_tratamientos' => LibroTratamientos::class, 'fidha' => Fidha::class];
+        'protocolo_sanitario' => ProtocoloSanitario::class, 'libro_tratamientos' => LibroTratamientos::class, 'fidha' => Fidha::class,
+        'resultado_faena' => ResultadoFaena::class];
 
     public static function get(string $codigo): Familia
     {

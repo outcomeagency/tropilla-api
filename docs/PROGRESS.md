@@ -1047,6 +1047,30 @@ familia de borrador `protocolo_sanitario`.
 
 ---
 
+## TPA-67 · Resultado de faena y conciliación de venta · ✅ (parte API)
+
+**Endpoints (aditivos):** `GET|POST …/faena/resultados` (`?operacion_id&borrador_id&estado`), `POST …/faena/planilla` (CSV/XLSX → reses para revisar),
+`GET|PATCH …/faena/resultados/{r}`, `POST …/faena/resultados/{r}/anular`, `GET …/faena/resultados/{r}/exportar` (`?formato=pdf|csv`);
+familia de borrador `resultado_faena`; tipos de documento `resultado_faena` y `liquidacion_hacienda`. Ability `comercial.precios` (dueño/admin).
+
+**Comentario del dev:**
+- Tablas `resultados_faena` (frigorífico, CUIT, faenador, fecha, tropa, romaneo, DT-e, cabezas, tipificador, `origen`, romaneo original, liquidación
+  JSONB como la emitió la contraparte, documentos de liquidación y factura, venta **o** egreso vinculado, `row_version`, anulación con motivo) y
+  `faena_reses` (**append-only** por trigger: garrón, RFID/caravana, animal asociado, medias A/B, peso, categoría, tipificación, decomiso).
+- Tres entradas: carga a mano (`declarado`), planilla digital del frigorífico (`importado`, encabezados tolerantes y coma decimal; la lectura no guarda)
+  y PDF/foto por lectura asistida (`transcripcion_revisada`, familia `resultado_faena.romaneo/1` vía `FamiliaConRegistroPropio`). Los dos últimos exigen
+  el original (CHECK en la base). Asociación RFID–garrón por la misma búsqueda de identificaciones que sanidad (incluye vendidos/bajas).
+- **Oficial vs cálculo:** el Resource separa `oficial` (dato del frigorífico con leyenda) de `conciliacion` (cálculo de TROPILLA, se recalcula al leer):
+  enviados vs reses (conciliados, faltantes, no estaban en la venta, sin asociar), rinde por animal (res / último peso vivo) y de tropa (kg reses /
+  kg vivos de la venta), importe esperado al gancho vs bruto liquidado, bruto − deducciones vs neto. No crea eventos ni toca pesos vivos.
+- Exporta CSV (`;`, BOM; columnas `tropilla_*` = cálculo propio) y PDF (Gotenberg, `pdf/conciliacion-faena`, 503 si no responde); a pedido, no se guarda.
+- Pendiente: smoke de lectura asistida con Gemini sobre un romaneo real (el test usa el extractor fake). OpenAPI: se quitó un `presentacion` duplicado
+  en `BorradorDocumento` (TPA-66) que impedía parsear el YAML.
+- Verificado: 4 tests (alta con advertencias, asociación, conciliación, idempotencia, liquidación con 409, factura, CSV/PDF, anulación, append-only;
+  validaciones/advertencias/403/404; planilla CSV; foto → revisión → confirmación → vincular venta) + suite completa 342 verdes.
+
+---
+
 ## TPA-77 · Bot de Telegram del productor · ✅ (parte API)
 
 Endpoints: `GET|PATCH|DELETE /me/telegram`, `POST /me/telegram/codigo`, `POST /telegram/webhook` (sin token de usuario).
@@ -1151,6 +1175,7 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-51: `POST /organizaciones` (staff) y `POST /organizaciones/{o}/miembros` aditivos; `Adherido.datos` con solo lo consentido; 409 `ya_adherido`.
 - TPA-77: tag `Telegram` (`/me/telegram*`, `/telegram/webhook`); `Evento.origen` suma `telegram`; `preferencias-notificacion` suma `telegram` (opcional en el PUT).
 - TPA-66: endpoints de `sanidad/oficial`, `sanidad/protocolos`, `sanidad/estatus`, `sanidad/saneamiento` y `animales/{a}/pruebas`; familia `protocolo_sanitario` (grupo agregable `animales`, tipo de campo `decimal`); `TipoPrueba.enfermedad` en catálogos.
+- TPA-67: endpoints `faena/*` (tag Comercial) y schemas `ResultadoFaena*`, `ResFaenaInput`, `LiquidacionFaena`; familia `resultado_faena` en borradores.
 
 ### TPA-76 · Ficha completa del establecimiento · ✅
 

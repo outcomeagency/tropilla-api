@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\Catalogos\CatalogoController;
 use App\Http\Controllers\Api\V1\Catalogos\ParametroController;
 use App\Http\Controllers\Api\V1\Clima\ClimaController;
 use App\Http\Controllers\Api\V1\Comercial\ConsultaController;
+use App\Http\Controllers\Api\V1\Comercial\FaenaController;
 use App\Http\Controllers\Api\V1\Comercial\OfertaController;
 use App\Http\Controllers\Api\V1\Comercial\OperacionController;
 use App\Http\Controllers\Api\V1\Comercial\PrecioController;
@@ -313,6 +314,14 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('operaciones/{operacion}', [OperacionController::class, 'show'])->name('operaciones.show');
             Route::post('operaciones/{operacion}/correcciones', [OperacionController::class, 'correccion'])->name('operaciones.correcciones');
             Route::post('operaciones/{operacion}/anulaciones', [OperacionController::class, 'anulacion'])->name('operaciones.anulaciones');
+            // Resultado de faena y conciliación de venta (TPA-67)
+            Route::get('faena/resultados', [FaenaController::class, 'index'])->name('faena.index');
+            Route::post('faena/resultados', [FaenaController::class, 'store'])->name('faena.store');
+            Route::post('faena/planilla', [FaenaController::class, 'leerPlanilla'])->name('faena.planilla');
+            Route::get('faena/resultados/{resultado}', [FaenaController::class, 'show'])->name('faena.show');
+            Route::patch('faena/resultados/{resultado}', [FaenaController::class, 'update'])->name('faena.update');
+            Route::post('faena/resultados/{resultado}/anular', [FaenaController::class, 'anular'])->name('faena.anular');
+            Route::get('faena/resultados/{resultado}/exportar', [FaenaController::class, 'exportar'])->name('faena.exportar');
 
             // Historial de precios propio (TPA-47)
             Route::get('precios/historial', [PrecioController::class, 'historial'])->name('precios.historial');
