@@ -8,6 +8,9 @@ use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Auth\DispositivoController;
 use App\Http\Controllers\Api\V1\Busco\BuscoController;
 use App\Http\Controllers\Api\V1\Busco\ProfesionalController;
+use App\Http\Controllers\Api\V1\Campos\AvisoCampoController;
+use App\Http\Controllers\Api\V1\Campos\MercadoCampoController;
+use App\Http\Controllers\Api\V1\Campos\ModeracionCampoController;
 use App\Http\Controllers\Api\V1\Catalogos\CatalogoController;
 use App\Http\Controllers\Api\V1\Catalogos\ParametroController;
 use App\Http\Controllers\Api\V1\Clima\ClimaController;
@@ -172,6 +175,16 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('proveedor/leads', [ProveedorController::class, 'leads'])->name('proveedor.leads');
         Route::post('proveedores/{slug}/leads', [ProveedorController::class, 'solicitar'])->name('proveedores.leads');
         Route::post('proveedores/{slug}/operaciones/{operacion}/resenas', [ProveedorController::class, 'resenar'])->name('proveedores.resenas');
+
+        // Mercado de campos y pastajes (TPA-74)
+        Route::get('campos/condiciones', [MercadoCampoController::class, 'condiciones'])->name('campos.condiciones');
+        Route::get('campos', [MercadoCampoController::class, 'index'])->name('campos.index');
+        Route::get('campos/{aviso}', [MercadoCampoController::class, 'show'])->name('campos.show');
+        Route::post('campos/{aviso}/consultas', [MercadoCampoController::class, 'consultar'])->middleware('throttle:campos')->name('campos.consultar');
+        Route::post('campos/{aviso}/disputas', [MercadoCampoController::class, 'reportar'])->middleware('throttle:campos')->name('campos.reportar');
+        Route::get('staff/campos/disputas', [ModeracionCampoController::class, 'disputas'])->name('staff.campos.disputas');
+        Route::post('staff/campos/disputas/{disputa}/resolver', [ModeracionCampoController::class, 'resolver'])->name('staff.campos.disputas.resolver');
+        Route::put('staff/campos/avisos/{aviso}/verificacion', [ModeracionCampoController::class, 'verificar'])->name('staff.campos.verificar');
 
         // Organizaciones y adhesión con consentimiento (TPA-51)
         Route::get('organizaciones', [OrganizacionController::class, 'index'])->name('organizaciones.index');
@@ -402,6 +415,16 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::post('contratos/{contrato}/entrega', [ContratoController::class, 'entrega'])->name('contratos.entrega');
             Route::post('contratos/{contrato}/entrega/confirmar', [ContratoController::class, 'confirmarEntrega'])->name('contratos.entrega.confirmar');
             Route::get('apalancamiento', [ContratoController::class, 'apalancamiento'])->name('apalancamiento');
+
+            // Mercado de campos (TPA-74): avisos propios, consultas y descargo
+            Route::get('campos/avisos', [AvisoCampoController::class, 'index'])->name('campos.avisos.index');
+            Route::post('campos/avisos', [AvisoCampoController::class, 'store'])->name('campos.avisos.store');
+            Route::get('campos/avisos/{aviso}', [AvisoCampoController::class, 'show'])->name('campos.avisos.show');
+            Route::patch('campos/avisos/{aviso}', [AvisoCampoController::class, 'update'])->name('campos.avisos.update');
+            Route::post('campos/avisos/{aviso}/{accion}', [AvisoCampoController::class, 'estado'])->whereIn('accion', ['publicar', 'pausar', 'cerrar'])->name('campos.avisos.estado');
+            Route::post('campos/avisos/{aviso}/disputas/{disputa}/descargo', [AvisoCampoController::class, 'descargo'])->name('campos.avisos.descargo');
+            Route::get('campos/consultas/{lado}', [AvisoCampoController::class, 'consultas'])->whereIn('lado', ['recibidas', 'enviadas'])->name('campos.consultas.index');
+            Route::patch('campos/consultas/{lado}/{consulta}', [AvisoCampoController::class, 'avanzar'])->whereIn('lado', ['recibidas', 'enviadas'])->name('campos.consultas.update');
 
             // Demandas «Busco» y profesionales vinculados (TPA-58)
             Route::get('demandas', [BuscoController::class, 'demandas'])->name('demandas.index');

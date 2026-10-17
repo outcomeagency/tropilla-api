@@ -16,7 +16,7 @@ class NotificacionController extends Controller
 {
     public const TIPOS = ['tarea_sanitaria', 'refuerzo', 'documento_vence', 'parto_proximo', 'parto_vencido', 'servicio_apta', 'peso_primer_servicio',
         'recategorizacion', 'retiro_en_venta', 'consulta_nueva', 'toma_nueva', 'pago_informado', 'entrega_proxima', 'busco_coincide', 'sync_pendiente',
-        'toma_liberada', 'recorte_prorrata', 'revision_abierta', 'contrato_nuevo', 'oferta_nueva', 'busco_respuesta', 'entrega_liquidada', 'clima_alerta', 'flete_propuesta'];
+        'toma_liberada', 'recorte_prorrata', 'revision_abierta', 'contrato_nuevo', 'oferta_nueva', 'busco_respuesta', 'entrega_liquidada', 'clima_alerta', 'flete_propuesta', 'campo_consulta', 'campo_respuesta', 'campo_disputa'];
 
     public function index(Request $request): JsonResponse
     {

@@ -49,6 +49,7 @@ class DemoRegionalSeeder extends Seeder
         $this->sembrarGenealogia();
         $this->sembrarOrganizaciones();
         $this->sembrarDocumentos();
+        $this->sembrarCampos();
     }
 
     private function completarFichas(): void
@@ -207,6 +208,62 @@ class DemoRegionalSeeder extends Seeder
             $sobre->creado_en = now()->utc()->format('Y-m-d\TH:i:s.v\Z');
             $sobre->autor_id = $dueno->id;
             app(RegistrarDocumentoVersion::class)->handle($est, $dueno, $sobre, ['canal' => 'web', 'rol' => Rol::Dueno]);
+        }
+    }
+
+    /** Mercado de campos (TPA-74): avisos sintéticos del piloto NEA, una consulta en curso y un aviso con contacto verificado. */
+    private function sembrarCampos(): void
+    {
+        $ns = Uuid::fromString('8d0c7b2e-5f4a-4c1e-9b7d-2a6f0e3c1d74');
+        $hoy = now()->startOfMonth();
+        $avisos = [
+            ['santa-rita', 'pastaje-esteros', 'Pastaje en esteros de Mercedes, apto búfalos', 'pastaje', ['BUB', 'BOV'], [], 250, '900', 0, 8, 'por_cabeza_mes', '9800', ['aguada_natural', 'tajamar'], 'bueno', ['manga', 'corrales', 'embarcadero'], 'contacto_verificado',
+                'Esteros con canutillo y lomadas de descanso. Recibimos recría y engorde; sanidad al día exigida al ingreso.'],
+            ['el-timbo', 'recria-ituzaingo', 'Recría en pasturas de Ituzaingó', 'pastaje', ['BOV'], ['BOV_TERNERO', 'BOV_NOVILLITO'], 120, '420', 1, 7, 'kg_carne_ha_anio', '60', ['perforacion', 'bebederos'], 'bueno', ['manga', 'balanza', 'corrales'], 'declarado',
+                'Setaria y Brachiaria con suplementación invernal opcional (a cargo del dueño de la hacienda).'],
+            ['don-anselmo', 'arriendo-chaco', 'Arriendo de monte y pasturas en San Martín (Chaco)', 'arrendamiento', ['BOV'], [], 300, '1200', 2, null, 'por_ha_anio', '45000', ['tajamar', 'perforacion'], 'regular', ['manga', 'corrales', 'casa_puesto'], 'declarado',
+                'Gatton panic implantado y campo natural. Plazo mínimo tres años; alambrado perimetral a reparar en un tramo.'],
+            ['los-caranday', 'capitalizacion-pirane', 'Capitalización de búfalas en Pirané', 'capitalizacion', ['BUB'], ['BUB_BUFALA', 'BUB_BUBILLA'], 80, '380', 0, 24, 'porcentaje_ganancia', '50', ['aguada_natural', 'rio_arroyo'], 'bueno', ['manga', 'corrales'], 'declarado',
+                'Capitalización a medias de los terneros logrados. Manga apta búfalos y acceso permanente a estero.'],
+            ['la-paloma', 'invernada-apostoles', 'Invernada corta en lomas de Apóstoles', 'pastaje', ['BOV'], ['BOV_NOVILLO', 'BOV_VAQUILLONA'], 60, '150', 1, 5, 'a_convenir', null, ['perforacion', 'bebederos'], 'bueno', ['manga', 'balanza'], 'declarado',
+                'Brachiaria en franjas con agua en cada parcela. Ideal para terminar novillos antes del verano.'],
+            ['la-esperanza', 'capitalizacion-la-esperanza', 'Capitalización de vaquillonas en La Esperanza', 'capitalizacion', ['BOV', 'BUB'], [], 100, '600', 0, 18, 'porcentaje_ganancia', '45', ['tajamar', 'rio_arroyo', 'perforacion'], 'bueno', ['manga', 'balanza', 'corrales', 'embarcadero'], 'declarado',
+                'Recibimos vaquillonas para entorar con nuestros toros; sanidad y registros en TROPILLA.'],
+        ];
+        foreach ($avisos as [$slug, $tag, $titulo, $modalidad, $especies, $cats, $capacidad, $sup, $desdeMes, $meses, $unidad, $valor, $agua, $alambrado, $inst, $verif, $desc]) {
+            $est = DB::table('perfiles_publicos as p')->join('establecimientos as e', 'e.id', '=', 'p.establecimiento_id')->where('p.slug', $slug)
+                ->first(['e.id', 'e.provincia_codigo', 'e.departamento_codigo', 'e.localidad']);
+            $autor = $est ? DB::table('membresias')->where('establecimiento_id', $est->id)->where('rol', 'dueno')->where('estado', 'activa')->value('usuario_id') : null;
+            if (! $est || ! $autor || ! in_array($est->provincia_codigo, ['18', '22', '34', '54'], true)) {
+                continue;
+            }
+            $desde = $hoy->copy()->addMonths($desdeMes);
+            DB::table('campo_avisos')->insertOrIgnore([
+                'id' => Uuid::uuid5($ns, "{$slug}-{$tag}")->toString(), 'establecimiento_id' => $est->id, 'autor_id' => $autor, 'titulo' => $titulo, 'descripcion' => $desc,
+                'modalidad' => $modalidad, 'especies' => '{'.implode(',', $especies).'}', 'categorias' => '{'.implode(',', $cats).'}', 'capacidad_cabezas' => $capacidad, 'superficie_ha' => $sup,
+                'temporada_desde' => $desde->toDateString(), 'temporada_hasta' => $meses ? $desde->copy()->addMonths($meses)->toDateString() : null, 'plazo_minimo_meses' => $modalidad === 'arrendamiento' ? 36 : null,
+                'precio_unidad' => $unidad, 'precio_valor' => $valor, 'agua' => '{'.implode(',', $agua).'}', 'alambrado' => $alambrado, 'instalaciones' => '{'.implode(',', $inst).'}',
+                'accesos' => 'Consultar transitabilidad después de lluvias.', 'provincia_codigo' => $est->provincia_codigo, 'departamento_codigo' => $est->departamento_codigo,
+                'localidad' => $est->localidad, 'mostrar_localidad' => true, 'estado' => 'publicado', 'verificacion' => $verif,
+                'verificacion_nota' => $verif === 'declarado' ? null : 'Llamada de verificación al anunciante (demo).', 'verificado_en' => $verif === 'declarado' ? null : now(),
+                'publicado_en' => now(), 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        // Consulta de Los Caranday por el aviso de La Esperanza, ya respondida.
+        $aviso = Uuid::uuid5($ns, 'la-esperanza-capitalizacion-la-esperanza')->toString();
+        $interesado = DB::table('perfiles_publicos')->where('slug', 'los-caranday')->value('establecimiento_id');
+        $usuario = $interesado ? DB::table('membresias')->where('establecimiento_id', $interesado)->where('rol', 'dueno')->where('estado', 'activa')->value('usuario_id') : null;
+        $anunciante = DB::table('campo_avisos')->where('id', $aviso)->value('autor_id');
+        if ($usuario && $anunciante) {
+            $contacto = fn (string $id) => json_encode((array) DB::table('usuarios')->where('id', $id)->first(['nombre', 'email', 'telefono']), JSON_UNESCAPED_UNICODE);
+            DB::table('campo_consultas')->insertOrIgnore([
+                'id' => Uuid::uuid5($ns, 'consulta-los-caranday')->toString(), 'aviso_id' => $aviso, 'establecimiento_id' => $interesado, 'usuario_id' => $usuario,
+                'mensaje' => 'Tengo 40 bubillas para entorar. ¿Reciben búfalas y desde cuándo?', 'especie_codigo' => 'BUB', 'cabezas' => 40, 'categorias' => '{BUB_BUBILLA}',
+                'desde' => $hoy->copy()->addMonth()->toDateString(), 'hasta' => null, 'contacto_interesado' => $contacto($usuario),
+                'consentimiento' => json_encode(['compartir_contacto' => true, 'version' => '2026-10-17', 'aceptado_en' => now()->toIso8601String()]),
+                'estado' => 'respondida', 'respuesta' => 'Sí, recibimos búfalas. Coordinemos una visita para ver la manga y el estero.',
+                'contacto_anunciante' => $contacto($anunciante), 'respondida_en' => now(), 'created_at' => now()->subDays(2), 'updated_at' => now(),
+            ]);
         }
     }
 }
