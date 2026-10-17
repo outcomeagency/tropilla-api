@@ -749,6 +749,172 @@ paths:
         '403': {$ref: '#/components/responses/Prohibido'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
         '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/contrapartes/fuentes:
+    get:
+      tags: [Establecimientos]
+      summary: 'Chequeo de contraparte: fuentes, finalidades, checklist y límites'
+      operationId: get_establecimientos_establecimiento_contrapartes_fuentes
+      description: '**Ability:** `contrapartes.consultar` (dueño/admin). TPA-72. Describe cada fuente pública (cobertura, si está configurada y cómo corregir un dato), el estado de la revisión legal y el tope diario.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ContraparteFuentes'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /establecimientos/{establecimiento}/contrapartes/consultas:
+    get:
+      tags: [Establecimientos]
+      summary: 'Consultas de contraparte registradas'
+      operationId: get_establecimientos_establecimiento_contrapartes_consultas
+      description: '**Ability:** `contrapartes.consultar`. TPA-72. Más nueva primero; sin `informe`.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: cursor
+        in: query
+        required: false
+        schema: {type: string}
+      - name: limit
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 100}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/ConsultaContraparte'}}
+                  meta: {$ref: '#/components/schemas/MetaCursor'}
+                required: [data, meta]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+    post:
+      tags: [Establecimientos]
+      summary: 'Consultar una contraparte por CUIT (consulta asistida)'
+      operationId: post_establecimientos_establecimiento_contrapartes_consultas
+      description: '**Ability:** `contrapartes.consultar`. TPA-72. Requiere finalidad y consentimiento; si el CUIT es de persona humana, `titular_autorizo: true`. Consulta BCRA Central de Deudores (pública); ARCA queda `no_configurada`. Sin score ni bloqueo. Tope diario por establecimiento (429 `demasiados_intentos`).'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cuit: {type: string, description: 'Con o sin guiones; se valida el dígito verificador.'}
+                finalidad: {type: string, enum: [venta_contado, venta_plazo, cobro_cheque, contrato_futuro, compra, otra]}
+                finalidad_detalle: {type: string, nullable: true, maxLength: 300, description: 'Obligatorio si finalidad = otra.'}
+                consentimiento: {type: boolean, description: 'Debe ser true.'}
+                titular_autorizo: {type: boolean, description: 'Obligatorio (true) para CUIT de persona humana.'}
+              required: [cuit, finalidad, consentimiento]
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ConsultaContraparte'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+        '429': {$ref: '#/components/responses/DemasiadosIntentos'}
+  /establecimientos/{establecimiento}/contrapartes/consultas/{consulta}:
+    get:
+      tags: [Establecimientos]
+      summary: 'Consulta de contraparte con informe y checklist'
+      operationId: get_establecimientos_establecimiento_contrapartes_consultas_consulta
+      description: '**Ability:** `contrapartes.consultar`. TPA-72. Vencida la retención, `informe` y `denominacion` vienen null y `depurada_en` informa cuándo se borraron.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: consulta
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ConsultaContraparte'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /establecimientos/{establecimiento}/contrapartes/consultas/{consulta}/checklist/{item}:
+    put:
+      tags: [Establecimientos]
+      summary: 'Marcar un ítem del checklist de diligencia'
+      operationId: put_establecimientos_establecimiento_contrapartes_consultas_consulta_checklist_item
+      description: '**Ability:** `contrapartes.consultar`. TPA-72.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: consulta
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: item
+        in: path
+        required: true
+        schema: {type: string, enum: [identidad, constancia_arca, ruca, referencias, condiciones, garantias, cheques_denunciados]}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estado: {type: string, enum: [pendiente, hecho, no_aplica]}
+                nota: {type: string, nullable: true, maxLength: 500}
+              required: [estado]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ConsultaContraparte'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
   /establecimientos/{establecimiento}/forraje/insumos:
     get:
       tags: [Establecimientos]
@@ -8087,6 +8253,177 @@ components:
         horizonte_dias: {type: integer}
         emitida_en: {type: string, format: date-time}
         calculada_en: {type: string, format: date-time}
+    ContraparteFuente:
+      type: object
+      properties:
+        codigo: {type: string, enum: [bcra_central_deudores, arca_constancia]}
+        nombre: {type: string}
+        url: {type: string}
+        descripcion: {type: string}
+        cobertura: {type: string}
+        configurada: {type: boolean}
+        como_corregir: {type: string}
+      required: [codigo, nombre, url, descripcion, cobertura, configurada, como_corregir]
+    ContraparteFuentes:
+      type: object
+      properties:
+        fuentes: {type: array, items: {$ref: '#/components/schemas/ContraparteFuente'}}
+        finalidades:
+          type: array
+          items:
+            type: object
+            properties:
+              codigo: {type: string}
+              nombre: {type: string}
+            required: [codigo, nombre]
+        checklist:
+          type: array
+          items:
+            type: object
+            properties:
+              item: {type: string}
+              texto: {type: string}
+            required: [item, texto]
+        avisos: {type: array, items: {type: string}}
+        consentimiento_version: {type: string}
+        revision_legal: {type: string, description: 'pendiente mientras no haya dictamen; sin automatizaciones.'}
+        max_consultas_dia: {type: integer}
+        consultas_hoy: {type: integer}
+        retencion_dias: {type: integer}
+      required: [fuentes, finalidades, checklist, avisos, consentimiento_version, revision_legal, max_consultas_dia, consultas_hoy, retencion_dias]
+    ContraparteResultadoFuente:
+      type: object
+      properties:
+        codigo: {type: string}
+        nombre: {type: string}
+        url: {type: string}
+        estado: {type: string, enum: [ok, sin_datos, no_configurada, error]}
+        consultado_en: {type: string, format: date-time, nullable: true}
+        mensaje: {type: string}
+      required: [codigo, nombre, url, estado, consultado_en, mensaje]
+    ContraparteBcra:
+      type: object
+      nullable: true
+      description: 'BCRA Central de Deudores. Montos de deudas en miles de pesos; montos de cheques en pesos.'
+      properties:
+        denominacion: {type: string, nullable: true}
+        actual:
+          type: object
+          nullable: true
+          properties:
+            periodo: {type: string, description: 'AAAA-MM'}
+            peor_situacion: {type: integer, nullable: true}
+            monto_total_miles: {type: number}
+            entidades:
+              type: array
+              items:
+                type: object
+                properties:
+                  entidad: {type: string}
+                  situacion: {type: integer}
+                  situacion_descripcion: {type: string}
+                  monto_miles: {type: number}
+                  dias_atraso: {type: integer, nullable: true}
+                  refinanciaciones: {type: boolean}
+                  situacion_juridica: {type: boolean}
+                  proceso_judicial: {type: boolean}
+                  en_revision: {type: boolean}
+                required: [entidad, situacion, situacion_descripcion, monto_miles, dias_atraso, refinanciaciones, situacion_juridica, proceso_judicial, en_revision]
+          required: [periodo, peor_situacion, monto_total_miles, entidades]
+        historial:
+          type: object
+          nullable: true
+          properties:
+            meses_con_situacion_2_o_mas: {type: integer}
+            periodos:
+              type: array
+              items:
+                type: object
+                properties:
+                  periodo: {type: string}
+                  peor_situacion: {type: integer, nullable: true}
+                  entidades: {type: integer}
+                  monto_total_miles: {type: number}
+                required: [periodo, peor_situacion, entidades, monto_total_miles]
+          required: [meses_con_situacion_2_o_mas, periodos]
+        cheques:
+          type: object
+          nullable: true
+          properties:
+            total: {type: integer}
+            sin_pago_informado: {type: integer}
+            causales:
+              type: array
+              items:
+                type: object
+                properties:
+                  causal: {type: string}
+                  cantidad: {type: integer}
+                  detalle:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        entidad: {type: string}
+                        numero: {type: string}
+                        fecha_rechazo: {type: string, nullable: true}
+                        monto: {type: number}
+                        fecha_pago: {type: string, nullable: true}
+                        fecha_pago_multa: {type: string, nullable: true}
+                        estado_multa: {type: string, nullable: true}
+                        en_revision: {type: boolean}
+                        proceso_judicial: {type: boolean}
+                      required: [entidad, numero, fecha_rechazo, monto, fecha_pago]
+                required: [causal, cantidad, detalle]
+          required: [total, sin_pago_informado, causales]
+    ContraparteInforme:
+      type: object
+      properties:
+        cuit: {type: string}
+        tipo_persona: {type: string, enum: [humana, juridica]}
+        denominacion: {type: string, nullable: true}
+        fuentes: {type: array, items: {$ref: '#/components/schemas/ContraparteResultadoFuente'}}
+        bcra: {$ref: '#/components/schemas/ContraparteBcra'}
+        lectura: {type: array, items: {type: string}, description: 'Frases neutrales con fuente y período; nunca califican.'}
+        avisos: {type: array, items: {type: string}}
+        senales_desactivadas: {type: array, items: {type: string}}
+      required: [cuit, tipo_persona, denominacion, fuentes, bcra, lectura, avisos, senales_desactivadas]
+    ConsultaContraparte:
+      type: object
+      description: 'TPA-72. En el listado no vienen consentimiento, informe ni checklist.'
+      properties:
+        id: {type: string, format: uuid}
+        cuit: {type: string}
+        tipo_persona: {type: string, enum: [humana, juridica]}
+        denominacion: {type: string, nullable: true}
+        finalidad: {type: string}
+        finalidad_nombre: {type: string}
+        finalidad_detalle: {type: string, nullable: true}
+        consultado_por: {type: string}
+        created_at: {type: string, format: date-time}
+        depurada_en: {type: string, format: date-time, nullable: true}
+        checklist_hechos: {type: integer}
+        checklist_total: {type: integer}
+        consentimiento:
+          type: object
+          properties:
+            acepta: {type: boolean}
+            titular_autorizo: {type: boolean}
+            version: {type: string}
+            aceptado_en: {type: string, format: date-time}
+        informe: {allOf: [{$ref: '#/components/schemas/ContraparteInforme'}], nullable: true}
+        checklist:
+          type: array
+          items:
+            type: object
+            properties:
+              item: {type: string}
+              texto: {type: string}
+              estado: {type: string, enum: [pendiente, hecho, no_aplica]}
+              nota: {type: string, nullable: true}
+              actualizado_en: {type: string, format: date-time, nullable: true}
+            required: [item, texto, estado, nota, actualizado_en]
+      required: [id, cuit, tipo_persona, denominacion, finalidad, finalidad_nombre, finalidad_detalle, consultado_por, created_at, depurada_en, checklist_hechos, checklist_total]
     BriefForrajeInput:
       type: object
       description: 'TPA-71. Todo opcional: lo que no se manda sale del inventario declarado, la ficha y los parámetros (`forraje_*`).'

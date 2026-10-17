@@ -64,6 +64,7 @@ enum Rol: string
         'forraje.ver' => ['dueno', 'admin', 'encargado', 'asesor', 'lectura'],
         'forraje.crear' => ['dueno', 'admin', 'encargado', 'asesor'],
         'forraje.revisar' => ['dueno', 'admin', 'asesor'],
+        'contrapartes.consultar' => ['dueno', 'admin'],
         'sync.pull' => ['dueno', 'admin', 'encargado', 'asesor', 'lectura'],
         'sync.snapshot' => ['dueno', 'admin', 'encargado', 'asesor', 'lectura'],
         'sync.push' => ['dueno', 'admin', 'encargado', 'asesor'],

@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\Comercial\OperacionController;
 use App\Http\Controllers\Api\V1\Comercial\PrecioController;
 use App\Http\Controllers\Api\V1\Comercial\SimulacionController;
 use App\Http\Controllers\Api\V1\Comprador\CompradorController;
+use App\Http\Controllers\Api\V1\Contrapartes\ContraparteController;
 use App\Http\Controllers\Api\V1\Contratos\ContratoController;
 use App\Http\Controllers\Api\V1\Cuenta\NotificacionController;
 use App\Http\Controllers\Api\V1\Cuenta\TelegramController;
@@ -367,6 +368,13 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('clima', [ClimaController::class, 'show'])->name('clima.show');
             Route::get('clima/reglas', [ClimaController::class, 'reglas'])->name('clima.reglas');
             Route::put('clima/reglas/{codigo}', [ClimaController::class, 'actualizarRegla'])->where('codigo', '[a-z0-9_]+')->name('clima.reglas.update');
+
+            // Chequeo de contraparte por CUIT (TPA-72)
+            Route::get('contrapartes/fuentes', [ContraparteController::class, 'fuentes'])->name('contrapartes.fuentes');
+            Route::get('contrapartes/consultas', [ContraparteController::class, 'index'])->name('contrapartes.consultas.index');
+            Route::post('contrapartes/consultas', [ContraparteController::class, 'store'])->name('contrapartes.consultas.store');
+            Route::get('contrapartes/consultas/{consulta}', [ContraparteController::class, 'show'])->name('contrapartes.consultas.show');
+            Route::put('contrapartes/consultas/{consulta}/checklist/{item}', [ContraparteController::class, 'checklist'])->where('item', '[a-z_]+')->name('contrapartes.consultas.checklist');
 
             // Brief preventivo de forraje y carga (TPA-71)
             Route::get('forraje/insumos', [BriefForrajeController::class, 'insumos'])->name('forraje.insumos');

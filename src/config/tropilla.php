@@ -89,6 +89,23 @@ return [
         'timeout_segundos' => (int) env('TROPILLA_EXTRACCION_TIMEOUT', 120),
     ],
 
+    // Chequeo de contraparte por CUIT (TPA-72): consulta asistida, solicitada por el productor con finalidad y consentimiento.
+    // BCRA Central de Deudores es una API pública sin credenciales. ARCA (constancia de inscripción) requiere certificado y
+    // WSAA: el adaptador queda `deshabilitado` hasta tener credenciales y revisión legal (no se hace scraping ni se evade CAPTCHA).
+    'contrapartes' => [
+        'bcra_habilitado' => (bool) env('TROPILLA_CONTRAPARTES_BCRA', true),
+        'bcra_url' => env('TROPILLA_CONTRAPARTES_BCRA_URL', 'https://api.bcra.gob.ar/CentralDeDeudores/v1.0'),
+        'arca_driver' => env('TROPILLA_CONTRAPARTES_ARCA_DRIVER', 'deshabilitado'),
+        'timeout_segundos' => (int) env('TROPILLA_CONTRAPARTES_TIMEOUT', 15),
+        'reintentos' => 2,
+        'cache_horas' => 12,
+        'max_consultas_dia' => (int) env('TROPILLA_CONTRAPARTES_MAX_DIA', 20),
+        'retencion_dias' => (int) env('TROPILLA_CONTRAPARTES_RETENCION_DIAS', 180),
+        // Estado de la revisión legal (investigacion/negocio-datos.md §2.2 y §5). Mientras sea `pendiente` no se automatizan
+        // re-consultas, alertas ni lotes: solo la consulta puntual pedida por el productor.
+        'revision_legal' => env('TROPILLA_CONTRAPARTES_REVISION_LEGAL', 'pendiente'),
+    ],
+
     // Pepper del HMAC de CUIT (búsqueda exacta / unicidad sin descifrar). modelo-datos §2.3.
     'cuit_pepper' => env('TROPILLA_CUIT_PEPPER', env('APP_KEY')),
 ];
