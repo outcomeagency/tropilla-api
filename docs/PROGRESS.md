@@ -1330,3 +1330,9 @@ Migración `2026_10_25_090000_add_foto_to_reproductores_externos` (`foto_sha256`
 
 **Comentario del dev:** La genealogía demo mostraba «Reproductor bovino G5-1», RP técnicos y «Braford (demo)»: en el pitch se veía como dato de prueba. Ahora cada ancestro tiene nombre, RP de cabaña, sexo, año y centro declarados, y los destacados tienen foto. El seeder es idempotente (segunda corrida sin versiones nuevas) y re-correr `DemoRegionalSeeder` no duplica. Pest completo 382/5.639 y Pint en verde.
 
+### Bugfix TPA-81 · Lectura de probabilidades ENSO de NOAA CPC (2026-10-17)
+
+La tabla oficial de NOAA CPC trae la temporada en un `<th>` con tooltip y tres `<td>`; el parser exigía seis celdas y devolvía siempre vacío, así que los escenarios quedaban en gris con «NOAA no entregó probabilidades». Ahora lee las nueve temporadas. Con El Niño ≥ `TROPILLA_CLIMA_ENSO_UMBRAL_PCT` (60 por defecto) el escenario de exceso hídrico pasa a amarillo y con La Niña ≥ umbral, el de sequía; el texto cita la probabilidad, la temporada y la asociación histórica en el NEA, y sigue sin probabilidad local. Producción: borrar la caché `escenarios:noaa-cpc-enso` y regenerar escenarios.
+
+**Comentario del dev:** NOAA publica hoy El Niño con 100 % para SON 2026, pero la pantalla decía que no había datos. Se corrigió la lectura de la tabla con un test sobre su HTML real y se usa esa señal para anticipar lluvias por encima de lo normal en el NEA, sin inventar probabilidades locales. Pest completo 383/5.645 y Pint en verde.
+
