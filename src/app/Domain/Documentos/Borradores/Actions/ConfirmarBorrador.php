@@ -81,7 +81,8 @@ final class ConfirmarBorrador
                 return DB::table('borradores_documento')->where('id', $b->id)->first();
             }
             $plan = $familia->confirmacion($est, $campos, $b->documento_id);
-            if ($plan['vincular'] !== [] && ! $this->puedeVersionar($est, $usuario, $b)) {
+            // Solo vincular (sin eventos nuevos) exige poder versionar el documento; si hay eventos, el vínculo extra es oportunista.
+            if ($plan['eventos'] === [] && $plan['vincular'] !== [] && ! $this->puedeVersionar($est, $usuario, $b)) {
                 throw ApiException::sinPermiso();
             }
             $eventoIds = [];

@@ -425,8 +425,8 @@ abstract class FamiliaBase implements Familia
             };
         }
         $valores = array_map(fn ($o) => is_array($o) ? $o['valor'] : $o, $opciones);
-        foreach ($valores as $o) {
-            foreach (static::SINONIMOS[$o] ?? [] as $palabra) {
+        foreach (static::SINONIMOS as $o => $palabras) { // en el orden de SINONIMOS: lo más específico primero
+            foreach (in_array($o, $valores, true) ? $palabras : [] as $palabra) {
                 if (str_contains($norm, $palabra)) {
                     return $o;
                 }

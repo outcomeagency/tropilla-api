@@ -115,7 +115,7 @@ abstract class FamiliaMovimiento extends FamiliaBase
             default => null,
         };
         self::sugerir($campos, 'movimiento_sentido', $sentido);
-        $existente = $this->movimientoConDte($est->id, $this->numeroDte($campos));
+        $existente = self::movimientoConDte($est->id, $this->numeroDte($campos));
         self::sugerir($campos, 'movimiento_registro', $existente ? 'vincular' : 'registrar');
         self::sugerir($campos, 'movimiento_evento_id', $existente?->id);
 
@@ -341,7 +341,7 @@ abstract class FamiliaMovimiento extends FamiliaBase
             ->where('accion', '<>', 'anulacion')->first();
     }
 
-    private function movimientoConDte(string $establecimientoId, ?string $dte): ?object
+    public static function movimientoConDte(string $establecimientoId, ?string $dte): ?object
     {
         if ($dte === null || self::sinFormato($dte) === '') {
             return null;

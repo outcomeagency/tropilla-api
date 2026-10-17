@@ -1092,6 +1092,32 @@ Dominio `App\Domain\Telegram` + cliente genérico `App\Domain\Ia\GeminiCliente`.
 - El worker de compose no cambia: el `$timeout` del job pisa el `--timeout` por defecto (60 s) y los demás jobs siguen cortando a los 60 s.
 - Verificado: test Pest nuevo (retry_after > timeout + 30 en las tres conexiones y timeout → fallido); suite 308 verde, Pint.
 
+## TPA-65 · Libro de tratamientos y extracción FIDHA · ✅ (parte API)
+
+**Endpoints (aditivos):** `GET /establecimientos/{e}/sanidad/libro-tratamientos` (q, desde, hasta, tipo, lote_id, cursor). Familias `libro_tratamientos`
+y `fidha` en los borradores existentes. **Real vs mock:** real (pipeline Gemini/Claude de TPA-61/62; tests con `FakeExtractor`).
+
+**Comentario del dev:**
+- `libro_tratamientos.666_2011/1`: encabezado (establecimiento, RENSPA, titular, folio, rúbrica, veterinario/matrícula) y una fila por renglón con el
+  contenido mínimo del anexo (fecha, animales, caravanas, diagnóstico, producto, principio activo, dosis, vía, duración, responsable, retiros). El lote
+  se sugiere si el renglón lo nombra; las caravanas se resuelven contra identificaciones vigentes. Cada fila confirmada es un `sanidad.tratamiento`
+  (retiros incluidos, así alimenta «retiro vigente»); la fecha «no aplica» omite la fila.
+- `fidha.655_2026/1` (vigente) y `fidha.anterior/1` (`formulario_anterior`): inspección, tropa y tratamiento precaucional. Confirmar registra la
+  inspección como `sanidad.observacion_clinica` con el signo «inspección de garrapata: <resultado>» y, si hubo, un `sanidad.desparasitacion` externo;
+  si un movimiento cargado tiene el mismo N.º de DT-e, el documento también se vincula a él. Decisión: no se creó un tipo de evento nuevo para no tocar
+  el contrato de sync/hash de los tres repos; el signo hace la inspección buscable.
+- Baja confianza: un campo **dudoso** (confianza < 0,6 con algo leído) no se acepta en un pedido de varios campos («Todo bien»): queda como sugerencia
+  pendiente hasta confirmarlo de a uno, corregirlo o marcarlo. Aplica a todas las familias.
+- Separado del formulario oficial: las observaciones de cada evento y el `aviso` del libro aclaran que no reemplazan al libro rubricado ni al FIDHA; la
+  foto queda íntegra como documento fuente vinculado. Advertencias: retiro faltante, contenido mínimo faltante, inspección positiva/rechazo,
+  tratamiento sin producto, fecha de tratamiento posterior, firma no detectada, RENSPA distinto; bloquean fila sin animales y caravanas desconocidas.
+- Migración aditiva `2026_10_21_110000_add_libro_fidha_familias_to_borradores` (CHECK de familias, tipos `libro_tratamientos` y `fidha`). Al integrar con
+  TPA-66 se hicieron dinámicos el CHECK de esta migración y el de `…100000_add_dte_guia_familias…` (rehacen la lista desde el vigente, como TPA-66), para
+  que el orden en que corran en cada ambiente no borre familias ajenas; y se quitó del OpenAPI un `presentacion` duplicado en `BorradorDocumento`.
+- Verificado: 4 tests nuevos (libro con dudoso bloqueado en bloque, sujetos lote/caravana y búsqueda; filas sin animales/omitidas; FIDHA con
+  inspección + tratamiento + vínculo al movimiento y variante anterior; permisos/validación del libro); suite 342 verde, Pint (sin cambios en los archivos del ticket).
+- Pendiente: casilleros literales del FIDHA 2026 y del anexo de contenidos mínimos contra ejemplares reales (investigación, incertidumbre 2).
+
 ## Desvíos del contrato
 
 Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
@@ -1121,6 +1147,7 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-54 (bugfix): schema `Foto`; `fotos` de `Perfil`/`Oferta` pasan de `Archivo[]` a `Foto[]` y las públicas de `string[]` a `Foto[]`; `foto` aditivo junto a cada `foto_url`; rutas `/public/fotos/{sha}` y `/fotos/{sha}`; `Profesional.foto_sha256`.
 - TPA-58: `Busco.zona.provincias_nombres` aditivo; reglas de visibilidad del comprador y puntaje documentados.
 - TPA-64: familias `dte` y `guia_provincial`; `BorradorDocumento.eventos_vinculados` y `presentacion`; `BorradorCampo.tipo` suma `lote` y `evento`; `agregar_fila` acepta los grupos de la familia; `aviso` ya no nombra solo a SENASA.
+- TPA-65: `GET …/sanidad/libro-tratamientos` + schema `LibroTratamientoFila`; familias `libro_tratamientos` y `fidha`; regla de campos dudosos en `PATCH …/campos`.
 - TPA-51: `POST /organizaciones` (staff) y `POST /organizaciones/{o}/miembros` aditivos; `Adherido.datos` con solo lo consentido; 409 `ya_adherido`.
 - TPA-77: tag `Telegram` (`/me/telegram*`, `/telegram/webhook`); `Evento.origen` suma `telegram`; `preferencias-notificacion` suma `telegram` (opcional en el PUT).
 - TPA-66: endpoints de `sanidad/oficial`, `sanidad/protocolos`, `sanidad/estatus`, `sanidad/saneamiento` y `animales/{a}/pruebas`; familia `protocolo_sanitario` (grupo agregable `animales`, tipo de campo `decimal`); `TipoPrueba.enfermedad` en catálogos.
