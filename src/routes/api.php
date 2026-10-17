@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\Comercial\SimulacionController;
 use App\Http\Controllers\Api\V1\Comprador\CompradorController;
 use App\Http\Controllers\Api\V1\Contratos\ContratoController;
 use App\Http\Controllers\Api\V1\Cuenta\NotificacionController;
+use App\Http\Controllers\Api\V1\Cuenta\TelegramController;
 use App\Http\Controllers\Api\V1\Documentos\BorradorController;
 use App\Http\Controllers\Api\V1\Documentos\DocumentoController;
 use App\Http\Controllers\Api\V1\Establecimientos\EstablecimientoController;
@@ -48,6 +49,7 @@ use App\Http\Controllers\Api\V1\Sanidad\SanidadController;
 use App\Http\Controllers\Api\V1\Sanidad\TareaController;
 use App\Http\Controllers\Api\V1\Sistema\AuditoriaController;
 use App\Http\Controllers\Api\V1\Sync\SyncController;
+use App\Http\Controllers\Api\V1\Telegram\WebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -106,6 +108,8 @@ Route::prefix('v1')->name('v1.')->group(function () {
     // Subida diferida con almacén local (dev/tests): la URL firmada es la credencial (como una URL prefirmada de S3).
     Route::put('archivos/subidas/{subida}/partes/{numero}', [ArchivoController::class, 'parte'])->middleware('signed')->whereNumber('numero')->name('archivos.parte');
     Route::get('public/invitaciones/{token}', [InvitacionController::class, 'publica'])->middleware('throttle:publico')->name('public.invitaciones.show');
+    // Bot de Telegram (TPA-77): sin token de usuario; lo autentica el secret_token de setWebhook.
+    Route::post('telegram/webhook', WebhookController::class)->middleware('throttle:telegram')->name('telegram.webhook');
 
     Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
         // Comprador y toma de tokens (TPA-57)
@@ -148,6 +152,12 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::post('me/notificaciones/{notificacion}/leer', [NotificacionController::class, 'leer'])->name('me.notificaciones.leer');
         Route::get('me/preferencias-notificacion', [NotificacionController::class, 'preferencias'])->name('me.preferencias');
         Route::put('me/preferencias-notificacion', [NotificacionController::class, 'guardarPreferencias'])->name('me.preferencias.guardar');
+
+        // Bot de Telegram (TPA-77): vínculo del usuario
+        Route::get('me/telegram', [TelegramController::class, 'show'])->name('me.telegram');
+        Route::post('me/telegram/codigo', [TelegramController::class, 'codigo'])->middleware('throttle:telegram-codigo')->name('me.telegram.codigo');
+        Route::patch('me/telegram', [TelegramController::class, 'update'])->name('me.telegram.update');
+        Route::delete('me/telegram', [TelegramController::class, 'destroy'])->name('me.telegram.destroy');
 
         // Establecimientos (TPA-10, 12, 13)
         Route::post('onboarding', OnboardingController::class)->name('onboarding');

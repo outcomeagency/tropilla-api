@@ -4,13 +4,15 @@ namespace App\Domain\Notificaciones;
 
 use App\Domain\Establecimientos\Enums\Rol;
 use App\Domain\Notificaciones\Push\PushDriver;
+use App\Domain\Telegram\AvisoTelegramJob;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Crea notificaciones in-app (siempre) y las empuja por push según preferencias (TPA-53). Idempotente por `clave_dedupe`
+ * Crea notificaciones in-app (siempre) y las empuja por push según preferencias (TPA-53) y por Telegram al chat vinculado
+ * (TPA-77, canal `telegram` de las preferencias, en cola). Idempotente por `clave_dedupe`
  * (el mismo aviso no se repite). Destinatarios por rol de membresía activa (functional/04 §11).
  */
 final class Notificador
@@ -68,17 +70,21 @@ final class Notificador
                 DB::table('notificaciones')->where('id', $id)->update(['enviada_en' => now(), 'canal' => 'push']);
             }
         }
+        if ($this->preferencia($usuarioId, $establecimientoId, $tipo, 'telegram')
+            && DB::table('telegram_vinculos')->where('usuario_id', $usuarioId)->whereNull('desvinculado_en')->where('avisos', true)->exists()) {
+            AvisoTelegramJob::dispatch($id)->afterCommit();
+        }
 
         return true;
     }
 
-    /** Preferencia efectiva: la del establecimiento, si no la general (sin establecimiento), si no el default (push sí, email y resumen no). */
+    /** Preferencia efectiva: la del establecimiento, si no la general (sin establecimiento), si no el default (push y telegram sí, email y resumen no). */
     public function preferencia(string $usuarioId, ?string $establecimientoId, string $tipo, string $canal): bool
     {
         $p = DB::table('preferencias_notificacion')->where('usuario_id', $usuarioId)->where('tipo', $tipo)
             ->where(fn ($q) => $q->where('establecimiento_id', $establecimientoId)->orWhereNull('establecimiento_id'))
             ->orderByRaw('establecimiento_id IS NULL')->first();
 
-        return $p ? (bool) $p->{$canal} : $canal === 'push';
+        return $p ? (bool) $p->{$canal} : in_array($canal, ['push', 'telegram'], true);
     }
 }

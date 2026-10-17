@@ -13,6 +13,7 @@ security:
 tags:
 - {name: Auth}
 - {name: Cuenta}
+- {name: Telegram}
 - {name: Establecimientos}
 - {name: Usuarios}
 - {name: Catálogos}
@@ -348,7 +349,7 @@ paths:
       tags: [Cuenta]
       summary: Preferencias guardadas (aditivo TPA-53)
       operationId: get_me_preferencias_notificacion
-      description: 'Lista [{establecimiento_id, tipo, push, email, resumen_diario}] + `meta.defaults` (push sí, email y resumen no).'
+      description: 'Lista [{establecimiento_id, tipo, push, email, resumen_diario, telegram}] + `meta.defaults` (push y telegram sí, email y resumen no). `telegram` aditivo TPA-77.'
       responses:
         '200': {description: OK}
         '401': {$ref: '#/components/responses/NoAutenticado'}
@@ -356,11 +357,106 @@ paths:
       tags: [Cuenta]
       summary: Preferencias push/email/resumen diario
       operationId: put_me_preferencias_notificacion
-      description: Body [{establecimiento_id?, tipo, push, email, resumen_diario}]
+      description: 'Body [{establecimiento_id?, tipo, push, email, resumen_diario, telegram?}]. `telegram` (aditivo TPA-77) es opcional: si no viene, no se cambia (por defecto sí).'
       responses:
         '204': {description: Sin contenido}
         '401': {$ref: '#/components/responses/NoAutenticado'}
         '422': {$ref: '#/components/responses/Validacion'}
+  /me/telegram:
+    get:
+      tags: [Telegram]
+      summary: Vínculo con el bot de Telegram (TPA-77)
+      operationId: get_me_telegram
+      description: Estado del vínculo del usuario autenticado con @tropilla_bot. `disponible` false si el servidor no tiene el bot configurado.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/TelegramVinculo'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+    patch:
+      tags: [Telegram]
+      summary: Activar o pausar los avisos por Telegram
+      operationId: patch_me_telegram
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TelegramVinculoInput'}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/TelegramVinculo'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+    delete:
+      tags: [Telegram]
+      summary: Desvincular el chat de Telegram
+      operationId: delete_me_telegram
+      description: Idempotente. Cancela lo pendiente del bot y avisa en el chat. Queda en la auditoría.
+      responses:
+        '204': {description: Sin contenido}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+  /me/telegram/codigo:
+    post:
+      tags: [Telegram]
+      summary: Código de vinculación de un solo uso (TPA-77)
+      operationId: post_me_telegram_codigo
+      description: 'Código de 10 caracteres, vale 10 minutos y una sola vez (generar otro invalida el anterior). Se canjea en Telegram con `/start <código>` o abriendo `url` (deep link). Solo se devuelve acá: en la base queda su SHA-256. 503 `no_disponible` si el bot no está configurado.'
+      responses:
+        '201':
+          description: Creado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/TelegramCodigo'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '429': {$ref: '#/components/responses/DemasiadosIntentos'}
+        '503':
+          description: 'Bot no configurado (code: no_disponible)'
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+  /telegram/webhook:
+    post:
+      tags: [Telegram]
+      summary: Webhook de la Bot API de Telegram (TPA-77)
+      operationId: post_telegram_webhook
+      security: []
+      description: 'Lo llama Telegram, no los clientes. Autenticado por el header `X-Telegram-Bot-Api-Secret-Token` (el `secret_token` de setWebhook, comparación en tiempo constante). Idempotente por `update_id`; procesa `message` y `callback_query` en cola. 404 si el bot no está configurado.'
+      parameters:
+      - name: X-Telegram-Bot-Api-Secret-Token
+        in: header
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: true, properties: {update_id: {type: integer}}}
+      responses:
+        '200':
+          description: Recibido
+          content:
+            application/json:
+              schema: {type: object, properties: {ok: {type: boolean}}}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
   /onboarding:
     post:
       tags: [Establecimientos]
@@ -7143,6 +7239,52 @@ components:
           - {type: 'null'}
         created_at: {$ref: '#/components/schemas/FechaHora'}
       additionalProperties: false
+    TelegramVinculo:
+      type: object
+      description: Vínculo del usuario con el bot de Telegram (TPA-77). Uno activo por usuario y por chat.
+      properties:
+        disponible: {type: boolean, description: El servidor tiene el bot configurado}
+        bot:
+          type: object
+          properties:
+            username: {type: string}
+            url: {type: string}
+          required: [username, url]
+        vinculado: {type: boolean}
+        username: {type: [string, 'null']}
+        telefono: {type: [string, 'null'], description: Compartido por el usuario en Telegram (solo referencia)}
+        avisos: {type: [boolean, 'null'], description: Avisos del Notificador por Telegram activos (null sin vínculo)}
+        vinculado_en:
+          oneOf:
+          - {$ref: '#/components/schemas/FechaHora'}
+          - {type: 'null'}
+        ultimo_mensaje_en:
+          oneOf:
+          - {$ref: '#/components/schemas/FechaHora'}
+          - {type: 'null'}
+        establecimiento:
+          description: Establecimiento activo del bot (/campo)
+          oneOf:
+          - type: object
+            properties:
+              id: {$ref: '#/components/schemas/Uuid'}
+              nombre: {type: string}
+            required: [id, nombre]
+          - {type: 'null'}
+      required: [disponible, bot, vinculado, username, telefono, avisos, vinculado_en, ultimo_mensaje_en, establecimiento]
+    TelegramCodigo:
+      type: object
+      properties:
+        codigo: {type: string, pattern: '^[A-Z2-9]{10}$'}
+        url: {type: string, description: 'Deep link https://t.me/<bot>?start=<código>'}
+        expira_en: {$ref: '#/components/schemas/FechaHora'}
+      required: [codigo, url, expira_en]
+    TelegramVinculoInput:
+      type: object
+      properties:
+        avisos: {type: boolean}
+      required: [avisos]
+      additionalProperties: false
     Productor:
       type: object
       properties:
@@ -8022,7 +8164,7 @@ components:
           oneOf:
           - {$ref: '#/components/schemas/Uuid'}
           - {type: 'null'}
-        origen: {type: string}
+        origen: {type: string, enum: [app, web, importacion, sistema, telegram], description: '`telegram`: cargado por el bot con confirmación del usuario (aditivo TPA-77)'}
         responsable: {type: [string, 'null']}
         observaciones: {type: [string, 'null']}
         adjuntos:

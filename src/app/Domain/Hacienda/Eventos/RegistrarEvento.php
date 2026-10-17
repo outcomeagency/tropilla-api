@@ -236,7 +236,7 @@ final class RegistrarEvento
         if (! in_array($s->accion, ['alta', 'correccion', 'anulacion'], true)) {
             $err['accion'][] = 'Acción inválida.';
         }
-        if (! in_array($s->origen, ['app', 'web', 'importacion', 'sistema'], true)) {
+        if (! in_array($s->origen, ['app', 'web', 'importacion', 'sistema', 'telegram'], true)) {
             $err['origen'][] = 'Origen inválido.';
         }
         if (! is_string($s->ocurrido_en) || ! (preg_match(self::FECHA, $s->ocurrido_en) || preg_match(self::FECHAHORA, $s->ocurrido_en))) {

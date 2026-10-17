@@ -991,6 +991,41 @@ aditivos `POST /organizaciones` (solo staff) y `POST /organizaciones/{o}/miembro
 
 ---
 
+## TPA-77 · Bot de Telegram del productor · ✅ (parte API)
+
+Endpoints: `GET|PATCH|DELETE /me/telegram`, `POST /me/telegram/codigo`, `POST /telegram/webhook` (sin token de usuario).
+Dominio `App\Domain\Telegram` + cliente genérico `App\Domain\Ia\GeminiCliente`. Migración `2026_10_21_090000_create_telegram_tables`.
+
+**Comentario del dev:**
+- **Vinculación**: código de 10 caracteres (sin 0/O/1/I/L), 10 min, un solo uso; solo se guarda su SHA-256. `/start <código>`
+  o deep link `t.me/tropilla_bot?start=<código>`. Un vínculo activo por usuario y por chat (índices únicos parciales); vincular
+  de nuevo cierra el anterior (`nuevo_vinculo`). 5 intentos fallidos por chat cada 10 min. Teléfono por contacto de Telegram
+  solo si es el del propio remitente (referencia). `/campo` con botones; si tiene un solo establecimiento queda elegido.
+- **Webhook**: `X-Telegram-Bot-Api-Secret-Token` con `hash_equals`; sin token/secreto el endpoint da 404. Idempotente por
+  `update_id` (`telegram_updates`) y todo se procesa en cola (`ProcesarUpdateJob`, un intento). Solo chats privados; los botones
+  se aceptan solo del usuario de Telegram vinculado.
+- **Permisos**: el bot actúa como el usuario vinculado (`Gate::forUser` en cada herramienta/acción; `Contexto::como()` fija y
+  restaura el usuario autenticado para las Actions que lo leen). Las herramientas que el rol no tiene ni se le declaran al modelo.
+- **Documentos**: foto/PDF → `GuardarArchivo` → `RegistrarDocumentoVersion` → `CrearBorrador` (mismo borrador TPA-61/62;
+  álbum = documento multipágina). `SeguirBorradorJob` mira el estado sin tocar el flujo de extracción. Revisión por chat: resumen +
+  solo los dudosos (confianza < 0,85, alternativas, sugerencias de TROPILLA, críticos vacíos, con advertencia) con
+  Correcto/Corregir/No se lee → `RevisarCampos` (queda en `borrador_correcciones`). Recién al confirmar se marcan los no
+  preguntados (el usuario los vio en el resumen) y se llama `ConfirmarBorrador` con origen `telegram`; advertencias → «Registrar igual».
+- **Asistente**: Gemini REST `generateContent` (`x-goog-api-key`, modelo `TROPILLA_ASISTENTE_MODELO`, default
+  `gemini-flash-latest`), function calling con herramientas de solo lectura sobre consultas existentes (existencias,
+  animal por identificación, `TableroReproductivo`, tareas/documentos/partos, clima, ofertas sin precios) y `proponer_carga`.
+  Sin memoria entre mensajes. Audio: transcripción con el mismo modelo (inline `audio/ogg`) y se muestra «Entendí: …».
+- **Cargas rápidas** (nacimiento/parto, pesaje, muerte, tratamiento): el servidor resuelve caravanas y arma el input; propuesta con
+  botones; al confirmar `ArmarSobreWeb::alta(…, 'telegram')` + `RegistrarEvento` (canal web: advertencias se vuelven a preguntar).
+  Idempotente por id de evento + lock por propuesta. `eventos.origen` admite `telegram` (CHECK + validación del sobre).
+- **Avisos**: canal nuevo en `Notificador::aUsuario` → `AvisoTelegramJob` (afterCommit) si `preferencias_notificacion.telegram`
+  (default true) y el chat tiene avisos activos (`/avisos` o `PATCH /me/telegram`). 403 de Telegram → se desvincula.
+- **Auditoría**: `telegram_mensajes` append-only (trigger `tropilla_inmutable`) con tipo, comando, acción, entidad y metadatos
+  (largo, herramientas), **sin** texto libre ni respuestas; altas/bajas/cambios del vínculo en `auditoria`.
+- **Secretos**: token en la URL de la Bot API → `TelegramApi` reemplaza el token por `***` en todo error; la key de Gemini va por
+  header. `php artisan telegram:webhook --url=… | --info | --borrar` registra el webhook sin mostrar nada. `telegram:limpiar` cada hora.
+- Verificado: Pest `Telegram/BotTelegramTest` 15 tests con `Http::fake` (Telegram y Gemini) + suite completa verde.
+
 ## Desvíos del contrato
 
 Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
@@ -1020,6 +1055,7 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-54 (bugfix): schema `Foto`; `fotos` de `Perfil`/`Oferta` pasan de `Archivo[]` a `Foto[]` y las públicas de `string[]` a `Foto[]`; `foto` aditivo junto a cada `foto_url`; rutas `/public/fotos/{sha}` y `/fotos/{sha}`; `Profesional.foto_sha256`.
 - TPA-58: `Busco.zona.provincias_nombres` aditivo; reglas de visibilidad del comprador y puntaje documentados.
 - TPA-51: `POST /organizaciones` (staff) y `POST /organizaciones/{o}/miembros` aditivos; `Adherido.datos` con solo lo consentido; 409 `ya_adherido`.
+- TPA-77: tag `Telegram` (`/me/telegram*`, `/telegram/webhook`); `Evento.origen` suma `telegram`; `preferencias-notificacion` suma `telegram` (opcional en el PUT).
 
 ### TPA-76 · Ficha completa del establecimiento · ✅
 

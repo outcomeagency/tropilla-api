@@ -33,3 +33,6 @@ Schedule::command('busco:actualizar')->dailyAt('06:00')->timezone('America/Argen
 
 // Alertas climáticas (TPA-70): pronóstico y ENSO con cache; recálculo cada 6 h.
 Schedule::command('clima:actualizar')->everySixHours()->withoutOverlapping();
+
+// Bot de Telegram (TPA-77): vencer propuestas sin confirmar y podar updates/códigos viejos.
+Schedule::command('telegram:limpiar')->hourly()->withoutOverlapping();
