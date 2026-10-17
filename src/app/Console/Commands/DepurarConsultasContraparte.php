@@ -17,7 +17,9 @@ class DepurarConsultasContraparte extends Command
         $n = DB::table('contraparte_consultas')->whereNull('depurada_en')
             ->where('created_at', '<', now()->subDays((int) config('tropilla.contrapartes.retencion_dias')))
             ->update(['informe' => null, 'denominacion' => null, 'depurada_en' => now()]);
-        $this->info("Consultas depuradas: {$n}");
+        $cheques = DB::table('contraparte_cheque_consultas')->whereNotNull('resultado')
+            ->where('created_at', '<', now()->subDays((int) config('tropilla.contrapartes.retencion_dias')))->update(['resultado' => null]);
+        $this->info("Consultas depuradas: {$n}; verificaciones de cheques depuradas: {$cheques}");
 
         return self::SUCCESS;
     }

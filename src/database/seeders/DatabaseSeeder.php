@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(CatalogosSeeder::class);
+        $this->call(ContraparteReglasSeeder::class);
 
         if (app()->environment('local')) {
             User::firstOrCreate(

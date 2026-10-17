@@ -235,12 +235,12 @@ paths:
       tags: [Cuenta]
       summary: Crear/editar perfil de comprador (cuenta liviana)
       operationId: put_me_comprador
-      description: TPA-57
+      description: TPA-57/79. Requiere CUIT con dígito verificador, razón social declarada y consentimiento explícito. Guarda CUIT cifrado; consulta BCRA y devuelve estado, fuente y fecha.
       requestBody:
         required: true
         content:
           application/json:
-            schema: {$ref: '#/components/schemas/Comprador'}
+            schema: {$ref: '#/components/schemas/CompradorInput'}
       responses:
         '200':
           description: OK
@@ -844,6 +844,44 @@ paths:
         '404': {$ref: '#/components/responses/NoEncontrado'}
         '422': {$ref: '#/components/responses/Validacion'}
         '429': {$ref: '#/components/responses/DemasiadosIntentos'}
+  /establecimientos/{establecimiento}/contrapartes/cheques/bancos:
+    get:
+      tags: [Establecimientos]
+      summary: Bancos disponibles para verificar cheques denunciados
+      operationId: get_establecimientos_establecimiento_contrapartes_cheques_bancos
+      description: '**Ability:** `contrapartes.consultar`. Lista de entidades devuelta por la API pública de Cheques Denunciados del BCRA; se cachea 24 h.'
+      parameters:
+      - {name: establecimiento, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Lista del BCRA, content: {application/json: {schema: {type: object, properties: {data: {type: array, items: {type: object, additionalProperties: true}}, fuente: {type: string}}, required: [data, fuente]}}}}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '503': {description: 'La fuente pública del BCRA no respondió (code: fuente_no_disponible)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /establecimientos/{establecimiento}/contrapartes/cheques/verificar:
+    post:
+      tags: [Establecimientos]
+      summary: Verificar si un cheque fue denunciado ante el BCRA
+      operationId: post_establecimientos_establecimiento_contrapartes_cheques_verificar
+      description: '**Ability:** `contrapartes.consultar`. Consulta BCRA por código de banco y número; si se envía cuenta, exige coincidencia exacta. Cada consulta queda auditada y su detalle se depura según retención.'
+      parameters:
+      - {name: establecimiento, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                banco_codigo: {type: integer, minimum: 1}
+                numero: {type: integer, minimum: 1}
+                cuenta: {type: string, nullable: true, maxLength: 30}
+              required: [banco_codigo, numero]
+      responses:
+        '200': {description: Resultado y fuente con fecha de consulta, content: {application/json: {schema: {type: object, additionalProperties: true}}}}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '422': {$ref: '#/components/responses/Validacion'}
+        '503': {description: 'La fuente pública del BCRA no respondió (code: fuente_no_disponible)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /establecimientos/{establecimiento}/contrapartes/consultas/{consulta}:
     get:
       tags: [Establecimientos]
@@ -8325,7 +8363,28 @@ components:
           type: array
           items: {type: string, enum: [es, en, pt]}
         volumen_habitual: {type: [string, 'null']}
+        validacion_cuit:
+          type: object
+          properties:
+            estado: {type: string, enum: [validado, pendiente, inconsistente]}
+            razon_social_informada: {type: [string, 'null']}
+            fuente: {type: [string, 'null']}
+            validado_en: {type: [string, 'null'], format: date-time}
+          required: [estado, razon_social_informada, fuente, validado_en]
       required: [empresa, tipo, pais]
+      additionalProperties: false
+    CompradorInput:
+      type: object
+      properties:
+        empresa: {type: string}
+        tipo: {type: string, enum: [frigorifico, exportador, gastronomico, institucion, productor, otro]}
+        pais: {type: string, minLength: 2, maxLength: 2}
+        idiomas: {type: array, items: {type: string, enum: [es, en, pt]}}
+        volumen_habitual: {type: [string, 'null']}
+        cuit: {type: string, description: 'CUIT con dígito verificador; la API lo almacena cifrado'}
+        razon_social: {type: string, description: 'Razón social declarada, cotejada con la denominación de la fuente pública'}
+        consentimiento_cuit: {type: boolean, const: true}
+      required: [empresa, tipo, pais, cuit, razon_social, consentimiento_cuit]
       additionalProperties: false
     Profesional:
       type: object
@@ -8772,7 +8831,31 @@ components:
         lectura: {type: array, items: {type: string}, description: 'Frases neutrales con fuente y período; nunca califican.'}
         avisos: {type: array, items: {type: string}}
         senales_desactivadas: {type: array, items: {type: string}}
-      required: [cuit, tipo_persona, denominacion, fuentes, bcra, lectura, avisos, senales_desactivadas]
+        semaforo:
+          type: object
+          properties:
+            nivel: {type: string, enum: [verde, amarillo, rojo]}
+            completo: {type: boolean, description: 'False si la fuente BCRA no entregó información utilizable; no equivale a ausencia de deudas'}
+            reglas_version: {type: integer}
+            senales:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: {type: string}
+                  codigo: {type: string}
+                  severidad: {type: string, enum: [informativa, amarillo, rojo]}
+                  descripcion: {type: string}
+                  valor: {type: [number, 'null']}
+                  umbral: {type: number}
+                  version_regla: {type: integer}
+                  fuente: {type: string}
+                  fecha: {type: [string, 'null'], format: date-time}
+                required: [id, codigo, severidad, descripcion, valor, fuente, fecha]
+            resumen: {type: object, properties: {texto: {type: string}, proveedor: {type: string, enum: [google, anthropic, fake, fallback]}, senales_ids: {type: array, items: {type: string}}}, required: [texto, proveedor, senales_ids]}
+            cobertura: {type: array, items: {type: string}}
+          required: [nivel, completo, reglas_version, senales, cobertura, resumen]
+      required: [cuit, tipo_persona, denominacion, fuentes, bcra, lectura, avisos, senales_desactivadas, semaforo]
     ConsultaContraparte:
       type: object
       description: 'TPA-72. En el listado no vienen consentimiento, informe ni checklist.'
@@ -11622,6 +11705,7 @@ components:
         email: {type: [string, 'null']}
         telefono: {type: [string, 'null']}
         tipo_comprador: {type: [string, 'null']}
+        validacion_cuit_estado: {type: string, enum: [validado, pendiente, inconsistente]}
         volumen: {type: [string, 'null']}
         mensaje: {type: string}
         idioma: {type: string, enum: [es, en, pt]}
@@ -11759,6 +11843,7 @@ components:
             id: {$ref: '#/components/schemas/Uuid'}
             nombre: {type: string}
             empresa: {type: [string, 'null']}
+            validacion_cuit_estado: {type: [string, 'null'], enum: [validado, pendiente, inconsistente, null]}
           additionalProperties: false
         tokens: {type: integer}
         tokens_vigentes: {type: integer}
@@ -11898,7 +11983,15 @@ components:
           - {type: 'null'}
         mensaje: {type: [string, 'null']}
         mostrar_nombre: {type: boolean}
-        comprador: {type: [object, 'null'], additionalProperties: true}
+        comprador:
+          type: [object, 'null']
+          properties:
+            tipo: {type: [string, 'null']}
+            pais: {type: [string, 'null']}
+            nombre: {type: [string, 'null']}
+            empresa: {type: [string, 'null']}
+            validacion_cuit_estado: {type: [string, 'null'], enum: [validado, pendiente, inconsistente, null]}
+          additionalProperties: false
         estado: {type: string, enum: [abierta, cerrada, vencida]}
         respuestas_count: {type: [integer, 'null']}
         created_at: {$ref: '#/components/schemas/FechaHora'}

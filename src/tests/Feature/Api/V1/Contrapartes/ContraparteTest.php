@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Contrapartes\Cuit;
+use App\Domain\Documentos\Borradores\Extraccion\FakeExtractor;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -59,6 +60,7 @@ it('consulta asistida: registra finalidad y consentimiento, informa fuente/fecha
         ->and($f['checklist'])->toHaveCount(7);
 
     $c = $this->postJson("{$this->base}/consultas", ['cuit' => '30-50001091-2', 'finalidad' => 'venta_plazo', 'consentimiento' => true])->assertCreated()->json('data');
+    expect(DB::table('auditoria')->where('entidad', 'consulta_contraparte')->count())->toBe(1);
 
     expect($c)->toMatchArray(['cuit' => '30-50001091-2', 'tipo_persona' => 'juridica', 'denominacion' => 'AGROPECUARIA EL OMBÚ S.A.', 'finalidad' => 'venta_plazo', 'checklist_hechos' => 0])
         ->and($c['consentimiento'])->toMatchArray(['acepta' => true, 'version' => '2026-10-17']);
@@ -128,6 +130,64 @@ it('limita consultas por día, restringe a dueño/admin y responde 404 en un est
     $ajeno = crearEstablecimiento(extra: ['nombre' => 'Otro']);
     Sanctum::actingAs($this->dueno);
     $this->getJson("/api/v1/establecimientos/{$ajeno->id}/contrapartes/consultas")->assertNotFound();
+});
+
+it('calcula un semáforo desde reglas versionadas y señala cheque denunciado contra BCRA', function () {
+    config(['tropilla.extraccion.driver' => 'fake']);
+    FakeExtractor::reset();
+    FakeExtractor::$salida = ['texto' => 'La situación informada merece atención.', 'senales_ids' => ['bcra_situacion_amarilla', 'cheques_rechazados_amarillo']];
+    Http::fake([
+        'api.bcra.gob.ar/CentralDeDeudores/v1.0/Deudas/30500010912' => Http::response(['status' => 200, 'results' => ['denominacion' => 'AGROPECUARIA EL OMBÚ S.A.', 'periodos' => [['periodo' => '202608', 'entidades' => [['entidad' => 'BANCO A', 'situacion' => 4, 'monto' => 500.0]]]]]]),
+        'api.bcra.gob.ar/CentralDeDeudores/v1.0/Deudas/Historicas/30500010912' => Http::response(['status' => 200, 'results' => ['periodos' => []]]),
+        'api.bcra.gob.ar/CentralDeDeudores/v1.0/Deudas/ChequesRechazados/30500010912' => Http::response(['status' => 200, 'results' => ['causales' => []]]),
+        'api.bcra.gob.ar/cheques/v1.0/entidades' => Http::response(['status' => 200, 'results' => [['codigoEntidad' => 11, 'denominacion' => 'BANCO DE LA NACION ARGENTINA']]]),
+        'api.bcra.gob.ar/cheques/v1.0/denunciados/11/507' => Http::response(['status' => 200, 'results' => ['numeroCheque' => 507, 'denunciado' => true, 'fechaProcesamiento' => '2026-10-16', 'denominacionEntidad' => 'BANCO DE LA NACION ARGENTINA', 'detalles' => [['sucursal' => 17, 'numeroCuenta' => 170061227, 'causal' => 'Denunciado por titular']]]]),
+        'api.bcra.gob.ar/*' => Http::response(['status' => 404], 404),
+    ]);
+    $c = $this->postJson("{$this->base}/consultas", ['cuit' => CUIT_CON_DATOS, 'finalidad' => 'cobro_cheque', 'consentimiento' => true])->assertCreated()->json('data');
+    expect($c['informe']['semaforo']['nivel'])->toBe('amarillo')
+        ->and($c['informe']['semaforo']['completo'])->toBeTrue()
+        ->and($c['informe']['semaforo']['resumen']['proveedor'])->toBe('fake')
+        ->and($c['informe']['semaforo']['senales'])->toBeArray()
+        ->and(DB::table('contraparte_reglas')->where('codigo', 'cheque_denunciado_rojo')->value('version'))->toBe(1);
+    $this->postJson("{$this->base}/cheques/verificar", ['banco_codigo' => 11, 'numero' => 507, 'cuenta' => '170061227'])->assertOk()
+        ->assertJsonPath('data.datos.denunciado', true)->assertJsonPath('data.datos.cuenta_consultada', '••••1227')
+        ->assertJsonPath('data.datos.detalles.0.numeroCuenta', '••••1227');
+    $this->postJson("{$this->base}/cheques/verificar", ['banco_codigo' => 11, 'numero' => 507, 'cuenta' => '999'])->assertOk()
+        ->assertJsonPath('data.datos.denunciado', false);
+    expect(DB::table('auditoria')->where('entidad', 'consulta_cheque')->count())->toBe(2);
+});
+
+it('no transforma un BCRA sin registros en semáforo verde ni en ausencia de deudas', function () {
+    $c = $this->postJson("{$this->base}/consultas", ['cuit' => CUIT_SIN_DATOS, 'finalidad' => 'cobro_cheque', 'consentimiento' => true])->assertCreated()->json('data');
+    expect($c['informe']['semaforo']['completo'])->toBeFalse()
+        ->and($c['informe']['semaforo']['nivel'])->toBe('amarillo')
+        ->and(collect($c['informe']['semaforo']['senales'])->firstWhere('codigo', 'fuente_no_disponible')['descripcion'])->toContain('no indica ausencia de deudas');
+});
+
+it('exige CUIT, consentimiento y razón social declarada en el alta del comprador', function () {
+    Http::fake(['api.bcra.gob.ar/CentralDeDeudores/v1.0/Deudas/*' => Http::response(['status' => 200, 'results' => ['denominacion' => 'AGROPECUARIA EL OMBÚ S.A.', 'periodos' => [['periodo' => '202608', 'entidades' => []]]]])]);
+    $request = ['empresa' => 'Agropecuaria El Ombú S.A.', 'tipo' => 'productor', 'pais' => 'AR', 'cuit' => '30-50001091-2', 'razon_social' => 'AGROPECUARIA EL OMBÚ S.A.', 'consentimiento_cuit' => true];
+    $r = $this->putJson('/api/v1/me/comprador', $request)->assertOk()->json('data');
+    expect($r['validacion_cuit']['estado'])->toBe('validado')->and($r['validacion_cuit']['fuente'])->toBe('bcra_central_deudores');
+    $this->assertDatabaseHas('compradores', ['usuario_id' => $this->dueno->id, 'validacion_cuit_estado' => 'validado']);
+    $this->putJson('/api/v1/me/comprador', [...$request, 'cuit' => '30500010913'])->assertUnprocessable()->assertJsonValidationErrors('cuit');
+    $this->putJson('/api/v1/me/comprador', [...$request, 'consentimiento_cuit' => false])->assertUnprocessable()->assertJsonValidationErrors('consentimiento_cuit');
+});
+
+it('revalida perfiles compradores consentidos y audita la fuente sin exponer el CUIT', function () {
+    $request = ['empresa' => 'Agropecuaria El Ombú S.A.', 'tipo' => 'productor', 'pais' => 'AR', 'cuit' => CUIT_CON_DATOS, 'razon_social' => 'AGROPECUARIA EL OMBÚ S.A.', 'consentimiento_cuit' => true];
+    $this->putJson('/api/v1/me/comprador', $request)->assertOk();
+    Cache::forget('contrapartes:bcra:'.CUIT_CON_DATOS);
+    $this->travel(31)->days();
+
+    $this->artisan('compradores:revalidar-cuit')->assertSuccessful();
+
+    $this->assertDatabaseHas('compradores', ['usuario_id' => $this->dueno->id, 'validacion_cuit_estado' => 'validado', 'consentimiento_cuit' => true]);
+    $auditoria = DB::table('auditoria')->where('entidad', 'validacion_cuit_comprador')->latest('created_at')->first();
+    expect($auditoria)->not->toBeNull()
+        ->and($auditoria->despues)->toContain(hash('sha256', CUIT_CON_DATOS))
+        ->and($auditoria->despues)->not->toContain(CUIT_CON_DATOS);
 });
 
 it('depura el informe vencida la retención y conserva el registro de la consulta', function () {

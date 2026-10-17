@@ -22,7 +22,7 @@ final class FakeExtractor implements Extractor
         self::$llamadas = [];
     }
 
-    public function extraer(array $paginas, string $instrucciones, array $esquema): ResultadoExtraccion
+    public function extraer(array $paginas, string $instrucciones, array $esquema, ?string $instruccionSistema = null): ResultadoExtraccion
     {
         self::$llamadas[] = ['paginas' => count($paginas), 'mimes' => array_column($paginas, 'mime'), 'instrucciones' => $instrucciones];
         if (self::$falla !== null) {

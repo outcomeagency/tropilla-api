@@ -95,6 +95,7 @@ return [
     'contrapartes' => [
         'bcra_habilitado' => (bool) env('TROPILLA_CONTRAPARTES_BCRA', true),
         'bcra_url' => env('TROPILLA_CONTRAPARTES_BCRA_URL', 'https://api.bcra.gob.ar/CentralDeDeudores/v1.0'),
+        'cheques_url' => env('TROPILLA_CONTRAPARTES_CHEQUES_URL', 'https://api.bcra.gob.ar/cheques/v1.0'),
         'arca_driver' => env('TROPILLA_CONTRAPARTES_ARCA_DRIVER', 'deshabilitado'),
         'timeout_segundos' => (int) env('TROPILLA_CONTRAPARTES_TIMEOUT', 15),
         'reintentos' => 2,

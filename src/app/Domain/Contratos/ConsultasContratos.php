@@ -38,12 +38,12 @@ final class ConsultasContratos
     public static function toma(object $t, bool $montos = true): array
     {
         $comp = ! $montos ? null : (DB::getSchemaBuilder()->hasTable('compradores')
-            ? DB::table('usuarios as u')->leftJoin('compradores as c', 'c.usuario_id', '=', 'u.id')->where('u.id', $t->comprador_id)->first(['u.id', 'u.nombre', 'c.empresa'])
+            ? DB::table('usuarios as u')->leftJoin('compradores as c', 'c.usuario_id', '=', 'u.id')->where('u.id', $t->comprador_id)->first(['u.id', 'u.nombre', 'c.empresa', 'c.validacion_cuit_estado'])
             : DB::table('usuarios as u')->where('u.id', $t->comprador_id)->selectRaw('u.id, u.nombre, null as empresa')->first());
 
         return [
             'id' => $t->id, 'contrato_id' => $t->contrato_id,
-            'comprador' => $comp ? ['id' => $comp->id, 'nombre' => $comp->nombre, 'empresa' => $comp->empresa] : null,
+            'comprador' => $comp ? ['id' => $comp->id, 'nombre' => $comp->nombre, 'empresa' => $comp->empresa, 'validacion_cuit_estado' => $comp->validacion_cuit_estado ?? null] : null,
             'tokens' => (int) $t->tokens, 'tokens_vigentes' => (int) $t->tokens_vigentes, 'kg' => (int) $t->kg,
             'precio_especial_kg' => $montos ? Formato::decimal($t->precio_especial_kg) : null,
             'anticipo_monto' => $montos ? Formato::decimal($t->anticipo_monto) : null,

@@ -14,7 +14,7 @@ final class Buscos
     /** @return array<string, mixed> Busco */
     public static function busco(object $b, bool $propio = false): array
     {
-        $c = DB::table('usuarios as u')->leftJoin('compradores as c', 'c.usuario_id', '=', 'u.id')->where('u.id', $b->comprador_id)->first(['u.nombre', 'c.empresa', 'c.tipo', 'c.pais']);
+        $c = DB::table('usuarios as u')->leftJoin('compradores as c', 'c.usuario_id', '=', 'u.id')->where('u.id', $b->comprador_id)->first(['u.nombre', 'c.empresa', 'c.tipo', 'c.pais', 'c.validacion_cuit_estado']);
         $zona = json_decode($b->zona, true) ?: [];
 
         return [
@@ -23,7 +23,7 @@ final class Buscos
             'zona' => (object) [...$zona, 'provincias_nombres' => array_map(fn ($p) => Provincias::TODAS[$p] ?? $p, (array) ($zona['provincias'] ?? []))],
             'plazo_hasta' => $b->plazo_hasta, 'mensaje' => $b->mensaje, 'mostrar_nombre' => (bool) $b->mostrar_nombre,
             'comprador' => $c ? array_filter(['tipo' => $c->tipo, 'pais' => $c->pais, 'nombre' => ($b->mostrar_nombre || $propio) ? $c->nombre : null,
-                'empresa' => ($b->mostrar_nombre || $propio) ? $c->empresa : null], fn ($v) => $v !== null) : null,
+                'empresa' => ($b->mostrar_nombre || $propio) ? $c->empresa : null, 'validacion_cuit_estado' => $c->validacion_cuit_estado], fn ($v) => $v !== null) : null,
             'estado' => $b->estado,
             'respuestas_count' => $propio ? DB::table('busco_respuestas')->where('busco_id', $b->id)->count() : null,
             'created_at' => Formato::fechaHora(Carbon::parse($b->created_at)),

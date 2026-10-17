@@ -386,6 +386,8 @@ Route::prefix('v1')->name('v1.')->group(function () {
 
             // Chequeo de contraparte por CUIT (TPA-72)
             Route::get('contrapartes/fuentes', [ContraparteController::class, 'fuentes'])->name('contrapartes.fuentes');
+            Route::get('contrapartes/cheques/bancos', [ContraparteController::class, 'bancos'])->name('contrapartes.cheques.bancos');
+            Route::post('contrapartes/cheques/verificar', [ContraparteController::class, 'verificarCheque'])->name('contrapartes.cheques.verificar');
             Route::get('contrapartes/consultas', [ContraparteController::class, 'index'])->name('contrapartes.consultas.index');
             Route::post('contrapartes/consultas', [ContraparteController::class, 'store'])->name('contrapartes.consultas.store');
             Route::get('contrapartes/consultas/{consulta}', [ContraparteController::class, 'show'])->name('contrapartes.consultas.show');
