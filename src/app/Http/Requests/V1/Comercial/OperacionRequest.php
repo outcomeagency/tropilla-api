@@ -33,6 +33,7 @@ class OperacionRequest extends FormRequest
             'simulacion_id' => ['sometimes', 'nullable', Reglas::UUID, Rule::exists('simulaciones', 'id')->where('establecimiento_id', $est->id)],
             'evento_raiz_id' => ['sometimes', 'nullable', Reglas::UUID],
             'contrato_id' => ['sometimes', 'nullable', Reglas::UUID],
+            'proveedor_id' => ['sometimes', 'nullable', Reglas::UUID, Rule::exists('proveedores', 'usuario_id')],
             'oferta_id' => ['sometimes', 'nullable', Reglas::UUID, Rule::exists('ofertas', 'id')->where('establecimiento_id', $est->id)],
             'lote_id' => ['sometimes', 'nullable', Reglas::UUID, Rule::exists('lotes', 'id')->where('establecimiento_id', $est->id)],
             'animal_ids' => ['sometimes', 'array', 'max:1000'], 'animal_ids.*' => [Reglas::UUID],

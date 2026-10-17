@@ -43,6 +43,7 @@ use App\Http\Controllers\Api\V1\Hacienda\PotreroController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Organizaciones\OrganizacionController;
 use App\Http\Controllers\Api\V1\Perfil\PerfilController;
+use App\Http\Controllers\Api\V1\Proveedores\ProveedorController;
 use App\Http\Controllers\Api\V1\Publico\ConsultaPublicaController;
 use App\Http\Controllers\Api\V1\Publico\ContratoPublicoController;
 use App\Http\Controllers\Api\V1\Publico\DirectorioController;
@@ -102,6 +103,9 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('anclajes/{anclaje}/recibo', [VerificacionController::class, 'recibo'])->whereUuid('anclaje')->name('anclajes.recibo');
         Route::get('directorio', [DirectorioController::class, 'index'])->name('directorio');
         Route::get('directorio/facetas', [DirectorioController::class, 'facetas'])->name('directorio.facetas');
+        Route::get('directorio/proveedores', [ProveedorController::class, 'buscar'])->name('directorio.proveedores');
+        Route::get('directorio/proveedores/rubros', [ProveedorController::class, 'rubros'])->name('directorio.proveedores.rubros');
+        Route::get('proveedores/{slug}', [ProveedorController::class, 'publico'])->name('proveedores.show');
         Route::get('sitemap', [DirectorioController::class, 'sitemap'])->name('sitemap');
         Route::get('establecimientos/{slug}', [PerfilPublicoController::class, 'show'])->name('establecimientos.show');
         Route::get('establecimientos/{slug}/ofertas', [PerfilPublicoController::class, 'ofertas'])->name('establecimientos.ofertas');
@@ -162,6 +166,12 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('disponibilidades', [ConciergeFletesController::class, 'disponibilidades'])->name('disponibilidades.index');
             Route::post('disponibilidades/{disponibilidad}/cerrar', [ConciergeFletesController::class, 'cerrarDisponibilidad'])->name('disponibilidades.cerrar');
         });
+        // Perfil de proveedor, pedido de presupuesto y reseña con operación registrada (TPA-82).
+        Route::get('me/proveedor', [ProveedorController::class, 'perfil'])->name('me.proveedor');
+        Route::put('me/proveedor', [ProveedorController::class, 'guardarPerfil'])->name('me.proveedor.guardar');
+        Route::get('proveedor/leads', [ProveedorController::class, 'leads'])->name('proveedor.leads');
+        Route::post('proveedores/{slug}/leads', [ProveedorController::class, 'solicitar'])->name('proveedores.leads');
+        Route::post('proveedores/{slug}/operaciones/{operacion}/resenas', [ProveedorController::class, 'resenar'])->name('proveedores.resenas');
 
         // Organizaciones y adhesión con consentimiento (TPA-51)
         Route::get('organizaciones', [OrganizacionController::class, 'index'])->name('organizaciones.index');

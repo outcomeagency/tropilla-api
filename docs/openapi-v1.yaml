@@ -305,6 +305,14 @@ paths:
       responses:
         '200':
           description: OK
+  /me/proveedor:
+    get:
+      tags: [Cuenta]
+      summary: Perfil privado de proveedor
+      operationId: get_me_proveedor
+      responses:
+        '200':
+          description: Perfil propio; el CUIT se conserva privado y no se devuelve.
           content:
             application/json:
               schema:
@@ -351,6 +359,23 @@ paths:
       responses:
         '200':
           description: OK
+                  data: {$ref: '#/components/schemas/ProveedorPerfil'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+    put:
+      tags: [Cuenta]
+      summary: Crear/editar perfil y registrarse como proveedor
+      operationId: put_me_proveedor
+      description: CUIT cifrado; validar dígito módulo 11. La consulta con fuentes externas queda pendiente y el estado inicia como pendiente.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProveedorInput'}
+      responses:
+        '200':
+          description: Perfil guardado
           content:
             application/json:
               schema:
@@ -431,6 +456,22 @@ paths:
       responses:
         '200':
           description: OK
+                  data: {$ref: '#/components/schemas/ProveedorPerfil'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /proveedor/leads:
+    get:
+      tags: [Cuenta]
+      summary: Pedidos de presupuesto recibidos por el proveedor
+      operationId: get_proveedor_leads
+      parameters:
+      - {name: cursor, in: query, required: false, schema: {type: string}}
+      - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100}}
+      responses:
+        '200':
+          description: Leads privados del proveedor autenticado
           content:
             application/json:
               schema:
@@ -450,6 +491,21 @@ paths:
       responses:
         '200':
           description: OK
+                  data: {type: array, items: {$ref: '#/components/schemas/LeadProveedorRecibido'}}
+                  meta: {$ref: '#/components/schemas/MetaCursor'}
+                required: [data, meta]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /public/directorio/proveedores/rubros:
+    get:
+      tags: [Público]
+      summary: Catálogo de rubros de proveedores
+      operationId: get_public_proveedores_rubros
+      security: []
+      responses:
+        '200':
+          description: Rubros activos traducidos
           content:
             application/json:
               schema:
@@ -465,6 +521,64 @@ paths:
       summary: 'Nueva versión de la política de divulgación'
       operationId: post_agregados_politicas
       description: 'TPA-75. Solo equipo. Append-only; las revisiones del gate quedan atadas a la versión anterior (el gate vuelve a pendiente). Límites: k 5–100, dominancia 30–90 %.'
+                  data: {type: array, items: {$ref: '#/components/schemas/RubroProveedor'}}
+                required: [data]
+                additionalProperties: false
+  /public/directorio/proveedores:
+    get:
+      tags: [Público]
+      summary: Buscar proveedores por rubro y zona
+      operationId: get_public_directorio_proveedores
+      security: []
+      parameters:
+      - {name: rubro, in: query, required: false, schema: {type: string}}
+      - {name: provincia, in: query, required: false, schema: {type: string, minLength: 2, maxLength: 2}}
+      - {name: lat, in: query, required: false, schema: {type: number}}
+      - {name: lon, in: query, required: false, schema: {type: number}}
+      - {name: locale, in: query, required: false, schema: {type: string, enum: [es, en, pt]}}
+      - {name: cursor, in: query, required: false, schema: {type: string}}
+      - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100}}
+      responses:
+        '200':
+          description: Coincidencias públicas, sin CUIT, razón social ni geometría exacta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/ProveedorDirectorioItem'}}
+                  meta: {$ref: '#/components/schemas/MetaCursor'}
+                required: [data, meta]
+                additionalProperties: false
+        '422': {$ref: '#/components/responses/Validacion'}
+  /public/proveedores/{slug}:
+    get:
+      tags: [Público]
+      summary: Perfil público de proveedor
+      operationId: get_public_proveedores_slug
+      security: []
+      parameters:
+      - {name: slug, in: path, required: true, schema: {type: string}}
+      - {name: locale, in: query, required: false, schema: {type: string, enum: [es, en, pt]}}
+      responses:
+        '200':
+          description: Perfil con whitelist de campos públicos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ProveedorPublico'}
+                required: [data]
+                additionalProperties: false
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /proveedores/{slug}/leads:
+    post:
+      tags: [Cuenta]
+      summary: Pedir presupuesto a un proveedor
+      operationId: post_proveedores_slug_leads
+      parameters:
+      - {name: slug, in: path, required: true, schema: {type: string}}
       requestBody:
         required: true
         content:
@@ -473,6 +587,10 @@ paths:
       responses:
         '201':
           description: OK
+            schema: {$ref: '#/components/schemas/LeadProveedorInput'}
+      responses:
+        '201':
+          description: Pedido creado y aviso al proveedor
           content:
             application/json:
               schema:
@@ -547,6 +665,20 @@ paths:
       summary: 'Revisar un aspecto del gate'
       operationId: post_agregados_revisiones
       description: 'TPA-75. Solo equipo. Aspectos `reidentificacion`, `permisos`, `cohortes`, `auditoria`; aprobar reidentificación exige que la última prueba de la política vigente esté aprobada (`prueba_pendiente` → 409). Con los cuatro aprobados `habilita_opt_in_real` = true (planificar el opt-in; no conecta datos reales).'
+                  data: {$ref: '#/components/schemas/LeadProveedor'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /proveedores/{slug}/operaciones/{operacion}/resenas:
+    post:
+      tags: [Cuenta]
+      summary: Dejar reseña de una operación registrada con el proveedor
+      operationId: post_proveedores_slug_operaciones_operacion_resenas
+      parameters:
+      - {name: slug, in: path, required: true, schema: {type: string}}
+      - {name: operacion, in: path, required: true, schema: {type: string, format: uuid}}
       requestBody:
         required: true
         content:
@@ -705,6 +837,18 @@ paths:
         '204': {description: Sin contenido}
         '401': {$ref: '#/components/responses/NoAutenticado'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
+            schema:
+              type: object
+              properties:
+                puntaje: {type: integer, minimum: 1, maximum: 5}
+                comentario: {type: [string, 'null'], maxLength: 1000}
+              required: [puntaje]
+              additionalProperties: false
+      responses:
+        '201': {description: Reseña creada}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
   /me/notificaciones:
     get:
       tags: [Cuenta]
@@ -9721,6 +9865,7 @@ components:
         foto: {oneOf: [{$ref: '#/components/schemas/Foto'}, {type: 'null'}], description: 'Aditivo TPA-54 (bugfix): la misma foto como objeto'}
         es_comprador: {type: boolean}
         es_profesional: {type: boolean}
+        es_proveedor: {type: boolean, description: 'Aditivo TPA-82: existe perfil de proveedor'}
         es_staff: {type: boolean}
         created_at: {$ref: '#/components/schemas/FechaHora'}
       required: [id, nombre, idioma]
@@ -13191,6 +13336,11 @@ components:
           oneOf:
           - {$ref: '#/components/schemas/Uuid'}
           - {type: 'null'}
+        proveedor_id:
+          oneOf:
+          - {$ref: '#/components/schemas/Uuid'}
+          - {type: 'null'}
+          description: 'Aditivo TPA-82: contraparte proveedor para permitir reseña de operación registrada'
         documento_id:
           oneOf:
           - {$ref: '#/components/schemas/Uuid'}
@@ -14202,6 +14352,109 @@ components:
         huella: {$ref: '#/components/schemas/Hash'}
         verificacion_url: {type: string}
         leyenda: {type: string}
+      additionalProperties: false
+    RubroProveedor:
+      type: object
+      properties:
+        codigo: {type: string}
+        nombre: {type: string}
+      required: [codigo, nombre]
+      additionalProperties: false
+    ProveedorInput:
+      type: object
+      properties:
+        slug: {type: string, pattern: '^[a-z0-9-]{3,60}$'}
+        nombre_publico: {type: string, minLength: 3, maxLength: 120}
+        razon_social_declarada: {type: string, maxLength: 200, description: Privado}
+        cuit: {type: string, description: 'Privado; requerido al alta. En ediciones se omite para conservar el valor cifrado; dígito verificador módulo 11'}
+        rubros: {type: array, minItems: 1, items: {type: string}}
+        provincias: {type: array, minItems: 1, items: {type: string, minLength: 2, maxLength: 2}}
+        cobertura:
+          type: object
+          description: GeoJSON MultiPolygon para búsqueda espacial; no se devuelve públicamente.
+          properties:
+            type: {const: MultiPolygon}
+            coordinates: {type: array, items: {type: array}}
+          required: [type, coordinates]
+          additionalProperties: false
+        descripciones:
+          type: object
+          properties:
+            es: {type: string, minLength: 20, maxLength: 2000}
+            en: {type: string, minLength: 20, maxLength: 2000}
+            pt: {type: string, minLength: 20, maxLength: 2000}
+          required: [es, en, pt]
+          additionalProperties: false
+        idiomas: {type: array, items: {type: string, enum: [es, en, pt]}}
+        publico: {type: boolean}
+      required: [slug, nombre_publico, razon_social_declarada, rubros, provincias, descripciones]
+      additionalProperties: false
+    ProveedorPerfil:
+      type: object
+      properties:
+        slug: {type: string}
+        nombre_publico: {type: string}
+        razon_social_declarada: {type: [string, 'null']}
+        cuit: {type: 'null', description: CUIT nunca se devuelve en la API}
+        estado_cuit: {type: string, enum: [pendiente, inconsistente, validado]}
+        razon_social_informada: {type: [string, 'null'], description: Privado; cotejo de BCRA}
+        fuente_cuit: {type: [string, 'null']}
+        cuit_validado_en: {type: [string, 'null'], format: date-time}
+        rubros: {type: array, items: {type: string}}
+        provincias: {type: array, items: {type: string}}
+        descripciones: {type: object, additionalProperties: {type: string}}
+        idiomas: {type: array, items: {type: string}}
+        publico: {type: boolean}
+      required: [slug, nombre_publico, razon_social_declarada, cuit, estado_cuit, razon_social_informada, fuente_cuit, cuit_validado_en, rubros, provincias, descripciones, idiomas, publico]
+      additionalProperties: false
+    ProveedorDirectorioItem:
+      type: object
+      properties:
+        slug: {type: string}
+        nombre: {type: string}
+        descripcion: {type: string}
+        provincias: {type: array, items: {type: string}}
+        idiomas: {type: array, items: {type: string}}
+        patrocinado: {type: boolean, description: Debe etiquetarse como patrocinado en la UI}
+        es_demo: {type: boolean}
+      required: [slug, nombre, descripcion, provincias, idiomas, patrocinado, es_demo]
+      additionalProperties: false
+    ProveedorPublico:
+      allOf:
+      - {$ref: '#/components/schemas/ProveedorDirectorioItem'}
+      - type: object
+        properties:
+          rubros: {type: array, items: {$ref: '#/components/schemas/RubroProveedor'}}
+          calificacion: {type: [number, 'null']}
+          cantidad_resenas: {type: integer}
+          leyenda: {type: string}
+        required: [rubros, calificacion, cantidad_resenas, leyenda]
+        additionalProperties: false
+    LeadProveedorInput:
+      type: object
+      properties:
+        establecimiento_id: {type: string, format: uuid}
+        rubro: {type: string}
+        mensaje: {type: string, minLength: 10, maxLength: 2000}
+      required: [establecimiento_id, rubro, mensaje]
+      additionalProperties: false
+    LeadProveedor:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        estado: {type: string, enum: [nuevo]}
+      required: [id, estado]
+      additionalProperties: false
+    LeadProveedorRecibido:
+      type: object
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        rubro: {type: string}
+        mensaje: {type: string}
+        estado: {type: string, enum: [nuevo]}
+        establecimiento_nombre: {type: string}
+        creado_en: {$ref: '#/components/schemas/FechaHora'}
+      required: [id, rubro, mensaje, estado, establecimiento_nombre, creado_en]
       additionalProperties: false
     DirectorioItem:
       type: object
