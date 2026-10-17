@@ -32,6 +32,7 @@ tags:
 - {name: Organizaciones}
 - {name: Fletes}
 - {name: Público}
+- {name: Agregados}
 paths:
   /auth/register:
     post:
@@ -295,6 +296,415 @@ paths:
                 additionalProperties: false
         '401': {$ref: '#/components/responses/NoAutenticado'}
         '422': {$ref: '#/components/responses/Validacion'}
+  /agregados/contexto:
+    get:
+      tags: [Agregados]
+      summary: 'Contexto del tablero agregado'
+      operationId: get_agregados_contexto
+      description: 'TPA-75. Cualquier usuario autenticado: `acceso` indica si es equipo o integrante de una licencia activa. Fuente siempre `sintetico`.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/AgregadosContexto'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+  /agregados/tablero:
+    get:
+      tags: [Agregados]
+      summary: 'Consulta del cubo agregado protegido'
+      operationId: get_agregados_tablero
+      description: 'TPA-75. Licencia activa y vigente con la métrica (`metrica_no_habilitada`, `licencia_suspendida`, `licencia_vencida` → 403); `cliente` obligatorio salvo equipo (vista previa sin cupo). Descuenta cupo diario (`cupo_consultas_agotado` → 429) y queda auditada. Celdas con menos de k establecimientos, aportante dominante o despejables por resta se devuelven `suprimida` con `motivo`. Rango por defecto: últimos 4 trimestres; `escala` exige política con desglose (`desglose_no_permitido` → 422).'
+      parameters:
+      - name: cliente
+        in: query
+        required: false
+        schema: {type: string, format: uuid}
+      - name: metrica
+        in: query
+        required: true
+        schema: {type: string, enum: [existencias, cobertura_sanitaria, precios]}
+      - name: especie
+        in: query
+        required: true
+        schema: {type: string, enum: [BOV, BUB]}
+      - name: geo
+        in: query
+        required: false
+        schema: {type: string, enum: [nea, provincia], default: provincia}
+      - name: escala
+        in: query
+        required: false
+        schema: {type: boolean, default: false}
+      - name: desde
+        in: query
+        required: false
+        schema: {type: string, pattern: "^[0-9]{4}T[1-4]$"}
+      - name: hasta
+        in: query
+        required: false
+        schema: {type: string, pattern: "^[0-9]{4}T[1-4]$"}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/AgregadosTablero'}
+                required: [data]
+        '429': {$ref: '#/components/responses/DemasiadosIntentos'}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /agregados/tablero/exportar:
+    get:
+      tags: [Agregados]
+      summary: 'Export CSV del recorte (datos sintéticos)'
+      operationId: get_agregados_tablero_exportar
+      description: 'TPA-75. Mismos parámetros, permisos y cupo que el tablero; registra una consulta `exportacion`. Primera línea `#` con aviso de datos sintéticos, dataset, política y consulta; header `X-Tropilla-Fuente: sintetico`.'
+      parameters:
+      - name: cliente
+        in: query
+        required: false
+        schema: {type: string, format: uuid}
+      - name: metrica
+        in: query
+        required: true
+        schema: {type: string, enum: [existencias, cobertura_sanitaria, precios]}
+      - name: especie
+        in: query
+        required: true
+        schema: {type: string, enum: [BOV, BUB]}
+      - name: geo
+        in: query
+        required: false
+        schema: {type: string, enum: [nea, provincia], default: provincia}
+      - name: escala
+        in: query
+        required: false
+        schema: {type: boolean, default: false}
+      - name: desde
+        in: query
+        required: false
+        schema: {type: string, pattern: "^[0-9]{4}T[1-4]$"}
+      - name: hasta
+        in: query
+        required: false
+        schema: {type: string, pattern: "^[0-9]{4}T[1-4]$"}
+      responses:
+        '200':
+          description: CSV
+          content:
+            text/csv:
+              schema: {type: string}
+        '429': {$ref: '#/components/responses/DemasiadosIntentos'}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /agregados/consultas:
+    get:
+      tags: [Agregados]
+      summary: 'Consultas auditadas'
+      operationId: get_agregados_consultas
+      description: 'TPA-75. Equipo: todas (filtro opcional `cliente`). Integrante: solo las de su licencia (`cliente` obligatorio). Cursor, más nuevas primero.'
+      parameters:
+      - name: cliente
+        in: query
+        required: false
+        schema: {type: string, format: uuid}
+      - name: cursor
+        in: query
+        required: false
+        schema: {type: string}
+      - name: limit
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 100}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/AgregadosConsulta'}}
+                  meta: {$ref: '#/components/schemas/MetaCursor'}
+                required: [data, meta]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /agregados/gobernanza:
+    get:
+      tags: [Agregados]
+      summary: 'Gobernanza: política, gate, última prueba, uso y bitácora'
+      operationId: get_agregados_gobernanza
+      description: 'TPA-75. Solo equipo (`es_staff`); otro usuario → 404.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/AgregadosGobernanza'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /agregados/politicas:
+    post:
+      tags: [Agregados]
+      summary: 'Nueva versión de la política de divulgación'
+      operationId: post_agregados_politicas
+      description: 'TPA-75. Solo equipo. Append-only; las revisiones del gate quedan atadas a la versión anterior (el gate vuelve a pendiente). Límites: k 5–100, dominancia 30–90 %.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AgregadosPoliticaInput'}
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/AgregadosPolitica'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /agregados/pruebas:
+    get:
+      tags: [Agregados]
+      summary: 'Pruebas de reidentificación (últimas 20)'
+      operationId: get_agregados_pruebas
+      description: 'TPA-75. Solo equipo. Resumen sin controles.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/AgregadosPrueba'}}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+    post:
+      tags: [Agregados]
+      summary: 'Ejecutar la prueba de reidentificación'
+      operationId: post_agregados_pruebas
+      description: 'TPA-75. Solo equipo. Recorre todo lo publicable bajo la política vigente: celda chica, dominancia, diferenciación por resta, vinculación con perfil público y entrada/salida de un aportante entre trimestres (advertencia). Append-only.'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/AgregadosPrueba'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /agregados/pruebas/{prueba}:
+    get:
+      tags: [Agregados]
+      summary: 'Prueba con sus controles'
+      operationId: get_agregados_pruebas_prueba
+      description: 'TPA-75. Solo equipo.'
+      parameters:
+      - name: prueba
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/AgregadosPrueba'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /agregados/revisiones:
+    post:
+      tags: [Agregados]
+      summary: 'Revisar un aspecto del gate'
+      operationId: post_agregados_revisiones
+      description: 'TPA-75. Solo equipo. Aspectos `reidentificacion`, `permisos`, `cohortes`, `auditoria`; aprobar reidentificación exige que la última prueba de la política vigente esté aprobada (`prueba_pendiente` → 409). Con los cuatro aprobados `habilita_opt_in_real` = true (planificar el opt-in; no conecta datos reales).'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AgregadosRevisionInput'}
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/AgregadosGate'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '409': {$ref: '#/components/responses/Conflicto'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /agregados/clientes:
+    get:
+      tags: [Agregados]
+      summary: 'Licencias de clientes institucionales'
+      operationId: get_agregados_clientes
+      description: 'TPA-75. Solo equipo.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/AgregadosCliente'}}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+    post:
+      tags: [Agregados]
+      summary: 'Alta de licencia'
+      operationId: post_agregados_clientes
+      description: 'TPA-75. Solo equipo. Finalidad contractual, versión de contrato, vigencia, métricas licenciadas y cupo diario (nunca mayor que el de la política).'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AgregadosClienteInput'}
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/AgregadosCliente'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /agregados/clientes/{cliente}:
+    patch:
+      tags: [Agregados]
+      summary: 'Cambiar o suspender una licencia'
+      operationId: patch_agregados_clientes_cliente
+      description: 'TPA-75. Solo equipo. `row_version` obligatorio (409 `conflicto_row_version`); queda en la bitácora con antes/después.'
+      parameters:
+      - name: cliente
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/AgregadosClienteCambio'}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/AgregadosCliente'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '409': {$ref: '#/components/responses/Conflicto'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /agregados/clientes/{cliente}/miembros:
+    get:
+      tags: [Agregados]
+      summary: 'Integrantes de la licencia'
+      operationId: get_agregados_clientes_cliente_miembros
+      description: 'TPA-75. Solo equipo.'
+      parameters:
+      - name: cliente
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        usuario: {type: object, properties: {id: {type: string, format: uuid}, nombre: {type: string}, email: {type: string}}}
+                        desde: {type: string, format: date-time}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+    post:
+      tags: [Agregados]
+      summary: 'Sumar un integrante por email'
+      operationId: post_agregados_clientes_cliente_miembros
+      description: 'TPA-75. Solo equipo. Idempotente.'
+      parameters:
+      - name: cliente
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, properties: {email: {type: string, format: email}}, required: [email]}
+      responses:
+        '204': {description: Sin contenido}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /agregados/clientes/{cliente}/miembros/{usuario}:
+    delete:
+      tags: [Agregados]
+      summary: 'Quitar un integrante'
+      operationId: delete_agregados_clientes_cliente_miembros_usuario
+      description: 'TPA-75. Solo equipo.'
+      parameters:
+      - name: cliente
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: usuario
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '204': {description: Sin contenido}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
   /me/notificaciones:
     get:
       tags: [Cuenta]
@@ -9011,6 +9421,248 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
   schemas:
+    AgregadosPolitica:
+      type: object
+      description: 'Política de divulgación versionada (append-only). TPA-75.'
+      properties:
+        version: {type: integer}
+        k_minimo: {type: integer, description: 'Mínimo de establecimientos por celda publicada'}
+        dominancia_max_pct: {type: integer, description: 'Máximo % del total que puede aportar un solo establecimiento'}
+        redondeo_cabezas: {type: integer, enum: [10, 50, 100, 500]}
+        consultas_por_dia: {type: integer, description: 'Cupo diario máximo por licencia (zona horaria AR)'}
+        desglose_escala: {type: boolean}
+        nota: {type: [string, 'null']}
+        created_at: {type: string, format: date-time}
+      required: [version, k_minimo, dominancia_max_pct, redondeo_cabezas, consultas_por_dia, desglose_escala, created_at]
+    AgregadosPoliticaInput:
+      type: object
+      properties:
+        k_minimo: {type: integer, minimum: 5, maximum: 100}
+        dominancia_max_pct: {type: integer, minimum: 30, maximum: 90}
+        redondeo_cabezas: {type: integer, enum: [10, 50, 100, 500]}
+        consultas_por_dia: {type: integer, minimum: 1, maximum: 500}
+        desglose_escala: {type: boolean}
+        nota: {type: string, minLength: 10, maxLength: 1000, description: 'Motivo del cambio'}
+      required: [k_minimo, dominancia_max_pct, redondeo_cabezas, consultas_por_dia, desglose_escala, nota]
+      additionalProperties: false
+    AgregadosLicencia:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        nombre: {type: string}
+        tipo: {type: string, enum: [frigorifico, consignataria, banco, aseguradora, gobierno, proveedor, asociacion, otro]}
+        finalidad: {type: string}
+        contrato_version: {type: string}
+        vigente_hasta: {type: [string, 'null'], format: date}
+        estado: {type: string, enum: [activo, suspendido]}
+        metricas: {type: array, items: {type: string, enum: [existencias, cobertura_sanitaria, precios]}}
+        cupo_diario: {type: integer}
+        consultas_hoy: {type: integer}
+      required: [id, nombre, tipo, finalidad, contrato_version, vigente_hasta, estado, metricas, cupo_diario, consultas_hoy]
+    AgregadosCliente:
+      allOf:
+      - {$ref: '#/components/schemas/AgregadosLicencia'}
+      - type: object
+        properties:
+          consultas_por_dia: {type: [integer, 'null']}
+          integrantes: {type: integer}
+          consultas_30_dias: {type: integer}
+          row_version: {type: integer}
+          created_at: {type: string, format: date-time}
+        required: [consultas_por_dia, integrantes, consultas_30_dias, row_version, created_at]
+    AgregadosClienteInput:
+      type: object
+      properties:
+        nombre: {type: string, minLength: 3, maxLength: 200}
+        tipo: {type: string, enum: [frigorifico, consignataria, banco, aseguradora, gobierno, proveedor, asociacion, otro]}
+        finalidad: {type: string, minLength: 20, maxLength: 2000}
+        contrato_version: {type: string, maxLength: 60}
+        vigente_hasta: {type: [string, 'null'], format: date, description: 'Posterior a hoy'}
+        consultas_por_dia: {type: [integer, 'null'], minimum: 1, maximum: 500}
+        metricas: {type: array, minItems: 1, items: {type: string, enum: [existencias, cobertura_sanitaria, precios]}}
+      required: [nombre, tipo, finalidad, contrato_version, metricas]
+    AgregadosClienteCambio:
+      type: object
+      description: 'Mismos campos que AgregadosClienteInput, todos opcionales, más estado y row_version.'
+      properties:
+        nombre: {type: string}
+        tipo: {type: string}
+        finalidad: {type: string}
+        contrato_version: {type: string}
+        vigente_hasta: {type: [string, 'null'], format: date}
+        consultas_por_dia: {type: [integer, 'null']}
+        metricas: {type: array, items: {type: string}}
+        estado: {type: string, enum: [activo, suspendido]}
+        row_version: {type: integer}
+      required: [row_version]
+    AgregadosContexto:
+      type: object
+      properties:
+        acceso: {type: boolean}
+        es_staff: {type: boolean}
+        licencias: {type: array, items: {$ref: '#/components/schemas/AgregadosLicencia'}}
+        politica: {$ref: '#/components/schemas/AgregadosPolitica'}
+        trimestres: {type: array, items: {type: string}, examples: [['2024T3', '2026T2']]}
+        metricas: {type: array, items: {type: string}}
+        especies: {type: array, items: {type: string}}
+        zonas: {type: array, items: {$ref: '#/components/schemas/AgregadosZona'}}
+        escalas: {type: array, items: {type: string, enum: [chico, mediano, grande]}, description: 'chico < 300 cabezas, mediano 300–1500, grande > 1500'}
+        fuente: {type: string, const: sintetico}
+        dataset_version: {type: string}
+        opt_in_real_habilitado: {type: boolean}
+        aviso: {type: string}
+      required: [acceso, es_staff, licencias, politica, trimestres, metricas, especies, zonas, escalas, fuente, dataset_version, opt_in_real_habilitado, aviso]
+    AgregadosZona:
+      type: object
+      properties:
+        codigo: {type: string, enum: [nea, corrientes, chaco, formosa, misiones]}
+        nombre: {type: string}
+      required: [codigo, nombre]
+    AgregadosFila:
+      type: object
+      properties:
+        trimestre: {type: string}
+        zona: {$ref: '#/components/schemas/AgregadosZona'}
+        escala: {type: string, enum: [todas, chico, mediano, grande]}
+        estado: {type: string, enum: [publicada, suprimida, sin_datos]}
+        motivo: {type: [string, 'null'], enum: [celda_chica, dominancia, complementaria, null]}
+        valores:
+          type: [object, 'null']
+          description: 'Solo si publicada. establecimientos redondeado a 5; existencias → cabezas (redondeo de la política); cobertura_sanitaria → cobertura_pct (aftosa vigente); precios → precio_kg ($/kg vivo ponderado, a $10).'
+          properties:
+            establecimientos: {type: integer}
+            cabezas: {type: integer}
+            cobertura_pct: {type: integer}
+            precio_kg: {type: integer}
+      required: [trimestre, zona, escala, estado, motivo, valores]
+    AgregadosTablero:
+      type: object
+      properties:
+        metrica: {type: string}
+        especie: {type: string}
+        geo: {type: string, enum: [nea, provincia]}
+        desglose_escala: {type: boolean}
+        trimestres: {type: array, items: {type: string}}
+        filas: {type: array, items: {$ref: '#/components/schemas/AgregadosFila'}}
+        resumen:
+          type: object
+          properties:
+            celdas: {type: integer}
+            suprimidas: {type: integer}
+        consulta:
+          type: object
+          properties:
+            id: {type: string, format: uuid}
+            cliente_id: {type: [string, 'null'], format: uuid}
+            politica_version: {type: integer}
+            dataset_version: {type: string}
+            cupo_diario: {type: [integer, 'null']}
+            cupo_restante: {type: [integer, 'null']}
+        politica: {$ref: '#/components/schemas/AgregadosPolitica'}
+        fuente: {type: string, const: sintetico}
+        aviso: {type: string}
+      required: [metrica, especie, geo, desglose_escala, trimestres, filas, resumen, consulta, politica, fuente, aviso]
+    AgregadosConsulta:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        tipo: {type: string, enum: [tablero, exportacion]}
+        cliente:
+          type: [object, 'null']
+          properties:
+            id: {type: string, format: uuid}
+            nombre: {type: string}
+        usuario: {type: object, properties: {id: {type: string, format: uuid}, nombre: {type: string}}}
+        parametros: {type: object}
+        celdas: {type: integer}
+        suprimidas: {type: integer}
+        politica_version: {type: integer}
+        dataset_version: {type: string}
+        fuente: {type: string, const: sintetico}
+        created_at: {type: string, format: date-time}
+      required: [id, tipo, cliente, usuario, parametros, celdas, suprimidas, politica_version, dataset_version, fuente, created_at]
+    AgregadosPrueba:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        resultado: {type: string, enum: [aprobada, fallida]}
+        politica_version: {type: integer}
+        dataset_version: {type: string}
+        fallas: {type: integer}
+        advertencias: {type: integer}
+        ejecutada_por: {type: string}
+        created_at: {type: string, format: date-time}
+        controles:
+          type: array
+          description: 'Solo en el detalle y al ejecutar.'
+          items:
+            type: object
+            properties:
+              codigo: {type: string, enum: [celda_chica, dominancia, diferenciacion, vinculacion, temporal]}
+              titulo: {type: string}
+              evaluadas: {type: integer}
+              fallas: {type: integer}
+              advertencias: {type: integer}
+              mitigacion: {type: string}
+              ejemplos: {type: array, items: {type: string}, description: 'Hasta 5 ubicaciones (métrica · especie · trimestre · celda o referencia sintética)'}
+      required: [id, resultado, politica_version, dataset_version, fallas, advertencias, ejecutada_por, created_at]
+    AgregadosRevisionInput:
+      type: object
+      properties:
+        aspecto: {type: string, enum: [reidentificacion, permisos, cohortes, auditoria]}
+        resultado: {type: string, enum: [aprobado, observado]}
+        nota: {type: string, minLength: 10, maxLength: 2000}
+      required: [aspecto, resultado, nota]
+    AgregadosGate:
+      type: object
+      properties:
+        aspectos:
+          type: array
+          items:
+            type: object
+            properties:
+              aspecto: {type: string, enum: [reidentificacion, permisos, cohortes, auditoria]}
+              estado: {type: string, enum: [pendiente, aprobado, observado]}
+              nota: {type: [string, 'null']}
+              revisor: {type: [string, 'null']}
+              prueba_id: {type: [string, 'null'], format: uuid}
+              revisado_en: {type: [string, 'null'], format: date-time}
+        habilita_opt_in_real: {type: boolean}
+        politica_version: {type: integer}
+      required: [aspectos, habilita_opt_in_real, politica_version]
+    AgregadosGobernanza:
+      type: object
+      properties:
+        politica: {$ref: '#/components/schemas/AgregadosPolitica'}
+        politicas: {type: array, items: {$ref: '#/components/schemas/AgregadosPolitica'}}
+        gate: {$ref: '#/components/schemas/AgregadosGate'}
+        ultima_prueba: {oneOf: [{$ref: '#/components/schemas/AgregadosPrueba'}, {type: 'null'}]}
+        dataset:
+          type: object
+          properties:
+            version: {type: string}
+            fuente: {type: string, const: sintetico}
+            filas: {type: integer}
+            establecimientos: {type: integer}
+            trimestres: {type: array, items: {type: string}}
+        uso_30_dias:
+          type: object
+          properties:
+            consultas: {type: integer}
+            exportaciones: {type: integer}
+            suprimidas_pct: {type: integer}
+        bitacora:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: integer}
+              accion: {type: string, enum: [politica_nueva, prueba_reidentificacion, revision_gate, licencia_alta, licencia_cambio, licencia_activo, licencia_suspendido, integrante_alta, integrante_baja]}
+              usuario: {type: string}
+              cliente: {type: [string, 'null']}
+              detalle: {type: object}
+              created_at: {type: string, format: date-time}
+      required: [politica, politicas, gate, ultima_prueba, dataset, uso_30_dias, bitacora]
     Uuid: {type: string, format: uuid, description: 'UUID (v7 si lo genera el cliente), minúsculas'}
     Decimal:
       type: string

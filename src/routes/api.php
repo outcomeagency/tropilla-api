@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Agregados\GobernanzaController;
+use App\Http\Controllers\Api\V1\Agregados\TableroController;
 use App\Http\Controllers\Api\V1\Archivos\ArchivoController;
 use App\Http\Controllers\Api\V1\Archivos\FotoController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
@@ -174,6 +176,24 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::post('productores/{productor}/adhesiones', [OrganizacionController::class, 'adherir'])->name('productores.adhesiones.store');
         Route::post('productores/{productor}/adhesiones/{adhesion}/consentimiento', [OrganizacionController::class, 'consentimiento'])->name('productores.adhesiones.consentimiento');
         Route::post('productores/{productor}/adhesiones/{adhesion}/revocar', [OrganizacionController::class, 'revocar'])->name('productores.adhesiones.revocar');
+
+        // Tablero agregado con gobernanza (TPA-75): solo datos sintéticos hasta que el gate habilite el opt-in real.
+        Route::get('agregados/contexto', [TableroController::class, 'contexto'])->name('agregados.contexto');
+        Route::get('agregados/tablero', [TableroController::class, 'tablero'])->name('agregados.tablero');
+        Route::get('agregados/tablero/exportar', [TableroController::class, 'exportar'])->name('agregados.exportar');
+        Route::get('agregados/consultas', [TableroController::class, 'consultas'])->name('agregados.consultas');
+        Route::get('agregados/gobernanza', [GobernanzaController::class, 'show'])->name('agregados.gobernanza');
+        Route::post('agregados/politicas', [GobernanzaController::class, 'politica'])->name('agregados.politicas.store');
+        Route::get('agregados/pruebas', [GobernanzaController::class, 'pruebas'])->name('agregados.pruebas.index');
+        Route::post('agregados/pruebas', [GobernanzaController::class, 'ejecutarPrueba'])->name('agregados.pruebas.store');
+        Route::get('agregados/pruebas/{prueba}', [GobernanzaController::class, 'prueba'])->name('agregados.pruebas.show');
+        Route::post('agregados/revisiones', [GobernanzaController::class, 'revisar'])->name('agregados.revisiones.store');
+        Route::get('agregados/clientes', [GobernanzaController::class, 'clientes'])->name('agregados.clientes.index');
+        Route::post('agregados/clientes', [GobernanzaController::class, 'crearCliente'])->name('agregados.clientes.store');
+        Route::patch('agregados/clientes/{cliente}', [GobernanzaController::class, 'actualizarCliente'])->name('agregados.clientes.update');
+        Route::get('agregados/clientes/{cliente}/miembros', [GobernanzaController::class, 'miembros'])->name('agregados.clientes.miembros.index');
+        Route::post('agregados/clientes/{cliente}/miembros', [GobernanzaController::class, 'agregarMiembro'])->name('agregados.clientes.miembros.store');
+        Route::delete('agregados/clientes/{cliente}/miembros/{usuario}', [GobernanzaController::class, 'quitarMiembro'])->name('agregados.clientes.miembros.destroy');
 
         // Notificaciones (TPA-53)
         Route::get('me/notificaciones', [NotificacionController::class, 'index'])->name('me.notificaciones');
