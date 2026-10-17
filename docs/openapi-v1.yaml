@@ -30,6 +30,7 @@ tags:
 - {name: Comprador}
 - {name: Perfil}
 - {name: Organizaciones}
+- {name: Fletes}
 - {name: Público}
 paths:
   /auth/register:
@@ -8227,6 +8228,745 @@ paths:
           content:
             application/json:
               schema: {type: object}
+  /establecimientos/{establecimiento}/fletes/opciones:
+    get:
+      tags: [Fletes]
+      summary: 'Fletes: catálogos del piloto (corredor, motivos, jaulas, checklist, avisos, consentimiento)'
+      operationId: get_establecimientos_establecimiento_fletes_opciones
+      description: '**Ability:** `fletes.ver`. TPA-73. `emite_dte` siempre es false: TROPILLA no emite ni gestiona el DT-e.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FleteOpciones'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/fletes/pedidos:
+    get:
+      tags: [Fletes]
+      summary: 'Listar pedidos de flete'
+      operationId: get_establecimientos_establecimiento_fletes_pedidos
+      description: '**Ability:** `fletes.ver`. TPA-73. Sin consentimiento, checklist, propuestas ni historial. Paginado por cursor.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - {name: estado, in: query, required: false, schema: {type: string, enum: [abiertos, cerrados]}}
+      - {name: cursor, in: query, required: false, schema: {type: string}}
+      - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100}}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/FletePedido'}}
+                  meta: {$ref: '#/components/schemas/MetaCursor'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+    post:
+      tags: [Fletes]
+      summary: 'Pedir un flete (piloto concierge)'
+      operationId: post_establecimientos_establecimiento_fletes_pedidos
+      description: '**Ability:** `fletes.gestionar` (dueño/admin/encargado). TPA-73. Zona de carga = departamento (default: el del establecimiento); destino = provincia + localidad. Exige consentimiento para compartir datos mínimos con transportistas. Fuera del corredor se registra con `en_corredor: false` (lista de espera).'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FletePedidoInput'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FletePedido'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/fletes/pedidos/{pedido}:
+    get:
+      tags: [Fletes]
+      summary: 'Ver un pedido de flete'
+      operationId: get_establecimientos_establecimiento_fletes_pedidos_pedido
+      description: '**Ability:** `fletes.ver`. TPA-73. El contacto del transportista viene solo en la propuesta aceptada.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: pedido
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FletePedido'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/fletes/pedidos/{pedido}/cancelar:
+    post:
+      tags: [Fletes]
+      summary: 'Cancelar un pedido abierto'
+      operationId: post_establecimientos_establecimiento_fletes_pedidos_pedido_cancelar
+      description: '**Ability:** `fletes.gestionar`. TPA-73. Retira las propuestas pendientes.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: pedido
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                motivo: {type: string, nullable: true, maxLength: 300}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FletePedido'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/fletes/pedidos/{pedido}/resultado:
+    post:
+      tags: [Fletes]
+      summary: 'Registrar el resultado del pedido'
+      operationId: post_establecimientos_establecimiento_fletes_pedidos_pedido_resultado
+      description: '**Ability:** `fletes.gestionar`. TPA-73. `acordado` exige una propuesta aceptada; costo y km alimentan la métrica de costo por km.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: pedido
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resultado: {type: string, enum: [acordado, sin_acuerdo]}
+                costo: {type: number, nullable: true, minimum: 0}
+                km: {type: integer, nullable: true, minimum: 1, maximum: 5000}
+                nota: {type: string, nullable: true, maxLength: 500}
+              required: [resultado]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FletePedido'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/fletes/pedidos/{pedido}/checklist/{item}:
+    put:
+      tags: [Fletes]
+      summary: 'Marcar una diligencia del viaje'
+      operationId: put_establecimientos_establecimiento_fletes_pedidos_pedido_checklist_item
+      description: '**Ability:** `fletes.gestionar`. TPA-73.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: pedido
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: item
+        in: path
+        required: true
+        schema: {type: string, enum: [dte, documentos_transportista, lavado_desinfeccion, condiciones_escritas, bienestar, responsabilidad]}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estado: {type: string, enum: [pendiente, hecho, no_aplica]}
+                nota: {type: string, nullable: true, maxLength: 500}
+              required: [estado]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FletePedido'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/fletes/pedidos/{pedido}/propuestas/{propuesta}/aceptar:
+    post:
+      tags: [Fletes]
+      summary: 'Aceptar una propuesta (comparte el contacto)'
+      operationId: post_establecimientos_establecimiento_fletes_pedidos_pedido_propuestas_propuesta_aceptar
+      description: '**Ability:** `fletes.gestionar`. TPA-73. El pedido pasa a `contactado`, las otras pendientes se retiran y queda en el historial qué datos se compartieron. 422 si la documentación del transportista dejó de estar vigente.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: pedido
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: propuesta
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FletePedido'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/fletes/pedidos/{pedido}/propuestas/{propuesta}/rechazar:
+    post:
+      tags: [Fletes]
+      summary: 'Rechazar una propuesta'
+      operationId: post_establecimientos_establecimiento_fletes_pedidos_pedido_propuestas_propuesta_rechazar
+      description: '**Ability:** `fletes.gestionar`. TPA-73.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: pedido
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: propuesta
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                motivo: {type: string, enum: [precio, fecha, camion, ya_consegui, otro]}
+                detalle: {type: string, nullable: true, maxLength: 300}
+              required: [motivo]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FletePedido'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /fletes/concierge/resumen:
+    get:
+      tags: [Fletes]
+      summary: 'Concierge: catálogos y métricas del piloto'
+      operationId: get_fletes_concierge_resumen
+      description: '**Solo staff** (`es_staff`). TPA-73. Pedidos por estado, tasa de acuerdo, mediana de horas hasta la primera propuesta, costo por km, transportistas documentados y motivos de rechazo.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FleteConciergeResumen'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /fletes/concierge/pedidos:
+    get:
+      tags: [Fletes]
+      summary: 'Concierge: cola de pedidos'
+      operationId: get_fletes_concierge_pedidos
+      description: '**Solo staff** (`es_staff`). TPA-73. Abiertos ordenados por fecha de carga. Hasta 200.'
+      parameters:
+      - {name: estado, in: query, required: false, schema: {type: string, enum: [abiertos, cerrados, pendiente, en_gestion, propuesto, contactado, acordado, sin_acuerdo, cancelado]}}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/FletePedido'}}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /fletes/concierge/pedidos/{pedido}:
+    get:
+      tags: [Fletes]
+      summary: 'Concierge: pedido con sugerencias de matching'
+      operationId: get_fletes_concierge_pedidos_pedido
+      description: '**Solo staff** (`es_staff`). TPA-73. Incluye establecimiento, contacto del productor y `sugerencias` (disponibilidades compatibles con criterios explicados).'
+      parameters:
+      - name: pedido
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FletePedidoConcierge'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /fletes/concierge/pedidos/{pedido}/tomar:
+    post:
+      tags: [Fletes]
+      summary: 'Concierge: tomar el pedido'
+      operationId: post_fletes_concierge_pedidos_pedido_tomar
+      description: '**Solo staff** (`es_staff`). TPA-73. pendiente → en_gestion.'
+      parameters:
+      - name: pedido
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FletePedidoConcierge'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /fletes/concierge/pedidos/{pedido}/propuestas:
+    post:
+      tags: [Fletes]
+      summary: 'Concierge: proponer un camión'
+      operationId: post_fletes_concierge_pedidos_pedido_propuestas
+      description: '**Solo staff** (`es_staff`). TPA-73. Exige transportista activo con toda la documentación verificada y vigente (`regla_bloqueante` si no). La compatibilidad queda congelada en la propuesta. Notifica al productor (`flete_propuesta`).'
+      parameters:
+      - name: pedido
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                transportista_id: {type: string, format: uuid}
+                disponibilidad_id: {type: string, format: uuid, nullable: true}
+                fecha_propuesta: {type: string, format: date}
+                tarifa_estimada: {type: number, nullable: true}
+                nota: {type: string, nullable: true, maxLength: 500}
+              required: [transportista_id, fecha_propuesta]
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FletePedidoConcierge'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /fletes/concierge/pedidos/{pedido}/resultado:
+    post:
+      tags: [Fletes]
+      summary: 'Concierge: registrar resultado'
+      operationId: post_fletes_concierge_pedidos_pedido_resultado
+      description: '**Solo staff** (`es_staff`). TPA-73.'
+      parameters:
+      - name: pedido
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resultado: {type: string, enum: [acordado, sin_acuerdo]}
+                costo: {type: number, nullable: true, minimum: 0}
+                km: {type: integer, nullable: true, minimum: 1, maximum: 5000}
+                nota: {type: string, nullable: true, maxLength: 500}
+              required: [resultado]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FletePedidoConcierge'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /fletes/concierge/propuestas/{propuesta}/retirar:
+    post:
+      tags: [Fletes]
+      summary: 'Concierge: retirar una propuesta pendiente'
+      operationId: post_fletes_concierge_propuestas_propuesta_retirar
+      description: '**Solo staff** (`es_staff`). TPA-73.'
+      parameters:
+      - name: propuesta
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                motivo: {type: string, nullable: true, maxLength: 300}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FletePedidoConcierge'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /fletes/concierge/transportistas:
+    get:
+      tags: [Fletes]
+      summary: 'Concierge: transportistas'
+      operationId: get_fletes_concierge_transportistas
+      description: '**Solo staff** (`es_staff`). TPA-73.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/FleteTransportista'}}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+    post:
+      tags: [Fletes]
+      summary: 'Concierge: alta de transportista'
+      operationId: post_fletes_concierge_transportistas
+      description: '**Solo staff** (`es_staff`). TPA-73. `consentimiento` declara que el transportista aceptó figurar y que su contacto se comparta con productores que acepten su propuesta.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FleteTransportistaInput'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FleteTransportista'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /fletes/concierge/transportistas/{transportista}:
+    get:
+      tags: [Fletes]
+      summary: 'Concierge: ver transportista'
+      operationId: get_fletes_concierge_transportistas_transportista
+      description: '**Solo staff** (`es_staff`). TPA-73. Con documentos, disponibilidades e historial.'
+      parameters:
+      - name: transportista
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FleteTransportista'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+    patch:
+      tags: [Fletes]
+      summary: 'Concierge: editar transportista'
+      operationId: patch_fletes_concierge_transportistas_transportista
+      description: '**Solo staff** (`es_staff`). TPA-73. Campos de alta (sin `consentimiento`) y `activo`.'
+      parameters:
+      - name: transportista
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FleteTransportistaInput'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FleteTransportista'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /fletes/concierge/transportistas/{transportista}/documentos/{item}:
+    put:
+      tags: [Fletes]
+      summary: 'Concierge: verificar un documento del transportista'
+      operationId: put_fletes_concierge_transportistas_transportista_documentos_item
+      description: '**Solo staff** (`es_staff`). TPA-73. Verificación manual: `metodo` obligatorio si `verificado`, `nota` si `observado`; no se marca verificado un documento vencido; `identidad_cuit` no admite `no_aplica`. Queda quién y cuándo.'
+      parameters:
+      - name: transportista
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: item
+        in: path
+        required: true
+        schema: {type: string, enum: [identidad_cuit, senasa_vehiculo, ruta, licencia_chofer, rto, seguro]}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estado: {type: string, enum: [pendiente, verificado, observado, no_aplica]}
+                metodo: {type: string, nullable: true, enum: [documento_a_la_vista, consulta_autoridad, copia_digital]}
+                vence_el: {type: string, format: date, nullable: true}
+                nota: {type: string, nullable: true, maxLength: 500}
+              required: [estado]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FleteTransportista'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /fletes/concierge/transportistas/{transportista}/disponibilidades:
+    post:
+      tags: [Fletes]
+      summary: 'Concierge: cargar disponibilidad de jaula'
+      operationId: post_fletes_concierge_transportistas_transportista_disponibilidades
+      description: '**Solo staff** (`es_staff`). TPA-73. `destino_provincia_codigo` null = cualquier destino. `especies` default [BOV, BUB].'
+      parameters:
+      - name: transportista
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                origen_departamento_codigo: {type: string, pattern: '^\d{5}$'}
+                destino_provincia_codigo: {type: string, nullable: true}
+                desde: {type: string, format: date}
+                hasta: {type: string, format: date}
+                jaula: {type: string, enum: [chasis, acoplado, semi, doble_piso]}
+                capacidad_cabezas: {type: integer, minimum: 1, maximum: 500}
+                especies: {type: array, items: {type: string, enum: [BOV, BUB]}}
+                es_retorno: {type: boolean}
+                tarifa_km: {type: number, nullable: true}
+                notas: {type: string, nullable: true, maxLength: 500}
+              required: [origen_departamento_codigo, desde, hasta, jaula, capacidad_cabezas]
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FleteTransportista'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /fletes/concierge/disponibilidades:
+    get:
+      tags: [Fletes]
+      summary: 'Concierge: disponibilidades vigentes'
+      operationId: get_fletes_concierge_disponibilidades
+      description: '**Solo staff** (`es_staff`). TPA-73.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/FleteDisponibilidad'}}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /fletes/concierge/disponibilidades/{disponibilidad}/cerrar:
+    post:
+      tags: [Fletes]
+      summary: 'Concierge: cerrar una disponibilidad'
+      operationId: post_fletes_concierge_disponibilidades_disponibilidad_cerrar
+      description: '**Solo staff** (`es_staff`). TPA-73.'
+      parameters:
+      - name: disponibilidad
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/FleteTransportista'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
 components:
   securitySchemes:
     sanctum:
@@ -8917,6 +9657,254 @@ components:
             cobertura: {type: array, items: {type: string}}
           required: [nivel, completo, reglas_version, senales, cobertura, resumen]
       required: [cuit, tipo_persona, denominacion, fuentes, bcra, lectura, avisos, senales_desactivadas, semaforo]
+    FletePedidoInput:
+      type: object
+      description: 'TPA-73.'
+      properties:
+        origen_departamento_codigo: {type: string, nullable: true, pattern: '^\d{5}$', description: 'Default: el del establecimiento'}
+        destino_provincia_codigo: {type: string, description: 'Código INDEC de provincia'}
+        destino_localidad: {type: string, maxLength: 120}
+        motivo: {type: string, enum: [venta_frigorifico, remate_feria, venta_campo, traslado_propio, pastaje, otro]}
+        fecha_desde: {type: string, format: date, description: 'No anterior a hoy'}
+        fecha_hasta: {type: string, format: date, description: 'Ventana de hasta 60 días'}
+        especie_codigo: {type: string, enum: [BOV, BUB]}
+        categoria: {type: string, nullable: true, maxLength: 80}
+        cabezas: {type: integer, minimum: 1, maximum: 2000}
+        kg_promedio: {type: integer, nullable: true, minimum: 20, maximum: 1500}
+        jaula_preferida: {type: string, nullable: true, enum: [chasis, acoplado, semi, doble_piso]}
+        observaciones: {type: string, nullable: true, maxLength: 1000}
+        telefono_contacto: {type: string}
+        consentimiento: {type: boolean, description: 'Debe ser true'}
+      required: [destino_provincia_codigo, destino_localidad, motivo, fecha_desde, fecha_hasta, especie_codigo, cabezas, telefono_contacto, consentimiento]
+    FletePedido:
+      type: object
+      description: 'TPA-73. En el listado no vienen checklist, consentimiento, propuestas ni historial.'
+      properties:
+        id: {type: string, format: uuid}
+        estado: {type: string, enum: [pendiente, en_gestion, propuesto, contactado, acordado, sin_acuerdo, cancelado]}
+        en_corredor: {type: boolean}
+        motivo: {type: string}
+        motivo_nombre: {type: string}
+        origen: {type: object, properties: {departamento_codigo: {type: string}, departamento_nombre: {type: string, nullable: true}}, required: [departamento_codigo]}
+        destino: {type: object, properties: {provincia_codigo: {type: string}, provincia_nombre: {type: string}, localidad: {type: string}}, required: [provincia_codigo, provincia_nombre, localidad]}
+        fecha_desde: {type: string, format: date}
+        fecha_hasta: {type: string, format: date}
+        especie_codigo: {type: string}
+        categoria: {type: string, nullable: true}
+        cabezas: {type: integer}
+        kg_promedio: {type: integer, nullable: true}
+        jaula_preferida: {type: string, nullable: true}
+        observaciones: {type: string, nullable: true}
+        telefono_contacto: {type: string}
+        creado_por: {type: string}
+        created_at: {type: string, format: date-time}
+        propuestas_pendientes: {type: integer}
+        resultado:
+          type: object
+          nullable: true
+          properties:
+            resultado: {type: string, enum: [acordado, sin_acuerdo]}
+            costo: {$ref: '#/components/schemas/Decimal'}
+            km: {type: integer, nullable: true}
+            costo_por_km: {$ref: '#/components/schemas/Decimal'}
+            nota: {type: string, nullable: true}
+            registrado_en: {type: string, format: date-time}
+        checklist:
+          type: array
+          items:
+            type: object
+            properties:
+              item: {type: string}
+              texto: {type: string}
+              estado: {type: string, enum: [pendiente, hecho, no_aplica]}
+              nota: {type: string, nullable: true}
+              actualizado_en: {type: string, format: date-time, nullable: true}
+            required: [item, texto, estado]
+        consentimiento: {type: object, additionalProperties: true}
+        propuestas: {type: array, items: {$ref: '#/components/schemas/FletePropuesta'}}
+        historial:
+          type: array
+          items:
+            type: object
+            properties:
+              accion: {type: string}
+              detalle: {type: object, additionalProperties: true}
+              quien: {type: string, description: 'Para el productor, las acciones del equipo figuran como «Equipo TROPILLA»'}
+              en: {type: string, format: date-time}
+      required: [id, estado, en_corredor, motivo, origen, destino, fecha_desde, fecha_hasta, especie_codigo, cabezas, created_at]
+    FletePedidoConcierge:
+      allOf:
+      - {$ref: '#/components/schemas/FletePedido'}
+      - type: object
+        properties:
+          establecimiento: {type: object, properties: {id: {type: string, format: uuid}, nombre: {type: string}, localidad: {type: string, nullable: true}}}
+          contacto: {type: object, properties: {nombre: {type: string}, telefono: {type: string}, email: {type: string}}}
+          sugerencias: {type: array, items: {$ref: '#/components/schemas/FleteCompatibilidad'}}
+    FleteCompatibilidad:
+      type: object
+      description: 'TPA-73. Sugerencia de matching (o compatibilidad congelada en una propuesta). Criterios explícitos; `proponible` = documentación completa.'
+      properties:
+        disponibilidad_id: {type: string, format: uuid}
+        transportista_id: {type: string, format: uuid}
+        transportista_nombre: {type: string}
+        jaula: {type: string}
+        capacidad_cabezas: {type: integer}
+        es_retorno: {type: boolean}
+        tarifa_km: {type: string, nullable: true}
+        fechas_en_comun: {type: object, properties: {desde: {type: string, format: date}, hasta: {type: string, format: date}}, required: [desde, hasta]}
+        distancia_salida_km: {type: integer, nullable: true, description: 'Línea recta entre cabeceras de departamento'}
+        puntaje: {type: integer, nullable: true, minimum: 0, maximum: 100}
+        proponible: {type: boolean}
+        documentacion_completa: {type: boolean}
+        criterios:
+          type: array
+          items:
+            type: object
+            properties:
+              criterio: {type: string, enum: [fechas, salida, destino, capacidad, retorno, documentacion, manual]}
+              cumple: {type: boolean}
+              detalle: {type: string}
+            required: [criterio, cumple, detalle]
+      required: [criterios, proponible, documentacion_completa]
+    FletePropuesta:
+      type: object
+      description: 'TPA-73. `transportista.contacto` es null para el productor hasta que acepta la propuesta.'
+      properties:
+        id: {type: string, format: uuid}
+        estado: {type: string, enum: [propuesta, aceptada, rechazada, retirada]}
+        fecha_propuesta: {type: string, format: date}
+        tarifa_estimada: {$ref: '#/components/schemas/Decimal'}
+        nota: {type: string, nullable: true}
+        motivo_rechazo: {type: string, nullable: true}
+        jaula: {type: string, nullable: true}
+        jaula_nombre: {type: string, nullable: true}
+        capacidad_cabezas: {type: integer, nullable: true}
+        es_retorno: {type: boolean}
+        compatibilidad: {$ref: '#/components/schemas/FleteCompatibilidad'}
+        transportista:
+          type: object
+          properties:
+            id: {type: string, format: uuid}
+            nombre: {type: string}
+            documentacion_completa: {type: boolean}
+            documentos: {type: array, items: {$ref: '#/components/schemas/FleteDocumento'}}
+            contacto: {type: object, nullable: true, properties: {nombre: {type: string}, telefono: {type: string}, email: {type: string, nullable: true}}, required: [nombre, telefono]}
+          required: [id, nombre, documentacion_completa, documentos]
+        created_at: {type: string, format: date-time}
+        respondida_en: {type: string, format: date-time, nullable: true}
+      required: [id, estado, fecha_propuesta, es_retorno, transportista, created_at]
+    FleteDocumento:
+      type: object
+      properties:
+        item: {type: string, enum: [identidad_cuit, senasa_vehiculo, ruta, licencia_chofer, rto, seguro]}
+        texto: {type: string}
+        estado: {type: string, enum: [pendiente, verificado, observado, no_aplica, vencido]}
+        metodo: {type: string, nullable: true}
+        vence_el: {type: string, format: date, nullable: true}
+        nota: {type: string, nullable: true}
+        verificado_por: {type: string, nullable: true}
+        actualizado_en: {type: string, format: date-time, nullable: true}
+      required: [item, texto, estado]
+    FleteTransportistaInput:
+      type: object
+      properties:
+        nombre: {type: string, maxLength: 160}
+        cuit: {type: string, nullable: true}
+        contacto_nombre: {type: string, maxLength: 120}
+        telefono: {type: string}
+        email: {type: string, format: email, nullable: true}
+        base_departamento_codigo: {type: string, pattern: '^\d{5}$'}
+        notas: {type: string, nullable: true, maxLength: 1000}
+        activo: {type: boolean, description: 'Solo en PATCH'}
+        consentimiento: {type: boolean, description: 'Obligatorio (true) en el alta; prohibido en PATCH'}
+    FleteTransportista:
+      type: object
+      description: 'TPA-73. En el listado no vienen consentimiento, documentos, disponibilidades ni historial.'
+      properties:
+        id: {type: string, format: uuid}
+        nombre: {type: string}
+        cuit: {type: string, nullable: true}
+        contacto_nombre: {type: string}
+        telefono: {type: string}
+        email: {type: string, nullable: true}
+        base: {type: object, properties: {departamento_codigo: {type: string}, departamento_nombre: {type: string, nullable: true}}, required: [departamento_codigo]}
+        activo: {type: boolean}
+        notas: {type: string, nullable: true}
+        documentacion_completa: {type: boolean}
+        documentos_faltantes: {type: integer}
+        disponibilidades_abiertas: {type: integer}
+        created_at: {type: string, format: date-time}
+        consentimiento: {type: object, additionalProperties: true}
+        documentos: {type: array, items: {$ref: '#/components/schemas/FleteDocumento'}}
+        disponibilidades: {type: array, items: {$ref: '#/components/schemas/FleteDisponibilidad'}}
+        historial: {type: array, items: {type: object, additionalProperties: true}}
+      required: [id, nombre, contacto_nombre, telefono, base, activo, documentacion_completa, documentos_faltantes, disponibilidades_abiertas, created_at]
+    FleteDisponibilidad:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        transportista_id: {type: string, format: uuid}
+        transportista_nombre: {type: string, nullable: true}
+        origen: {type: object, properties: {departamento_codigo: {type: string}, departamento_nombre: {type: string, nullable: true}}, required: [departamento_codigo]}
+        destino_provincia_codigo: {type: string, nullable: true}
+        destino_provincia_nombre: {type: string, nullable: true}
+        desde: {type: string, format: date}
+        hasta: {type: string, format: date}
+        jaula: {type: string}
+        jaula_nombre: {type: string}
+        capacidad_cabezas: {type: integer}
+        especies: {type: array, items: {type: string}}
+        es_retorno: {type: boolean}
+        tarifa_km: {$ref: '#/components/schemas/Decimal'}
+        estado: {type: string, enum: [abierta, cerrada]}
+        notas: {type: string, nullable: true}
+        vigente: {type: boolean}
+      required: [id, transportista_id, origen, desde, hasta, jaula, jaula_nombre, capacidad_cabezas, especies, es_retorno, estado, vigente]
+    FleteOpciones:
+      type: object
+      description: 'TPA-73. Catálogos del piloto.'
+      properties:
+        corredor: {type: object, properties: {provincias: {type: array, items: {type: object, properties: {codigo: {type: string}, nombre: {type: string}}}}, radio_km: {type: integer}}}
+        motivos: {type: array, items: {$ref: '#/components/schemas/FleteCodigoNombre'}}
+        jaulas: {type: array, items: {$ref: '#/components/schemas/FleteCodigoNombre'}}
+        provincias: {type: array, items: {$ref: '#/components/schemas/FleteCodigoNombre'}}
+        checklist: {type: array, items: {type: object, properties: {item: {type: string}, texto: {type: string}}, required: [item, texto]}}
+        documentos_transportista: {type: array, items: {type: object, properties: {item: {type: string}, texto: {type: string}}}}
+        avisos: {type: array, items: {type: string}}
+        consentimiento: {type: object, properties: {texto: {type: string}, version: {type: string}}}
+        revision_legal: {type: string}
+        emite_dte: {type: boolean, enum: [false]}
+        origen_sugerido: {type: object, properties: {departamento_codigo: {type: string}, departamento_nombre: {type: string, nullable: true}}}
+        en_corredor: {type: boolean}
+        departamentos: {type: array, items: {type: object, properties: {codigo: {type: string}, nombre: {type: string}, provincia_nombre: {type: string}}, required: [codigo, nombre, provincia_nombre]}}
+        motivos_rechazo: {type: array, items: {$ref: '#/components/schemas/FleteCodigoNombre'}}
+    FleteCodigoNombre:
+      type: object
+      properties:
+        codigo: {type: string}
+        nombre: {type: string}
+      required: [codigo, nombre]
+    FleteConciergeResumen:
+      allOf:
+      - {$ref: '#/components/schemas/FleteOpciones'}
+      - type: object
+        properties:
+          metodos_verificacion: {type: array, items: {$ref: '#/components/schemas/FleteCodigoNombre'}}
+          metricas:
+            type: object
+            properties:
+              pedidos_total: {type: integer}
+              pedidos_por_estado: {type: object, additionalProperties: {type: integer}}
+              pedidos_fuera_corredor: {type: integer}
+              tasa_acuerdo_pct: {type: integer, nullable: true}
+              horas_hasta_primera_propuesta: {type: string, nullable: true, description: 'Mediana'}
+              costo_por_km: {type: string, nullable: true}
+              acuerdos_con_costo: {type: integer}
+              cabezas_acordadas: {type: integer}
+              transportistas_activos: {type: integer}
+              transportistas_documentados: {type: integer}
+              disponibilidades_vigentes: {type: integer}
+              rechazos_por_motivo: {type: array, items: {type: object, properties: {motivo: {type: string}, n: {type: integer}}}}
     ConsultaContraparte:
       type: object
       description: 'TPA-72. En el listado no vienen consentimiento, informe ni checklist.'

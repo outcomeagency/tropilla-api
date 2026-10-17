@@ -28,6 +28,8 @@ use App\Http\Controllers\Api\V1\Establecimientos\InvitacionController;
 use App\Http\Controllers\Api\V1\Establecimientos\MembresiaController;
 use App\Http\Controllers\Api\V1\Establecimientos\OnboardingController;
 use App\Http\Controllers\Api\V1\Establecimientos\ProductorController;
+use App\Http\Controllers\Api\V1\Fletes\ConciergeFletesController;
+use App\Http\Controllers\Api\V1\Fletes\PedidoFleteController;
 use App\Http\Controllers\Api\V1\Forraje\BriefForrajeController;
 use App\Http\Controllers\Api\V1\Hacienda\AnimalController;
 use App\Http\Controllers\Api\V1\Hacienda\CorreccionController;
@@ -139,6 +141,25 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('comprador/buscos/{busco}/respuestas', [BuscoController::class, 'respuestas'])->name('comprador.buscos.respuestas');
         Route::get('me/profesional', [ProfesionalController::class, 'show'])->name('me.profesional');
         Route::put('me/profesional', [ProfesionalController::class, 'update'])->name('me.profesional.guardar');
+
+        // Mesa del concierge de fletes (TPA-73, solo staff)
+        Route::prefix('fletes/concierge')->name('fletes.concierge.')->group(function () {
+            Route::get('resumen', [ConciergeFletesController::class, 'resumen'])->name('resumen');
+            Route::get('pedidos', [ConciergeFletesController::class, 'pedidos'])->name('pedidos.index');
+            Route::get('pedidos/{pedido}', [ConciergeFletesController::class, 'pedido'])->name('pedidos.show');
+            Route::post('pedidos/{pedido}/tomar', [ConciergeFletesController::class, 'tomar'])->name('pedidos.tomar');
+            Route::post('pedidos/{pedido}/propuestas', [ConciergeFletesController::class, 'proponer'])->name('pedidos.propuestas');
+            Route::post('pedidos/{pedido}/resultado', [ConciergeFletesController::class, 'resultado'])->name('pedidos.resultado');
+            Route::post('propuestas/{propuesta}/retirar', [ConciergeFletesController::class, 'retirar'])->name('propuestas.retirar');
+            Route::get('transportistas', [ConciergeFletesController::class, 'transportistas'])->name('transportistas.index');
+            Route::post('transportistas', [ConciergeFletesController::class, 'crearTransportista'])->name('transportistas.store');
+            Route::get('transportistas/{transportista}', [ConciergeFletesController::class, 'transportista'])->name('transportistas.show');
+            Route::patch('transportistas/{transportista}', [ConciergeFletesController::class, 'actualizarTransportista'])->name('transportistas.update');
+            Route::put('transportistas/{transportista}/documentos/{item}', [ConciergeFletesController::class, 'documento'])->where('item', '[a-z_]+')->name('transportistas.documentos');
+            Route::post('transportistas/{transportista}/disponibilidades', [ConciergeFletesController::class, 'crearDisponibilidad'])->name('transportistas.disponibilidades');
+            Route::get('disponibilidades', [ConciergeFletesController::class, 'disponibilidades'])->name('disponibilidades.index');
+            Route::post('disponibilidades/{disponibilidad}/cerrar', [ConciergeFletesController::class, 'cerrarDisponibilidad'])->name('disponibilidades.cerrar');
+        });
 
         // Organizaciones y adhesión con consentimiento (TPA-51)
         Route::get('organizaciones', [OrganizacionController::class, 'index'])->name('organizaciones.index');
@@ -386,6 +407,17 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('clima/escenarios', [EscenarioClimaticoController::class, 'show'])->name('clima.escenarios');
             Route::get('clima/reglas', [ClimaController::class, 'reglas'])->name('clima.reglas');
             Route::put('clima/reglas/{codigo}', [ClimaController::class, 'actualizarRegla'])->where('codigo', '[a-z0-9_]+')->name('clima.reglas.update');
+
+            // Matching de camiones jaula: pedidos del productor (TPA-73)
+            Route::get('fletes/opciones', [PedidoFleteController::class, 'opciones'])->name('fletes.opciones');
+            Route::get('fletes/pedidos', [PedidoFleteController::class, 'index'])->name('fletes.pedidos.index');
+            Route::post('fletes/pedidos', [PedidoFleteController::class, 'store'])->name('fletes.pedidos.store');
+            Route::get('fletes/pedidos/{pedido}', [PedidoFleteController::class, 'show'])->name('fletes.pedidos.show');
+            Route::post('fletes/pedidos/{pedido}/cancelar', [PedidoFleteController::class, 'cancelar'])->name('fletes.pedidos.cancelar');
+            Route::post('fletes/pedidos/{pedido}/resultado', [PedidoFleteController::class, 'resultado'])->name('fletes.pedidos.resultado');
+            Route::put('fletes/pedidos/{pedido}/checklist/{item}', [PedidoFleteController::class, 'checklist'])->where('item', '[a-z_]+')->name('fletes.pedidos.checklist');
+            Route::post('fletes/pedidos/{pedido}/propuestas/{propuesta}/aceptar', [PedidoFleteController::class, 'aceptar'])->name('fletes.propuestas.aceptar');
+            Route::post('fletes/pedidos/{pedido}/propuestas/{propuesta}/rechazar', [PedidoFleteController::class, 'rechazar'])->name('fletes.propuestas.rechazar');
 
             // Chequeo de contraparte por CUIT (TPA-72)
             Route::get('contrapartes/fuentes', [ContraparteController::class, 'fuentes'])->name('contrapartes.fuentes');
