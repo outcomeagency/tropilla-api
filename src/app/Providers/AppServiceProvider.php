@@ -16,12 +16,14 @@ use App\Domain\Establecimientos\Models\Productor;
 use App\Domain\Establecimientos\Policies\EstablecimientoPolicy;
 use App\Domain\Establecimientos\Policies\ProductorPolicy;
 use App\Domain\Hacienda\Proyecciones\SugeridorCategoria;
+use App\Domain\Ia\GeminiCliente;
 use App\Domain\Integridad\Anclaje\AnchorDriver;
 use App\Domain\Integridad\Anclaje\OpenTimestampsDriver;
 use App\Domain\Integridad\Anclaje\StubDriver;
 use App\Domain\Notificaciones\Push\FcmPushDriver;
 use App\Domain\Notificaciones\Push\LogPushDriver;
 use App\Domain\Notificaciones\Push\PushDriver;
+use App\Domain\Telegram\TelegramApi;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -56,6 +58,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(PushDriver::class, fn () => config('tropilla.push.driver') === 'fcm'
             ? FcmPushDriver::desdeArchivo(config('tropilla.push.fcm_credenciales'))
             : new LogPushDriver);
+
+        // Bot de Telegram y su asistente (TPA-77): credenciales del entorno, nunca en la base.
+        $this->app->bind(TelegramApi::class, fn () => TelegramApi::desdeConfig());
+        $this->app->bind(GeminiCliente::class, fn () => GeminiCliente::desdeConfig());
 
         // Memoiza reglas de categoría por request/job.
         $this->app->scoped(SugeridorCategoria::class);
@@ -96,6 +102,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('fotos', fn (Request $request) => Limit::perMinute(1200)->by('fotos|'.$request->ip()));
         RateLimiter::for('sync-push', fn (Request $request) => Limit::perMinute(60)->by('push|'.($request->user()?->currentAccessToken()?->getKey() ?? $request->ip())));
         RateLimiter::for('consultas', fn (Request $request) => Limit::perHour(3)->by('consultas|'.$request->ip()));
+        // TPA-77: webhook de Telegram (lo frena el secreto; el límite solo corta abusos) y códigos de vinculación.
+        RateLimiter::for('telegram', fn (Request $request) => Limit::perMinute(600)->by('telegram|'.$request->ip()));
+        RateLimiter::for('telegram-codigo', fn (Request $request) => Limit::perMinute(10)->by('telegram-codigo|'.($request->user()?->getAuthIdentifier() ?: $request->ip())));
         RateLimiter::for('api', fn (Request $request) => Limit::perMinute(300)->by($request->user()?->getAuthIdentifier() ?: $request->ip()));
 
         // Token web: vencimiento deslizante de N días (se extiende como mucho una vez por hora).

@@ -40,6 +40,28 @@ return [
         'fcm_credenciales' => env('TROPILLA_FCM_CREDENCIALES'),
     ],
 
+    // Bot de Telegram del productor (TPA-77). Sin token o sin secreto el webhook responde 404 y no se envía nada.
+    // El token y el secreto salen del entorno: nunca se guardan en la base ni se loguean.
+    'telegram' => [
+        'token' => env('TELEGRAM_BOT_TOKEN'),
+        'bot_username' => env('TELEGRAM_BOT_USERNAME', 'tropilla_bot'),
+        'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
+        'api_url' => env('TELEGRAM_API_URL', 'https://api.telegram.org'),
+        'codigo_minutos' => (int) env('TELEGRAM_CODIGO_MINUTOS', 10),
+        'propuesta_horas' => 24,
+        'max_archivo_mb' => 20,
+        'consultas_por_hora' => (int) env('TELEGRAM_CONSULTAS_POR_HORA', 60),
+    ],
+
+    // Asistente en lenguaje natural del bot (TPA-77): Gemini REST `generateContent` con function calling sobre herramientas
+    // de solo lectura (y la propuesta de cargas, que siempre se confirma). Sin key el bot responde que no está disponible.
+    'asistente' => [
+        'gemini_key' => env('GEMINI_API_KEY'),
+        'modelo' => env('TROPILLA_ASISTENTE_MODELO', 'gemini-flash-latest'),
+        'timeout_segundos' => (int) env('TROPILLA_ASISTENTE_TIMEOUT', 60),
+        'max_pasos' => 5,
+    ],
+
     // Alertas climáticas (TPA-70): fuentes gratuitas sin key, cache por punto y recálculo cada 6 h (scheduler `clima:actualizar`).
     'clima' => [
         'open_meteo_forecast_url' => env('TROPILLA_CLIMA_FORECAST_URL', 'https://api.open-meteo.com/v1/forecast'),

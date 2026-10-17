@@ -41,16 +41,17 @@ class NotificacionController extends Controller
 
     public function preferencias(Request $request): JsonResponse
     {
-        $prefs = DB::table('preferencias_notificacion')->where('usuario_id', $request->user()->id)->orderBy('tipo')->get(['establecimiento_id', 'tipo', 'push', 'email', 'resumen_diario']);
+        $prefs = DB::table('preferencias_notificacion')->where('usuario_id', $request->user()->id)->orderBy('tipo')->get(['establecimiento_id', 'tipo', 'push', 'email', 'resumen_diario', 'telegram']);
 
         return response()->json(['data' => $prefs->map(fn ($p) => ['establecimiento_id' => $p->establecimiento_id, 'tipo' => $p->tipo, 'push' => (bool) $p->push,
-            'email' => (bool) $p->email, 'resumen_diario' => (bool) $p->resumen_diario])->all(), 'meta' => ['defaults' => ['push' => true, 'email' => false, 'resumen_diario' => false]]]);
+            'email' => (bool) $p->email, 'resumen_diario' => (bool) $p->resumen_diario, 'telegram' => (bool) $p->telegram])->all(),
+            'meta' => ['defaults' => ['push' => true, 'email' => false, 'resumen_diario' => false, 'telegram' => true]]]);
     }
 
     public function guardarPreferencias(Request $request): JsonResponse
     {
         $items = $request->validate(['*' => ['array'], '*.establecimiento_id' => ['sometimes', 'nullable', 'uuid'], '*.tipo' => ['required', Rule::in(self::TIPOS)],
-            '*.push' => ['required', 'boolean'], '*.email' => ['required', 'boolean'], '*.resumen_diario' => ['required', 'boolean']]);
+            '*.push' => ['required', 'boolean'], '*.email' => ['required', 'boolean'], '*.resumen_diario' => ['required', 'boolean'], '*.telegram' => ['sometimes', 'boolean']]);
         if (! array_is_list($request->all()) || $request->all() === []) {
             throw ApiException::validacion(__('Se espera una lista de preferencias.'), ['preferencias' => [__('Lista no vacía.')]]);
         }
@@ -64,7 +65,8 @@ class NotificacionController extends Controller
             foreach ($items as $p) {
                 DB::table('preferencias_notificacion')->updateOrInsert(
                     ['usuario_id' => $u->id, 'establecimiento_id' => $p['establecimiento_id'] ?? null, 'tipo' => $p['tipo']],
-                    ['push' => $p['push'], 'email' => $p['email'], 'resumen_diario' => $p['resumen_diario'], 'updated_at' => now(), 'created_at' => now()],
+                    ['push' => $p['push'], 'email' => $p['email'], 'resumen_diario' => $p['resumen_diario'], 'updated_at' => now(), 'created_at' => now()]
+                        + (array_key_exists('telegram', $p) ? ['telegram' => $p['telegram']] : []),
                 );
             }
         });

@@ -32,7 +32,8 @@ final class ConfirmarBorrador
         private readonly RegistrarAuditoria $auditoria,
     ) {}
 
-    public function handle(Establecimiento $est, User $usuario, object $b, bool $confirmarAdvertencias): object
+    /** @param 'web'|'telegram' $origen de los eventos (TPA-77: el bot confirma con origen `telegram`) */
+    public function handle(Establecimiento $est, User $usuario, object $b, bool $confirmarAdvertencias, string $origen = 'web'): object
     {
         if ($b->estado === 'confirmado') {
             return $b; // idempotente
@@ -65,7 +66,7 @@ final class ConfirmarBorrador
         }
         $paginas = Borradores::paginas($b);
 
-        return DB::transaction(function () use ($est, $usuario, $b, $familia, $campos, $propuestos, $paginas, $confirmarAdvertencias) {
+        return DB::transaction(function () use ($est, $usuario, $b, $familia, $campos, $propuestos, $paginas, $confirmarAdvertencias, $origen) {
             $b = DB::table('borradores_documento')->where('id', $b->id)->lockForUpdate()->first();
             if ($b->estado === 'confirmado') {
                 return $b;
@@ -80,7 +81,7 @@ final class ConfirmarBorrador
                 foreach ($sujetos as $s) {
                     $in = json_decode(json_encode(['id' => (string) Str::uuid7(), 'tipo' => $p['tipo'], 'sujetos' => $s, 'payload' => (object) $p['payload'],
                         'ocurrido_en' => $p['ocurrido_en'], 'observaciones' => $p['observaciones'], 'adjuntos' => $paginas]), false);
-                    $r = $this->registrarEvento->handle($est, $usuario, ArmarSobreWeb::alta($est, $usuario, $in), ['canal' => 'web', 'confirmar_advertencias' => $confirmarAdvertencias]);
+                    $r = $this->registrarEvento->handle($est, $usuario, ArmarSobreWeb::alta($est, $usuario, $in, $origen), ['canal' => 'web', 'confirmar_advertencias' => $confirmarAdvertencias]);
                     $eventoIds[] = $r->evento->id;
                 }
             }

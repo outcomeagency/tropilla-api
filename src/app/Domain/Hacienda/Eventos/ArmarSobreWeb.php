@@ -12,12 +12,13 @@ use stdClass;
 
 /**
  * La web no canonicaliza ni hashea (api-v1 A3): el servidor arma el sobre `tropilla.evento/1` con
- * `origen: web`, `autor_id` = usuario, `creado_en` = ahora (ms, UTC) y sin `dispositivo_id`.
+ * `origen: web` (o `telegram` si lo carga el bot, TPA-77), `autor_id` = usuario, `creado_en` = ahora (ms, UTC) y sin `dispositivo_id`.
  * El input se lee del cuerpo crudo decodificado **con objetos** (para no convertir `{}` en `[]`).
  */
 final class ArmarSobreWeb
 {
-    public static function alta(Establecimiento $est, User $autor, stdClass $in): stdClass
+    /** @param 'web'|'telegram' $origen */
+    public static function alta(Establecimiento $est, User $autor, stdClass $in, string $origen = 'web'): stdClass
     {
         $s = new stdClass;
         $s->esquema = 'tropilla.evento/1';
@@ -26,7 +27,7 @@ final class ArmarSobreWeb
         $s->evento_raiz_id = $s->id;
         $s->version = 1;
         $s->accion = 'alta';
-        self::comunes($s, $est, $autor, $in);
+        self::comunes($s, $est, $autor, $in, $origen);
         CompletarSobreWeb::completar($est, $s);
 
         return $s;
@@ -69,7 +70,7 @@ final class ArmarSobreWeb
         return $s;
     }
 
-    private static function comunes(stdClass $s, Establecimiento $est, User $autor, stdClass $in): void
+    private static function comunes(stdClass $s, Establecimiento $est, User $autor, stdClass $in, string $origen): void
     {
         $s->tipo = $in->tipo;
         $s->tipo_version = $in->tipo_version ?? (TiposEvento::get((string) $in->tipo)?->version_vigente ?? 1);
@@ -78,7 +79,7 @@ final class ArmarSobreWeb
         $s->ocurrido_en = $in->ocurrido_en;
         $s->creado_en = now()->utc()->format('Y-m-d\TH:i:s.v\Z');
         $s->autor_id = $autor->id;
-        $s->origen = 'web';
+        $s->origen = $origen;
         foreach (['responsable', 'observaciones'] as $c) {
             if (isset($in->{$c})) {
                 $s->{$c} = $in->{$c};
