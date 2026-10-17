@@ -989,6 +989,32 @@ aditivos `POST /organizaciones` (solo staff) y `POST /organizaciones/{o}/miembro
 - Verificado: 6 tests (flujo completo con subida diferida, 879 con advertencias, fallas/reintento/reextraer/filas nuevas/sin proveedor/descartar,
   permisos 403/404/409/422, normalización, request real del SDK con middleware).
 
+## TPA-64 · Captura estructurada de DT-e y guías provinciales · ✅ (parte API)
+
+**Real vs mock:** real. Reutiliza el pipeline de TPA-61/62 (borrador → extracción Gemini/Claude → revisión campo a campo → confirmación explícita);
+los tests usan `FakeExtractor`. No hay integración con SIGSA: TROPILLA no emite ni valida DT-e/guías (no hay API pública de SENASA para eso).
+
+**Comentario del dev:**
+- Refactor sin cambio de contrato para el acta: `FamiliaBase` concentra el campo revisable, la interpretación sin autocorregir, la validación, el catálogo
+  de categorías y la salida estructurada genérica (variante + problemas + escalares + filas). La familia decide qué hace la confirmación
+  (`confirmacion()`: eventos con sujetos resueltos y/o eventos existentes a vincular) y qué advertencias bloquean (`bloqueantes()`).
+- Familias nuevas `dte` (`dte.356_2008/1` DT-e de SIGSA, `dte.dta_historico/1` DTA en papel) y `guia_provincial` (`guia_provincial.dut_chaco/1`,
+  `guia_provincial.generica/1` para otras provincias con `variante_no_verificada`). Extraen número, CUVE, fechas, motivo, origen/destino (RENSPA,
+  titular, CUIT, establecimiento, localidad), transporte, precintos, requisitos sanitarios, FIDHA, intervenciones/talones del DUT y el detalle por
+  especie/categoría/cantidad/marca. Tipo de documento nuevo `guia_provincial` (privado, comercial).
+- Grupo «Movimiento en TROPILLA» (campos propios, se revisan como cualquier otro): sentido sugerido por RENSPA de origen/destino; `vincular` sugerido si
+  un ingreso/egreso vigente tiene el mismo N.º de DT-e (comparado sin formato), si no `registrar`. Vincular no crea eventos: el documento se versiona
+  con el vínculo y queda en `eventos_vinculados`. Registrar crea `hacienda.egreso` (conteo del lote anónimo o animales por caravana) o
+  `hacienda.ingreso` (conteo a lote anónimo) con `dte_numero`, contraparte declarada y `documento_ids`.
+- Conciliación sin autocorregir: suma del detalle vs total, cabezas por categoría vs el movimiento vinculado, N.º de DT-e distinto, sentido opuesto,
+  RENSPA ajeno, vigencia inválida, DT-e anulado, conteo del lote insuficiente. Bloquean: lote/caravanas/movimiento sin elegir o ajenos, lote de otra
+  especie o no anónimo para conteo, caravanas desconocidas, categoría de otra especie. Las advertencias se recalculan al confirmar.
+- Migración aditiva `2026_10_21_100000_add_dte_guia_familias_to_borradores` (columna `eventos_vinculados`, CHECK de familias, tipo `guia_provincial`).
+- Verificado: 4 tests nuevos (DT-e → egreso por conteo y documento versionado; DUT → vincula al egreso con el mismo DT-e sin crear eventos y variante
+  genérica; egreso por caravanas e ingreso por conteo con bloqueos; validación, movimiento ajeno y 403) + los 13 de borradores; suite 311 verde, Pint.
+- Pendiente: catálogo completo de campos de la pantalla SIGSA y ejemplares vigentes de guías de Corrientes, Formosa y Misiones (investigación,
+  incertidumbres 2 y 3); validar contra fotos reales de DT-e/DUT.
+
 ---
 
 ## TPA-77 · Bot de Telegram del productor · ✅ (parte API)
@@ -1064,6 +1090,7 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-57: `Toma.contrato` y `Toma.entrega` (solo la línea del comprador) aditivos; `estado=vigentes` en `/comprador/tomas`; códigos 403 `perfil_comprador_requerido` / `email_no_verificado`.
 - TPA-54 (bugfix): schema `Foto`; `fotos` de `Perfil`/`Oferta` pasan de `Archivo[]` a `Foto[]` y las públicas de `string[]` a `Foto[]`; `foto` aditivo junto a cada `foto_url`; rutas `/public/fotos/{sha}` y `/fotos/{sha}`; `Profesional.foto_sha256`.
 - TPA-58: `Busco.zona.provincias_nombres` aditivo; reglas de visibilidad del comprador y puntaje documentados.
+- TPA-64: familias `dte` y `guia_provincial`; `BorradorDocumento.eventos_vinculados` y `presentacion`; `BorradorCampo.tipo` suma `lote` y `evento`; `agregar_fila` acepta los grupos de la familia; `aviso` ya no nombra solo a SENASA.
 - TPA-51: `POST /organizaciones` (staff) y `POST /organizaciones/{o}/miembros` aditivos; `Adherido.datos` con solo lo consentido; 409 `ya_adherido`.
 - TPA-77: tag `Telegram` (`/me/telegram*`, `/telegram/webhook`); `Evento.origen` suma `telegram`; `preferencias-notificacion` suma `telegram` (opcional en el PUT).
 

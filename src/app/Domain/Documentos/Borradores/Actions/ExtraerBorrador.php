@@ -59,6 +59,7 @@ final class ExtraerBorrador
 
         $norm = $familia->normalizar($r->salida);
         $est = Establecimiento::query()->findOrFail($b->establecimiento_id);
+        $norm['campos'] = $familia->completar($est, $norm['campos']);
         $adv = $familia->advertencias($est, $norm['campos'], $r->salida);
         DB::transaction(function () use ($b, $r, $norm, $adv, $shas, $inicio) {
             $version = (int) DB::table('borrador_extracciones')->where('borrador_id', $b->id)->max('version') + 1;

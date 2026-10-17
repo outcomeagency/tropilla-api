@@ -61,7 +61,7 @@ class BorradorController extends Controller
         $d = $request->validate([
             'campos' => ['present', 'array', 'max:500'], 'campos.*.ruta' => ['required', 'string', 'max:100'],
             'campos.*.estado' => ['required', 'in:correcto,editado,no_legible,no_aplica'], 'campos.*.valor' => ['nullable'],
-            'agregar_fila' => ['nullable', 'in:vacunas,categorias'], 'row_version' => ['nullable', 'integer', 'min:1'],
+            'agregar_fila' => ['nullable', 'string', 'max:40'], 'row_version' => ['nullable', 'integer', 'min:1'],
         ]);
         $cambios = array_map(fn ($c) => array_intersect_key($c, array_flip(['ruta', 'estado', 'valor'])), $request->input('campos', []));
         $b = $revisar->handle($establecimiento, $request->user(), $this->buscar($establecimiento, $borrador), $cambios, $d['agregar_fila'] ?? null,

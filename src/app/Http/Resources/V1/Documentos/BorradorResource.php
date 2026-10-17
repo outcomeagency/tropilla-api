@@ -4,6 +4,7 @@ namespace App\Http\Resources\V1\Documentos;
 
 use App\Domain\Documentos\Borradores\Borradores;
 use App\Domain\Documentos\Borradores\Campos;
+use App\Domain\Documentos\Borradores\Familias\Familias;
 use App\Domain\Documentos\Fotos;
 use App\Support\Formato;
 use Illuminate\Support\Carbon;
@@ -12,12 +13,13 @@ use Illuminate\Support\Facades\DB;
 /** `BorradorDocumento` (TPA-61). `detalle`: suma el historial auditable (extracciones y correcciones). */
 final class BorradorResource
 {
-    public const AVISO = 'Transcripción asistida: revisá cada dato contra el original. No es una presentación oficial ante SENASA.';
+    public const AVISO = 'Transcripción asistida: revisá cada dato contra el original. No es una presentación oficial ni reemplaza al documento emitido por SENASA o la provincia.';
 
     /** @return array<string, mixed> */
     public static function make(object $b, bool $detalle = false): array
     {
-        $campos = json_decode($b->campos, true);
+        $familia = Familias::get($b->familia);
+        $campos = $familia->refrescarOpciones($b->establecimiento_id, json_decode($b->campos, true));
         $shas = Borradores::paginas($b);
         $estados = DB::table('archivos')->whereIn('sha256', $shas)->pluck('estado', 'sha256');
         $fotos = collect(Fotos::lista($shas, false))->keyBy('sha256');
@@ -31,7 +33,8 @@ final class BorradorResource
             'paginas' => array_map(fn ($sha, $i) => ['numero' => $i + 1, 'sha256' => $sha, 'estado' => $estados[$sha] ?? 'pendiente', 'foto' => $fotos->get($sha)], $shas, array_keys($shas)),
             'campos' => $campos, 'pendientes' => Campos::pendientes($campos), 'advertencias' => json_decode($b->advertencias, true),
             'extraccion' => $ext === null ? null : ['version' => (int) $ext->version, 'esquema' => $ext->esquema, 'proveedor' => $ext->proveedor, 'modelo' => $ext->modelo, 'creada_en' => $fecha($ext->created_at)],
-            'evento_ids' => json_decode($b->evento_ids, true), 'aviso' => __(self::AVISO), 'row_version' => (int) $b->row_version,
+            'evento_ids' => json_decode($b->evento_ids, true), 'eventos_vinculados' => json_decode($b->eventos_vinculados ?? '[]', true),
+            'presentacion' => $familia->presentacion(), 'aviso' => __(self::AVISO), 'row_version' => (int) $b->row_version,
             'creado_por' => $b->creado_por, 'created_at' => $fecha($b->created_at), 'updated_at' => $fecha($b->updated_at),
             'confirmado_por' => $b->confirmado_por, 'confirmado_en' => $fecha($b->confirmado_en), 'descartado_en' => $fecha($b->descartado_en),
         ];
