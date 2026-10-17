@@ -1164,6 +1164,35 @@ del teléfono: 201/200). Migración `identificacion_importaciones` + `identifica
   idempotencia y filas que no se borran; reglas por fecha/especie y catálogo; 403/404/422); suite 331 verde, Pint.
 - Desvío: el brain no tiene estos endpoints ni los campos nuevos del payload (anotado abajo y en `openapi-v1.yaml`).
 
+## TPA-75 · Tablero agregado con gobernanza y permisos · ✅ (parte API, prototipo sintético)
+
+Endpoints (tag `Agregados`): `GET /agregados/contexto`, `GET /agregados/tablero`, `GET /agregados/tablero/exportar` (CSV),
+`GET /agregados/consultas`; solo equipo: `GET /agregados/gobernanza`, `POST /agregados/politicas`, `GET|POST /agregados/pruebas`,
+`GET /agregados/pruebas/{p}`, `POST /agregados/revisiones`, `GET|POST /agregados/clientes`, `PATCH /agregados/clientes/{c}`,
+`GET|POST /agregados/clientes/{c}/miembros`, `DELETE …/miembros/{u}`. Dominio `App\Domain\Agregados`; migración `2026_10_23_090000_create_agregados_tables`.
+
+**Real vs mock:** la **única fuente es un dataset sintético** (`sintetico-2026.10-v1`, 182 establecimientos inventados × 8 trimestres,
+semilla fija, generado al primer uso) que no lee ningún dato de productores. El CHECK de `agregados_consultas.fuente` solo admite
+`sintetico`: sumar datos reales exige migración + ticket propio con opt-in por propósito (negocio-datos §5, consentimiento 5).
+
+**Comentario del dev:**
+- **Cubo fijo, no filtros libres**: por métrica × especie × trimestre se arma el cubo completo NEA/provincia × total/escala; cada consulta
+  recorta ese mismo cubo, así que cruzar consultas no revela más que lo publicado. No hay sumas entre trimestres ni «todas las especies».
+- **Supresión**: primaria por k (`k_minimo`, default 10) y dominancia (un aportante > 50 % de las cabezas/kg); complementaria iterativa en
+  las dos jerarquías aditivas hasta que restar partes de un total no despeje una celda ni un grupo inseguro. Valores redondeados
+  (cabezas a la política, establecimientos a 5, precio a $10/kg, cobertura a %). Celdas vacías salen `sin_datos`.
+- **Permisos**: licencia por cliente institucional (finalidad contractual, versión de contrato, vigencia, métricas, cupo ≤ política);
+  403 `metrica_no_habilitada` / `licencia_suspendida` / `licencia_vencida`, 429 `cupo_consultas_agotado` (día AR, lock por cliente);
+  sin membresía → 404; gobernanza solo `es_staff` (404 para el resto). El equipo puede previsualizar sin licencia (auditado, sin cupo).
+- **Auditoría y gate**: consultas, políticas, pruebas, revisiones y bitácora son append-only (trigger). La prueba de reidentificación
+  corre celda chica, dominancia, diferenciación por resta, vinculación con perfil público y entrada/salida de un aportante (advertencia).
+  Aprobar `reidentificacion` exige prueba aprobada de la política vigente (409 `prueba_pendiente`); con los 4 aspectos aprobados
+  `habilita_opt_in_real` = true (solo habilita planificarlo). Una política nueva reabre el gate.
+- Trampa: cambiar de política varía el patrón de supresión complementaria; combinar publicaciones de dos versiones puede despejar
+  celdas. Queda como riesgo residual para la revisión de `cohortes` antes de datos reales.
+- Verificado: 5 tests Pest nuevos (cubo protegido y consistente entre recortes, permisos/cupo/ajenos, CSV, gate y política, la prueba
+  falla si se apaga la complementaria); suite completa y Pint. Demo local: `DemoAgregadosSeeder` (`analista@tropilla.test`, `equipo@tropilla.test`).
+
 ## Desvíos del contrato
 
 Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
@@ -1198,6 +1227,7 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-51: `POST /organizaciones` (staff) y `POST /organizaciones/{o}/miembros` aditivos; `Adherido.datos` con solo lo consentido; 409 `ya_adherido`.
 - TPA-77: tag `Telegram` (`/me/telegram*`, `/telegram/webhook`); `Evento.origen` suma `telegram`; `preferencias-notificacion` suma `telegram` (opcional en el PUT).
 - TPA-66: endpoints de `sanidad/oficial`, `sanidad/protocolos`, `sanidad/estatus`, `sanidad/saneamiento` y `animales/{a}/pruebas`; familia `protocolo_sanitario` (grupo agregable `animales`, tipo de campo `decimal`); `TipoPrueba.enfermedad` en catálogos.
+- TPA-75: tag `Agregados` nuevo (tablero agregado con datos sintéticos, gobernanza, licencias); códigos `metrica_no_habilitada`, `licencia_suspendida`, `licencia_vencida`, `cupo_consultas_agotado`, `desglose_no_permitido`, `prueba_pendiente`.
 - TPA-67: endpoints `faena/*` (tag Comercial) y schemas `ResultadoFaena*`, `ResFaenaInput`, `LiquidacionFaena`; familia `resultado_faena` en borradores.
 
 ### TPA-76 · Ficha completa del establecimiento · ✅

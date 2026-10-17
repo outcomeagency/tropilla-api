@@ -27,6 +27,8 @@ class DatabaseSeeder extends Seeder
             // Demo «La Esperanza» (demo@tropilla.ar / tropilla-demo) para el front y la app. Idempotente.
             // Ficha regional, directorio y datos sintéticos ampliados; seguro para repetir y para producción con --force.
             $this->call(DemoRegionalSeeder::class);
+            // Tablero agregado (TPA-75): licencia demo y cuenta del equipo, solo local.
+            $this->call(DemoAgregadosSeeder::class);
         }
     }
 }
