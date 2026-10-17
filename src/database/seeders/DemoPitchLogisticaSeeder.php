@@ -12,8 +12,6 @@ use Illuminate\Support\Facades\DB;
  */
 class DemoPitchLogisticaSeeder extends Seeder
 {
-    private const ESTABLECIMIENTO = '01a14495-5600-7748-88f1-133064d0c1c5';
-
     private const AVISOS = [
         ['id' => '0199a440-0000-7000-8000-000000000001', 'titulo' => 'Pastaje demo · lomas y pastura en General Paz', 'modalidad' => 'pastaje', 'capacidad' => 120, 'hectareas' => '85.00', 'desde' => '2026-11-01', 'hasta' => '2027-04-30', 'precio' => 'a_convenir', 'agua' => '{aguada_natural,tajamar,bebederos}', 'alambrado' => 'regular', 'instalaciones' => '{manga,corrales,embarcadero}', 'descripcion' => 'Aviso ficticio de demostración. Lomas con pastura implantada y acceso a aguadas; receptividad y disponibilidad a confirmar en visita.'],
         ['id' => '0199a440-0000-7000-8000-000000000002', 'titulo' => 'Pastaje demo · bajos y esteros para búfalos', 'modalidad' => 'pastaje', 'capacidad' => 80, 'hectareas' => '110.00', 'desde' => '2026-12-01', 'hasta' => '2027-05-31', 'precio' => 'a_convenir', 'agua' => '{aguada_natural,rio_arroyo}', 'alambrado' => 'regular', 'instalaciones' => '{manga,embarcadero}', 'descripcion' => 'Aviso ficticio de demostración. Ambiente de estero con acceso al arroyo; carga y manejo sujetos a evaluación conjunta.'],
@@ -35,7 +33,7 @@ class DemoPitchLogisticaSeeder extends Seeder
             ->where('e.nombre', 'La Esperanza')->where('m.usuario_id', $demo?->id)
             ->where('m.estado', 'activa')->where('m.rol', 'dueno')->select('e.*')->first();
 
-        if ($demo === null || $establecimiento === null || $establecimiento->id !== self::ESTABLECIMIENTO) {
+        if ($demo === null || $establecimiento === null) {
             $this->command?->warn('No se encontró La Esperanza de demo@tropilla.ar; no se modificó ningún registro.');
 
             return;
@@ -45,7 +43,7 @@ class DemoPitchLogisticaSeeder extends Seeder
             $ahora = now();
             foreach (self::AVISOS as $aviso) {
                 DB::table('campo_avisos')->updateOrInsert(['id' => $aviso['id']], [
-                    'establecimiento_id' => self::ESTABLECIMIENTO, 'autor_id' => $demo->id,
+                    'establecimiento_id' => $establecimiento->id, 'autor_id' => $demo->id,
                     'titulo' => $aviso['titulo'], 'descripcion' => $aviso['descripcion'], 'modalidad' => $aviso['modalidad'],
                     'especies' => '{BOV,BUB}', 'categorias' => '{}',
                     'capacidad_cabezas' => $aviso['capacidad'], 'superficie_ha' => $aviso['hectareas'],
