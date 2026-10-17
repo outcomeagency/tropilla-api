@@ -107,6 +107,14 @@ return [
         'revision_legal' => env('TROPILLA_CONTRAPARTES_REVISION_LEGAL', 'pendiente'),
     ],
 
+    // Matching de camiones jaula (TPA-73): piloto concierge en un corredor (provincias INDEC separadas por coma). Fuera del
+    // corredor el pedido se registra igual, marcado como lista de espera. `revision_legal`: rol de TROPILLA, seguro y responsabilidades.
+    'fletes' => [
+        'corredor' => env('TROPILLA_FLETES_CORREDOR', '18'),
+        'radio_km' => (int) env('TROPILLA_FLETES_RADIO_KM', 150),
+        'revision_legal' => env('TROPILLA_FLETES_REVISION_LEGAL', 'pendiente'),
+    ],
+
     // Pepper del HMAC de CUIT (búsqueda exacta / unicidad sin descifrar). modelo-datos §2.3.
     'cuit_pepper' => env('TROPILLA_CUIT_PEPPER', env('APP_KEY')),
 ];
