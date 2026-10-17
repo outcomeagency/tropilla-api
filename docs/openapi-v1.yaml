@@ -4248,7 +4248,7 @@ paths:
       tags: [Documentos]
       summary: 'Confirmar: registra los eventos y versiona el documento'
       operationId: post_establecimientos_establecimiento_borradores_borrador_confirmar
-      description: '**Ability:** `documentos.crear` + la del tipo de evento (`sanidad.crear` / `hacienda.crear`); vincular a un movimiento existente exige poder versionar el documento (`documentos.versionar`). Única forma de que un borrador modifique datos. Exige todos los campos revisados (422 `revision_incompleta`) y, si hay advertencias, `confirmar_advertencias: true` (422 `requiere_confirmacion` con `advertencias`). Acta de vacunación (TPA-62): un `sanidad.vacunacion` por vacuna (aftosa / brucelosis) con fecha, producto, serie, vencimiento, vacunador y campaña; sujetos = animales activos de las categorías con vacunados (tandas de 1000) y lotes anónimos con esas categorías (422 `regla_bloqueante` si no hay); alcance `cero` no crea eventos. DT-e y guía provincial (TPA-64): según el grupo `movimiento`, `vincular` relaciona el documento con el ingreso/egreso ya cargado (sin eventos nuevos; queda en `eventos_vinculados`) o `registrar` crea un `hacienda.egreso` (conteo del lote anónimo o animales por caravana) o `hacienda.ingreso` (conteo a un lote anónimo) con `dte_numero`, contraparte declarada y `documento_ids`. Las advertencias bloqueantes de la familia (p. ej. `caravana_desconocida`, `lote_sin_elegir`, `categoria_otra_especie`) dan 422 `regla_bloqueante` aunque se confirmen. Las páginas originales van como `adjuntos` y el documento recibe una versión `correccion_metadatos` vinculada a los eventos (si el rol puede versionarlo). Todo o nada; idempotente (reconfirmar devuelve el mismo resultado).'
+      description: '**Ability:** `documentos.crear` + la del tipo de evento (`sanidad.crear` / `hacienda.crear`); vincular a un movimiento existente exige poder versionar el documento (`documentos.versionar`). Única forma de que un borrador modifique datos. Exige todos los campos revisados (422 `revision_incompleta`) y, si hay advertencias, `confirmar_advertencias: true` (422 `requiere_confirmacion` con `advertencias`). Acta de vacunación (TPA-62): un `sanidad.vacunacion` por vacuna (aftosa / brucelosis) con fecha, producto, serie, vencimiento, vacunador y campaña; sujetos = animales activos de las categorías con vacunados (tandas de 1000) y lotes anónimos con esas categorías (422 `regla_bloqueante` si no hay); alcance `cero` no crea eventos. DT-e y guía provincial (TPA-64): según el grupo `movimiento`, `vincular` relaciona el documento con el ingreso/egreso ya cargado (sin eventos nuevos; queda en `eventos_vinculados`) o `registrar` crea un `hacienda.egreso` (conteo del lote anónimo o animales por caravana) o `hacienda.ingreso` (conteo a un lote anónimo) con `dte_numero`, contraparte declarada y `documento_ids`. Las advertencias bloqueantes de la familia (p. ej. `caravana_desconocida`, `lote_sin_elegir`, `categoria_otra_especie`) dan 422 `regla_bloqueante` aunque se confirmen. Las páginas originales van como `adjuntos` y el documento recibe una versión `correccion_metadatos` vinculada a los eventos (si el rol puede versionarlo). Resultado de faena (TPA-67, requiere `comercial.precios`): no crea eventos; registra el resultado (`origen: transcripcion_revisada`, `borrador_id`) en `…/faena/resultados` con las mismas advertencias del POST. Todo o nada; idempotente (reconfirmar devuelve el mismo resultado).'
       parameters:
       - name: establecimiento
         in: path
@@ -5133,6 +5133,269 @@ paths:
         '403': {$ref: '#/components/responses/Prohibido'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
         '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/faena/resultados:
+    get:
+      tags: [Comercial]
+      summary: Resultados de faena (romaneos) del establecimiento
+      operationId: get_establecimientos_establecimiento_faena_resultados
+      description: '**Ability:** `comercial.precios` (dueño/admin). TPA-67. Privado: no viaja por sync ni a lo público. Orden: fecha de faena descendente. Sin `reses` ni `conciliacion` (están en el detalle).'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: operacion_id
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/Uuid'}
+      - name: borrador_id
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/Uuid'}
+      - name: estado
+        in: query
+        required: false
+        schema: {type: string, enum: [vigente, anulado, todos], default: vigente}
+      - name: cursor
+        in: query
+        required: false
+        schema: {type: string}
+      - name: limit
+        in: query
+        required: false
+        schema: {type: integer}
+        description: Default 25, máx. 100
+      responses:
+        '200':
+          description: OK (paginado por cursor)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: {$ref: '#/components/schemas/ResultadoFaena'}
+                  meta: {$ref: '#/components/schemas/MetaCursor'}
+                required: [data, meta]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+    post:
+      tags: [Comercial]
+      summary: Registrar el resultado de faena de una tropa (una fila por res)
+      operationId: post_establecimientos_establecimiento_faena_resultados
+      description: '**Ability:** `comercial.precios` (dueño/admin). TPA-67. Privado: no viaja por sync ni a lo público. Idempotente por `id` (reintento → 200 con el mismo resultado; id de otro establecimiento → 409 `id_reutilizado`). Cada res se asocia a un animal por `animal_id` o por su RFID/caravana (incluye vendidos/dados de baja). Las reses son **append-only** (se corrige anulando y volviendo a cargar). No crea eventos ni toca pesos vivos. `origen` ≠ `declarado` exige `documento_id` (el romaneo original). Advertencias (422 `requiere_confirmacion` salvo `confirmar_advertencias: true`): `res_sin_asociar`, `animal_fuera_de_la_venta`, `cabezas_distintas`, `medias_no_suman`, `peso_atipico` (fuera de 60–450 kg), `fecha_futura`, `faena_antes_de_la_venta`. Garrón o animal repetido → 422 de validación.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ResultadoFaenaInput'}
+      responses:
+        '201':
+          description: Creado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ResultadoFaenaDetalle'}
+                required: [data]
+                additionalProperties: false
+        '200':
+          description: Reintento idempotente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ResultadoFaenaDetalle'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+        '409': {$ref: '#/components/responses/Conflicto'}
+  /establecimientos/{establecimiento}/faena/planilla:
+    post:
+      tags: [Comercial]
+      summary: Leer la planilla digital del frigorífico (CSV/XLSX) para revisar
+      operationId: post_establecimientos_establecimiento_faena_planilla
+      description: '**Ability:** `comercial.precios` (dueño/admin). TPA-67. Privado: no viaja por sync ni a lo público. No guarda nada: devuelve las reses normalizadas (coma decimal, `media_a + media_b` si falta el peso) y errores por fila (número de fila de la planilla, con encabezado = 1) para revisar antes del POST de resultados con `origen: importado`. Encabezados tolerantes (garrón/correlativo, RFID/caravana, media A/B, kg, tipificación…).'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                archivo: {type: string, format: binary, description: 'CSV (`,` o `;`) o XLSX, ≤ 5 MiB'}
+              required: [archivo]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      reses: {type: array, items: {$ref: '#/components/schemas/ResFaenaInput'}}
+                      errores:
+                        type: array
+                        items: {type: object, properties: {fila: {type: integer}, mensaje: {type: string}}, required: [fila, mensaje]}
+                      columnas: {type: array, items: {type: string}, description: Columnas normalizadas reconocidas}
+                    required: [reses, errores, columnas]
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/faena/resultados/{resultado}:
+    get:
+      tags: [Comercial]
+      summary: Resultado de faena con reses y conciliación
+      operationId: get_establecimientos_establecimiento_faena_resultados_resultado
+      description: '**Ability:** `comercial.precios` (dueño/admin). TPA-67. Privado: no viaja por sync ni a lo público. `oficial` = dato del frigorífico tal como figura; `conciliacion` = cálculo de TROPILLA (se recalcula al leer, no se guarda).'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: resultado
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ResultadoFaenaDetalle'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+    patch:
+      tags: [Comercial]
+      summary: Vincular venta/egreso, cargar la liquidación y adjuntar liquidación/factura
+      operationId: patch_establecimientos_establecimiento_faena_resultados_resultado
+      description: '**Ability:** `comercial.precios` (dueño/admin). TPA-67. Privado: no viaja por sync ni a lo público. Solo los campos enviados; `row_version` obligatorio (409 si cambió). Auditado (antes/después). Venta y egreso son excluyentes. Las reses no se editan. Anulado → 409 `estado_invalido`.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: resultado
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ResultadoFaenaPatch'}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ResultadoFaenaDetalle'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+        '409': {$ref: '#/components/responses/Conflicto'}
+  /establecimientos/{establecimiento}/faena/resultados/{resultado}/anular:
+    post:
+      tags: [Comercial]
+      summary: Anular el resultado con motivo (queda en el historial)
+      operationId: post_establecimientos_establecimiento_faena_resultados_resultado_anular
+      description: '**Ability:** `comercial.precios` (dueño/admin). TPA-67. Privado: no viaja por sync ni a lo público. Idempotente. Para corregir reses: anular y volver a cargar.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: resultado
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/MotivoInput'}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ResultadoFaena'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/faena/resultados/{resultado}/exportar:
+    get:
+      tags: [Comercial]
+      summary: Exportar la conciliación (PDF o CSV)
+      operationId: get_establecimientos_establecimiento_faena_resultados_resultado_exportar
+      description: '**Ability:** `comercial.precios` (dueño/admin). TPA-67. Privado: no viaja por sync ni a lo público. CSV `;` UTF-8 con BOM: una fila por res y por animal faltante; las columnas `tropilla_*` son cálculo propio, el resto es del frigorífico; al final una fila de resumen. PDF por Gotenberg (503 `servicio_no_disponible` si no responde). Se genera a pedido, no se guarda.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: resultado
+        in: path
+        required: true
+        schema: {type: string}
+      - name: formato
+        in: query
+        required: false
+        schema: {type: string, enum: [pdf, csv], default: pdf}
+      responses:
+        '200':
+          description: Archivo
+          content:
+            application/pdf:
+              schema: {type: string, format: binary}
+            text/csv:
+              schema: {type: string}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '503': {description: 'Gotenberg no respondió (code: servicio_no_disponible)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
   /establecimientos/{establecimiento}/precios/historial:
     get:
       tags: [Comercial]
@@ -9832,7 +10095,7 @@ components:
       properties:
         id: {$ref: '#/components/schemas/Uuid'}
         documento_id: {$ref: '#/components/schemas/Uuid'}
-        familia: {type: string, enum: [acta_vacunacion, dte, guia_provincial, protocolo_sanitario, libro_tratamientos, fidha]}
+        familia: {type: string, enum: [acta_vacunacion, dte, guia_provincial, protocolo_sanitario, libro_tratamientos, fidha, resultado_faena]}
       required: [id, documento_id, familia]
       additionalProperties: false
     BorradorCamposInput:
@@ -10139,6 +10402,150 @@ components:
           vence_el: {type: [string, 'null'], format: date}
           origen: {type: string}
           origen_leyenda: {type: string}
+    ResFaenaInput:
+      type: object
+      description: 'Una res del romaneo. Kg con coma o punto, hasta 1 decimal canónico. `peso_kg` o las dos medias.'
+      properties:
+        garron: {type: string, maxLength: 40}
+        identificacion: {type: [string, 'null'], maxLength: 100, description: RFID o caravana como figura}
+        animal_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}], description: 'Si falta se busca por `identificacion`'}
+        media_a_kg: {type: [string, 'null']}
+        media_b_kg: {type: [string, 'null']}
+        peso_kg: {type: [string, 'null']}
+        categoria: {type: [string, 'null']}
+        tipificacion: {type: [string, 'null']}
+        decomiso: {type: [string, 'null']}
+        observaciones: {type: [string, 'null']}
+      required: [garron]
+    LiquidacionFaena:
+      type: object
+      description: 'Liquidación tal como la emitió el frigorífico o consignataria (dato de la contraparte; el neto se conserva aunque no cierre).'
+      properties:
+        numero: {type: [string, 'null']}
+        fecha: {type: [string, 'null'], format: date}
+        emisor: {type: [string, 'null']}
+        kg: {oneOf: [{$ref: '#/components/schemas/Decimal'}, {type: 'null'}]}
+        precio_kg: {oneOf: [{$ref: '#/components/schemas/Decimal'}, {type: 'null'}]}
+        bruto: {oneOf: [{$ref: '#/components/schemas/Decimal'}, {type: 'null'}]}
+        deducciones:
+          type: array
+          maxItems: 30
+          items: {type: object, properties: {concepto: {type: string}, importe: {$ref: '#/components/schemas/Decimal'}}, required: [concepto, importe]}
+        neto: {oneOf: [{$ref: '#/components/schemas/Decimal'}, {type: 'null'}]}
+        moneda: {type: string, enum: [ARS, USD], default: ARS}
+    ResultadoFaenaPatch:
+      type: object
+      properties:
+        operacion_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}], description: Venta registrada del establecimiento}
+        egreso_evento_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}], description: 'Raíz del `hacienda.egreso` (excluyente con la venta)'}
+        liquidacion: {oneOf: [{$ref: '#/components/schemas/LiquidacionFaena'}, {type: 'null'}]}
+        liquidacion_documento_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        factura_documento_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        observaciones: {type: [string, 'null']}
+        row_version: {type: integer, minimum: 1}
+      required: [row_version]
+    ResultadoFaenaInput:
+      type: object
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        frigorifico: {type: string, maxLength: 200}
+        frigorifico_cuit: {type: [string, 'null']}
+        faenador_numero: {type: [string, 'null']}
+        fecha_faena: {$ref: '#/components/schemas/Fecha'}
+        tropa_numero: {type: [string, 'null']}
+        romaneo_numero: {type: [string, 'null']}
+        dte_numero: {type: [string, 'null']}
+        cabezas_declaradas: {type: [integer, 'null'], minimum: 1, maximum: 5000}
+        tipificador: {type: [string, 'null']}
+        origen: {type: string, enum: [declarado, importado, transcripcion_revisada], description: '`importado` (planilla digital) y `transcripcion_revisada` exigen `documento_id`'}
+        documento_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}], description: Romaneo / planilla original en Documentos}
+        reses: {type: array, minItems: 1, maxItems: 2000, items: {$ref: '#/components/schemas/ResFaenaInput'}}
+        operacion_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        egreso_evento_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        liquidacion: {oneOf: [{$ref: '#/components/schemas/LiquidacionFaena'}, {type: 'null'}]}
+        liquidacion_documento_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        factura_documento_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        observaciones: {type: [string, 'null']}
+        confirmar_advertencias: {type: boolean}
+      required: [frigorifico, fecha_faena, origen, reses]
+    ResultadoFaena:
+      type: object
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        estado: {type: string, enum: [vigente, anulado]}
+        origen: {type: string, enum: [declarado, importado, transcripcion_revisada]}
+        origen_leyenda: {type: string}
+        operacion_id: {type: [string, 'null']}
+        egreso_evento_id: {type: [string, 'null']}
+        documento_id: {type: [string, 'null']}
+        liquidacion_documento_id: {type: [string, 'null']}
+        factura_documento_id: {type: [string, 'null']}
+        borrador_id: {type: [string, 'null'], description: 'Si vino de la lectura asistida (familia `resultado_faena`)'}
+        oficial:
+          type: object
+          description: Dato del frigorífico tal como figura en el original.
+          properties:
+            leyenda: {type: string}
+            frigorifico: {type: string}
+            frigorifico_cuit: {type: [string, 'null']}
+            faenador_numero: {type: [string, 'null']}
+            fecha_faena: {$ref: '#/components/schemas/Fecha'}
+            tropa_numero: {type: [string, 'null']}
+            romaneo_numero: {type: [string, 'null']}
+            dte_numero: {type: [string, 'null']}
+            cabezas_declaradas: {type: [integer, 'null']}
+            tipificador: {type: [string, 'null']}
+            totales: {type: object, properties: {reses: {type: integer}, kg: {$ref: '#/components/schemas/Decimal'}, asociadas: {type: integer}}}
+            reses:
+              type: array
+              description: Solo en el detalle
+              items:
+                allOf:
+                - {$ref: '#/components/schemas/ResFaenaInput'}
+                - type: object
+                  properties: {orden: {type: integer}}
+        liquidacion: {oneOf: [{$ref: '#/components/schemas/LiquidacionFaena'}, {type: 'null'}]}
+        observaciones: {type: [string, 'null']}
+        row_version: {type: integer}
+        creado_por: {$ref: '#/components/schemas/Uuid'}
+        created_at: {$ref: '#/components/schemas/FechaHora'}
+        updated_at: {$ref: '#/components/schemas/FechaHora'}
+        anulado_en: {type: [string, 'null']}
+        anulado_motivo: {type: [string, 'null']}
+      required: [id, estado, origen, oficial, row_version]
+    ResultadoFaenaDetalle:
+      allOf:
+      - {$ref: '#/components/schemas/ResultadoFaena'}
+      - type: object
+        properties:
+          conciliacion:
+            type: object
+            description: 'Cálculo propio de TROPILLA (orientativo, no reemplaza la liquidación). Enviados = animales de la venta o del egreso vinculado. Rinde individual = res / último peso vivo; de la tropa = kg de reses / kg vivos de la venta. Importe esperado solo si la venta es al gancho.'
+            properties:
+              leyenda: {type: string}
+              venta: {type: [object, 'null'], additionalProperties: true}
+              cabezas: {type: object, properties: {enviadas: {type: [integer, 'null']}, reses: {type: integer}, conciliadas: {type: integer}, faltantes: {type: integer}, no_estaban_en_la_venta: {type: integer}, sin_asociar: {type: integer}}}
+              kg: {type: object, properties: {reses: {type: string}, vivo: {type: [string, 'null']}, liquidados: {type: [string, 'null']}, diferencia_liquidados_vs_reses: {type: [string, 'null']}}}
+              rinde_pct: {type: [string, 'null']}
+              rinde_promedio_individual_pct: {type: [string, 'null']}
+              importe: {type: object, properties: {esperado_al_gancho: {type: [string, 'null']}, liquidado_bruto: {type: [string, 'null']}, deducciones: {type: [string, 'null']}, liquidado_neto: {type: [string, 'null']}, diferencia_bruto_vs_esperado: {type: [string, 'null']}, moneda: {type: string}}}
+              animales:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    animal_id: {$ref: '#/components/schemas/Uuid'}
+                    identificacion: {type: [string, 'null']}
+                    categoria: {type: [string, 'null']}
+                    enviado: {type: boolean}
+                    garron: {type: [string, 'null']}
+                    peso_res_kg: {type: [string, 'null']}
+                    peso_vivo_kg: {type: [string, 'null']}
+                    peso_vivo_fecha: {type: [string, 'null']}
+                    rinde_pct: {type: [string, 'null']}
+                    estado: {type: string, enum: [conciliado, faltante, no_estaba_en_la_venta]}
+              avisos: {type: array, items: {type: string}}
+        required: [conciliacion]
     BorradorDocumento:
       type: object
       description: >-
@@ -10165,7 +10572,7 @@ components:
         id: {$ref: '#/components/schemas/Uuid'}
         documento_id: {$ref: '#/components/schemas/Uuid'}
         documento_version_id: {$ref: '#/components/schemas/Uuid'}
-        familia: {type: string, enum: [acta_vacunacion, dte, guia_provincial, protocolo_sanitario, libro_tratamientos, fidha]}
+        familia: {type: string, enum: [acta_vacunacion, dte, guia_provincial, protocolo_sanitario, libro_tratamientos, fidha, resultado_faena]}
         esquema: {type: [string, 'null']}
         estado: {type: string, enum: [esperando_archivos, en_cola, extrayendo, para_revisar, fallido, confirmado, descartado]}
         error: {type: [string, 'null']}
