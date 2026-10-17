@@ -107,10 +107,18 @@ class TiposYListasSeeder extends Seeder
             ['tuberculina_cervical_comparada', 'Tuberculina cervical comparada', 'declarado', null],
             ['brucelosis_bpa', 'Brucelosis BPA', 'declarado', null],
             ['brucelosis_fpa', 'Brucelosis FPA', 'declarado', null],
+            // TPA-66: pruebas de la red de laboratorios (Res. SENASA 67/2019): tamiz BPA, confirmatorias SAT/2-ME, FPA, ELISA y FC.
+            ['brucelosis_sat', 'Brucelosis SAT (seroaglutinación lenta)', 'declarado', null],
+            ['brucelosis_2me', 'Brucelosis 2-ME (2-mercaptoetanol)', 'declarado', null],
+            ['brucelosis_elisa', 'Brucelosis ELISA', 'declarado', null],
+            ['brucelosis_fc', 'Brucelosis fijación del complemento', 'declarado', null],
             ['otra', 'Otra', 'declarado', null],
         ];
         foreach ($tipos as [$codigo, $nombre, $metodo, $umbrales]) {
             DB::table('tipos_prueba')->updateOrInsert(['codigo' => $codigo], [
+                'enfermedad' => match (true) {
+                    str_starts_with($codigo, 'brucelosis_') => 'brucelosis', str_starts_with($codigo, 'tuberculina_') => 'tuberculosis', default => null,
+                },
                 'nombres' => EspeciesSeeder::nombres($nombre), 'especies' => '{BOV,BUB}', 'metodo_calculo' => $metodo,
                 'umbrales' => $umbrales === null ? null : json_encode($umbrales), 'version' => 1, 'validado_por_vet' => false,
             ]);

@@ -96,7 +96,7 @@ final class Catalogos
             'tipos_prueba' => DB::table('tipos_prueba')->orderBy('id')->get()->map(fn ($t) => [
                 'codigo' => $t->codigo, ...$conNombre($t), 'especies' => PgTextArray::parse($t->especies),
                 'metodo_calculo' => $t->metodo_calculo, 'umbrales' => $j($t->umbrales), 'version' => (int) $t->version,
-                'validado_por_vet' => (bool) $t->validado_por_vet,
+                'validado_por_vet' => (bool) $t->validado_por_vet, 'enfermedad' => $t->enfermedad ?? null,
             ])->all(),
             'items' => DB::table('catalogo_items')->whereNull('establecimiento_id')->where('activo', true)->orderBy('lista')->orderBy('orden')->get()
                 ->groupBy('lista')->map(fn ($items) => $items->map(fn ($i) => [

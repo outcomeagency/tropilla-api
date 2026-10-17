@@ -3214,6 +3214,361 @@ paths:
         '401': {$ref: '#/components/responses/NoAutenticado'}
         '403': {$ref: '#/components/responses/Prohibido'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
+  /establecimientos/{establecimiento}/sanidad/oficial:
+    get:
+      tags: [Sanidad]
+      summary: Brucelosis y TBC del establecimiento (estatus, plan, positivos, vencimientos)
+      operationId: get_establecimientos_establecimiento_sanidad_oficial
+      description: '**Ability:** `sanidad.ver`. TPA-66. Privado. Estatus vigente e historial por enfermedad, plan de saneamiento activo, último protocolo, reactores de esa enfermedad y vencimientos dentro de `horizonte_dias` (estatus, resultado para movimiento, próximo muestreo y acciones del plan; incluye los ya vencidos). `aviso`: es una transcripción o declaración, no la condición oficial (SENASA/SIGSA).'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: horizonte_dias
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 365, default: 90}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/CondicionSanitaria'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/sanidad/oficial/resumen-veterinario:
+    get:
+      tags: [Sanidad]
+      summary: Resumen para el veterinario (PDF o CSV)
+      operationId: get_establecimientos_establecimiento_sanidad_oficial_resumen_veterinario
+      description: '**Ability:** `sanidad.ver`. TPA-66. Estatus, plan, positivos, protocolos de los últimos `meses` con resultado por animal y vencimientos. PDF por Gotenberg (503 `servicio_no_disponible` si no responde) o CSV `;` UTF-8 con BOM, una fila por resultado. Se genera a pedido, no se guarda. Aclara que no reemplaza SIGSA.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: formato
+        in: query
+        required: false
+        schema: {type: string, enum: [pdf, csv], default: pdf}
+      - name: meses
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 60, default: 24}
+      responses:
+        '200':
+          description: Archivo
+          content:
+            application/pdf:
+              schema: {type: string, format: binary}
+            text/csv:
+              schema: {type: string}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '503': {description: 'Gotenberg no respondió (code: servicio_no_disponible)', content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}}
+  /establecimientos/{establecimiento}/sanidad/protocolos:
+    get:
+      tags: [Sanidad]
+      summary: Protocolos de brucelosis/TBC
+      operationId: get_establecimientos_establecimiento_sanidad_protocolos
+      description: '**Ability:** `sanidad.ver`. TPA-66. Más recientes primero (fecha de muestreo). Sin `resultados` (ver el detalle).'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - {name: enfermedad, in: query, required: false, schema: {type: string, enum: [brucelosis, tuberculosis]}}
+      - {name: motivo, in: query, required: false, schema: {type: string, enum: [does, recertificacion, saneamiento, movimiento, rutina, otro]}}
+      - {name: estado, in: query, required: false, schema: {type: string, enum: [vigente, anulado, todos], default: vigente}}
+      - {name: cursor, in: query, required: false, schema: {type: string}}
+      - {name: limit, in: query, required: false, schema: {type: integer}}
+      responses:
+        '200':
+          description: OK (paginado por cursor)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: {$ref: '#/components/schemas/ProtocoloSanitario'}
+                  meta: {$ref: '#/components/schemas/MetaCursor'}
+                required: [data, meta]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+    post:
+      tags: [Sanidad]
+      summary: Registrar protocolo con resultado por animal
+      operationId: post_establecimientos_establecimiento_sanidad_protocolos
+      description: '**Ability:** `sanidad.crear`. TPA-66. Idempotente por `id` (200 si ya existía). Cada fila lleva `animal_id` o `identificacion` (se asocia sola si coincide con una identificación vigente, tolerante a ceros; si no, queda en el protocolo sin pasar a una ficha). Las filas asociadas generan `sanidad.prueba_diagnostica` (agrupadas por resultado en tandas de 1000; con lecturas en mm, una por animal); positivo → reactor. `transcripcion_revisada` exige `documento_id` (el original, no fiscal). `vence_el` por defecto: brucelosis + motivo `movimiento` = muestreo + parámetro `brucelosis_seronegatividad_validez_dias` (60). Advertencias que piden `confirmar_advertencias` (422 `requiere_confirmacion`): `animal_no_asociado`, `marca_reactor`, `fecha_futura`, `resultado_antes_del_muestreo`, `protocolo_vencido`, `muestreo_incompleto`. Un registrado no se edita: se anula.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProtocoloSanitarioInput'}
+      responses:
+        '201':
+          description: Creado (200 si el id ya existía)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ProtocoloSanitario'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '409': {$ref: '#/components/responses/Conflicto'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/sanidad/protocolos/{protocolo}:
+    get:
+      tags: [Sanidad]
+      summary: Protocolo con resultados por animal
+      operationId: get_establecimientos_establecimiento_sanidad_protocolos_protocolo
+      description: '**Ability:** `sanidad.ver`. TPA-66.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: protocolo
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ProtocoloSanitario'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /establecimientos/{establecimiento}/sanidad/protocolos/{protocolo}/anular:
+    post:
+      tags: [Sanidad]
+      summary: Anular protocolo
+      operationId: post_establecimientos_establecimiento_sanidad_protocolos_protocolo_anular
+      description: '**Ability:** `sanidad.corregir`. TPA-66. Anula sus eventos (versión de anulación de cada uno; el proyector recalcula reactores). 409 `en_uso` si respalda el estatus vigente. Idempotente.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: protocolo
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, properties: {motivo: {type: string, minLength: 3, maxLength: 500}}, required: [motivo], additionalProperties: false}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ProtocoloSanitario'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '409': {$ref: '#/components/responses/Conflicto'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/sanidad/estatus:
+    post:
+      tags: [Sanidad]
+      summary: Registrar estatus sanitario (certificado y vigencia)
+      operationId: post_establecimientos_establecimiento_sanidad_estatus
+      description: '**Ability:** `sanidad.crear`. TPA-66. Uno vigente por enfermedad: el nuevo reemplaza al anterior (queda `reemplazado` en el historial). `transcripcion_revisada` exige `documento_id`. Idempotente por `id`.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EstatusSanitarioInput'}
+      responses:
+        '201':
+          description: Creado (200 si el id ya existía)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/EstatusSanitario'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/sanidad/estatus/{estatus}/anular:
+    post:
+      tags: [Sanidad]
+      summary: Anular estatus cargado por error
+      operationId: post_establecimientos_establecimiento_sanidad_estatus_estatus_anular
+      description: '**Ability:** `sanidad.corregir`. TPA-66. Si era el vigente, vuelve a quedar vigente el que había reemplazado.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: estatus
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, properties: {motivo: {type: string, minLength: 3, maxLength: 500}}, required: [motivo], additionalProperties: false}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/EstatusSanitario'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/sanidad/saneamiento:
+    post:
+      tags: [Sanidad]
+      summary: Crear plan de saneamiento
+      operationId: post_establecimientos_establecimiento_sanidad_saneamiento
+      description: '**Ability:** `sanidad.crear`. TPA-66. Uno activo por enfermedad (409 `plan_activo`).'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PlanSaneamientoInput'}
+      responses:
+        '201':
+          description: Creado (200 si el id ya existía)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/PlanSaneamiento'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '409': {$ref: '#/components/responses/Conflicto'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/sanidad/saneamiento/{plan}:
+    patch:
+      tags: [Sanidad]
+      summary: Editar o cerrar plan de saneamiento
+      operationId: patch_establecimientos_establecimiento_sanidad_saneamiento_plan
+      description: '**Ability:** `sanidad.crear`. TPA-66. `row_version` obligatorio (409 `conflicto_row_version`). `estado` `cumplido`/`anulado` lo cierra (`cerrado_el` = hoy si no viene); cerrado → 409 `estado_invalido`. `enfermedad` no se cambia.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: plan
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PlanSaneamientoInput'}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/PlanSaneamiento'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '409': {$ref: '#/components/responses/Conflicto'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/animales/{animal}/pruebas:
+    get:
+      tags: [Sanidad]
+      summary: Resultados del animal en protocolos vigentes
+      operationId: get_establecimientos_establecimiento_animales_animal_pruebas
+      description: '**Ability:** `sanidad.ver`. TPA-66. Más recientes primero.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: animal
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: {$ref: '#/components/schemas/PruebaAnimal'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
   /establecimientos/{establecimiento}/documentos:
     get:
       tags: [Documentos]
@@ -3654,7 +4009,7 @@ paths:
       tags: [Documentos]
       summary: Revisar campos (correcto / editado / no legible / no aplica)
       operationId: patch_establecimientos_establecimiento_borradores_borrador_campos
-      description: '**Ability:** `documentos.crear`. Solo en `para_revisar` (si no, 409 `estado_invalido`). Cada decisión queda en el historial (quién, cuándo, valor anterior y nuevo). `editado` exige `valor` válido para el `tipo` del campo (fecha YYYY-MM-DD, entero ≥ 0, booleano, una de `opciones`, texto ≤ 500). `agregar_fila` suma una fila vacía que el modelo no vio (grupos de `presentacion.agregables`: `vacunas` | `categorias` en el acta, `detalle` en DT-e y guía). Tipos `lote` y `evento` = UUID de un lote / movimiento del establecimiento (sus `opciones` se calculan al leer; la pertenencia se verifica en las advertencias y al confirmar). Las advertencias se recalculan. `row_version` opcional (409 `conflicto_row_version`).'
+      description: '**Ability:** `documentos.crear`. Solo en `para_revisar` (si no, 409 `estado_invalido`). Cada decisión queda en el historial (quién, cuándo, valor anterior y nuevo). `editado` exige `valor` válido para el `tipo` del campo (fecha YYYY-MM-DD, entero ≥ 0, booleano, una de `opciones`, texto ≤ 500). `agregar_fila` suma una fila vacía que el modelo no vio (grupos de `presentacion.agregables`: `vacunas` | `categorias` en el acta, `detalle` en DT-e y guía, `animales` en el protocolo sanitario). Tipo `decimal` (lecturas en mm, TPA-66): hasta un decimal, coma o punto. Tipos `lote` y `evento` = UUID de un lote / movimiento del establecimiento (sus `opciones` se calculan al leer; la pertenencia se verifica en las advertencias y al confirmar). Las advertencias se recalculan. `row_version` opcional (409 `conflicto_row_version`).'
       parameters:
       - name: establecimiento
         in: path
@@ -9060,7 +9415,7 @@ components:
       properties:
         id: {$ref: '#/components/schemas/Uuid'}
         documento_id: {$ref: '#/components/schemas/Uuid'}
-        familia: {type: string, enum: [acta_vacunacion, dte, guia_provincial]}
+        familia: {type: string, enum: [acta_vacunacion, dte, guia_provincial, protocolo_sanitario]}
       required: [id, documento_id, familia]
       additionalProperties: false
     BorradorCamposInput:
@@ -9077,7 +9432,7 @@ components:
               valor: {description: 'Obligatorio con `editado`; tipo según el campo (string | integer | boolean | null)'}
             required: [ruta, estado]
             additionalProperties: false
-        agregar_fila: {type: [string, 'null'], description: 'Grupo de `presentacion.agregables` (vacunas, categorias, detalle)'}
+        agregar_fila: {type: [string, 'null'], description: 'Grupo de `presentacion.agregables` (vacunas, categorias, detalle, animales)'}
         row_version: {type: [integer, 'null']}
       required: [campos]
       additionalProperties: false
@@ -9117,6 +9472,256 @@ components:
         estado: {type: string, enum: [pendiente, correcto, editado, no_legible, no_aplica]}
       required: [ruta, grupo, etiqueta, tipo, opciones, critico, valor_extraido, valor, confianza, pagina, alternativas, sugerido, estado]
       additionalProperties: false
+    ProtocoloResultado:
+      type: object
+      description: Resultado de un animal tal como figura en el original (TPA-66). `animal_id` null = identificación que no coincidió con un animal de TROPILLA.
+      properties:
+        orden: {type: integer}
+        animal_id: {type: [string, 'null'], format: uuid}
+        identificacion: {type: [string, 'null']}
+        animal:
+          type: [object, 'null']
+          properties:
+            identificacion_principal: {type: [string, 'null']}
+            especie: {type: [string, 'null']}
+            categoria: {type: [string, 'null']}
+            estado: {type: [string, 'null']}
+        categoria_codigo: {type: [string, 'null']}
+        muestra: {type: [string, 'null']}
+        resultado: {type: string, enum: [negativo, sospechoso, positivo, no_concluyente, no_apto]}
+        lectura_0h_mm: {type: [string, 'null']}
+        lectura_72h_mm: {type: [string, 'null']}
+        observaciones: {type: [string, 'null']}
+        evento_id: {type: [string, 'null'], format: uuid}
+    ProtocoloSanitario:
+      type: object
+      description: >-
+        Protocolo de muestreo/prueba de brucelosis o TBC (TPA-66): DOES, recertificación, saneamiento, precondición de movimiento, rutina.
+        `origen`: `transcripcion_revisada` (con el original en `documento_id`, revisado por una persona) o `declarado` (carga sin respaldo).
+        Nunca es la condición oficial. `vigencia`: vigente | por_vencer | vencido | sin_vencimiento | anulado (aviso con el parámetro `sanidad_oficial_aviso_dias`).
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        enfermedad: {type: string, enum: [brucelosis, tuberculosis]}
+        prueba: {type: string, description: Código de tipos_prueba}
+        prueba_nombre: {type: string}
+        motivo: {type: string, enum: [does, recertificacion, saneamiento, movimiento, rutina, otro]}
+        modalidad: {type: [string, 'null'], enum: [total, muestreo, null]}
+        stock_base: {type: [integer, 'null']}
+        fecha_muestreo: {$ref: '#/components/schemas/Fecha'}
+        fecha_resultado: {type: [string, 'null'], format: date}
+        laboratorio: {type: [string, 'null']}
+        protocolo_numero: {type: [string, 'null']}
+        veterinario: {type: object, properties: {nombre: {type: [string, 'null']}, matricula: {type: [string, 'null']}}}
+        vence_el: {type: [string, 'null'], format: date}
+        vigencia: {type: string, enum: [vigente, por_vencer, vencido, sin_vencimiento, anulado]}
+        origen: {type: string, enum: [declarado, transcripcion_revisada]}
+        origen_leyenda: {type: string}
+        documento_id: {type: [string, 'null'], format: uuid}
+        borrador_id: {type: [string, 'null'], format: uuid}
+        estado: {type: string, enum: [vigente, anulado]}
+        observaciones: {type: [string, 'null']}
+        resumen:
+          type: object
+          properties:
+            total: {type: integer}
+            asociados: {type: integer}
+            negativo: {type: integer}
+            sospechoso: {type: integer}
+            positivo: {type: integer}
+            no_concluyente: {type: integer}
+            no_apto: {type: integer}
+        evento_ids: {type: array, items: {$ref: '#/components/schemas/Uuid'}}
+        resultados: {type: array, items: {$ref: '#/components/schemas/ProtocoloResultado'}, description: Solo en detalle/alta}
+        creado_por: {$ref: '#/components/schemas/Uuid'}
+        created_at: {$ref: '#/components/schemas/FechaHora'}
+        anulado_en: {type: [string, 'null']}
+        anulado_motivo: {type: [string, 'null']}
+    ProtocoloSanitarioInput:
+      type: object
+      required: [enfermedad, prueba_codigo, motivo, fecha_muestreo, origen, resultados]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        enfermedad: {type: string, enum: [brucelosis, tuberculosis]}
+        prueba_codigo: {type: string, description: 'brucelosis_bpa | brucelosis_fpa | brucelosis_sat | brucelosis_2me | brucelosis_elisa | brucelosis_fc | tuberculina_*'}
+        motivo: {type: string, enum: [does, recertificacion, saneamiento, movimiento, rutina, otro]}
+        modalidad: {type: [string, 'null'], enum: [total, muestreo, null]}
+        stock_base: {type: [integer, 'null'], minimum: 0}
+        fecha_muestreo: {$ref: '#/components/schemas/Fecha'}
+        fecha_resultado: {type: [string, 'null'], format: date}
+        laboratorio: {type: [string, 'null'], maxLength: 200}
+        protocolo_numero: {type: [string, 'null'], maxLength: 100}
+        veterinario_nombre: {type: [string, 'null'], maxLength: 200}
+        veterinario_matricula: {type: [string, 'null'], maxLength: 60}
+        vence_el: {type: [string, 'null'], format: date}
+        origen: {type: string, enum: [declarado, transcripcion_revisada]}
+        documento_id: {type: [string, 'null'], format: uuid}
+        observaciones: {type: [string, 'null'], maxLength: 2000}
+        confirmar_advertencias: {type: boolean}
+        resultados:
+          type: array
+          minItems: 1
+          maxItems: 5000
+          items:
+            type: object
+            required: [resultado]
+            properties:
+              animal_id: {type: [string, 'null'], format: uuid}
+              identificacion: {type: [string, 'null'], maxLength: 100}
+              categoria_codigo: {type: [string, 'null']}
+              muestra: {type: [string, 'null'], maxLength: 60}
+              resultado: {type: string, enum: [negativo, sospechoso, positivo, no_concluyente, no_apto]}
+              lectura_0h_mm: {type: [string, 'null'], pattern: '^(0|[1-9][0-9]{0,2})(\.[1-9])?$'}
+              lectura_72h_mm: {type: [string, 'null'], pattern: '^(0|[1-9][0-9]{0,2})(\.[1-9])?$'}
+              observaciones: {type: [string, 'null'], maxLength: 500}
+    EstatusSanitario:
+      type: object
+      description: Condición del establecimiento por enfermedad según el certificado transcripto o lo declarado (TPA-66). La condición oficial la certifica SENASA.
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        enfermedad: {type: string, enum: [brucelosis, tuberculosis]}
+        estatus: {type: string, enum: [libre, en_saneamiento, en_certificacion, sin_estatus, suspendido]}
+        origen: {type: string, enum: [declarado, transcripcion_revisada]}
+        origen_leyenda: {type: string}
+        certificado_numero: {type: [string, 'null']}
+        autoridad: {type: [string, 'null']}
+        emitido_el: {type: [string, 'null'], format: date}
+        vigente_desde: {$ref: '#/components/schemas/Fecha'}
+        vence_el: {type: [string, 'null'], format: date}
+        vigencia: {type: string, enum: [vigente, por_vencer, vencido, sin_vencimiento, reemplazado, anulado]}
+        dias_para_vencer: {type: [integer, 'null']}
+        protocolo_id: {type: [string, 'null'], format: uuid}
+        documento_id: {type: [string, 'null'], format: uuid}
+        observaciones: {type: [string, 'null']}
+        estado: {type: string, enum: [vigente, reemplazado, anulado]}
+        reemplazado_por: {type: [string, 'null'], format: uuid}
+        creado_por: {$ref: '#/components/schemas/Uuid'}
+        created_at: {$ref: '#/components/schemas/FechaHora'}
+        anulado_en: {type: [string, 'null']}
+        anulado_motivo: {type: [string, 'null']}
+    EstatusSanitarioInput:
+      type: object
+      required: [enfermedad, estatus, origen, vigente_desde]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        enfermedad: {type: string, enum: [brucelosis, tuberculosis]}
+        estatus: {type: string, enum: [libre, en_saneamiento, en_certificacion, sin_estatus, suspendido]}
+        origen: {type: string, enum: [declarado, transcripcion_revisada]}
+        certificado_numero: {type: [string, 'null'], maxLength: 100}
+        autoridad: {type: [string, 'null'], maxLength: 200}
+        emitido_el: {type: [string, 'null'], format: date}
+        vigente_desde: {$ref: '#/components/schemas/Fecha'}
+        vence_el: {type: [string, 'null'], format: date, description: '>= vigente_desde'}
+        protocolo_id: {type: [string, 'null'], format: uuid}
+        documento_id: {type: [string, 'null'], format: uuid}
+        observaciones: {type: [string, 'null'], maxLength: 2000}
+    AccionSaneamiento:
+      type: object
+      required: [descripcion]
+      properties:
+        descripcion: {type: string, maxLength: 300}
+        responsable: {type: [string, 'null'], maxLength: 120}
+        fecha_objetivo: {type: [string, 'null'], format: date}
+        hecha_el: {type: [string, 'null'], format: date}
+        vencida: {type: boolean, description: Solo en respuestas}
+    PlanSaneamiento:
+      type: object
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        enfermedad: {type: string, enum: [brucelosis, tuberculosis]}
+        estado: {type: string, enum: [activo, cumplido, anulado]}
+        inicio: {$ref: '#/components/schemas/Fecha'}
+        proximo_muestreo: {type: [string, 'null'], format: date}
+        veterinario: {type: object, properties: {nombre: {type: [string, 'null']}, matricula: {type: [string, 'null']}}}
+        protocolo_id: {type: [string, 'null'], format: uuid}
+        documento_id: {type: [string, 'null'], format: uuid}
+        observaciones: {type: [string, 'null']}
+        acciones: {type: array, items: {$ref: '#/components/schemas/AccionSaneamiento'}}
+        acciones_pendientes: {type: integer}
+        cerrado_el: {type: [string, 'null'], format: date}
+        row_version: {type: integer}
+        creado_por: {$ref: '#/components/schemas/Uuid'}
+        created_at: {$ref: '#/components/schemas/FechaHora'}
+        updated_at: {$ref: '#/components/schemas/FechaHora'}
+    PlanSaneamientoInput:
+      type: object
+      description: 'POST: `enfermedad` e `inicio` obligatorios; `estado`, `cerrado_el` y `row_version` prohibidos. PATCH: `row_version` obligatorio; `enfermedad` prohibido.'
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        enfermedad: {type: string, enum: [brucelosis, tuberculosis]}
+        inicio: {$ref: '#/components/schemas/Fecha'}
+        proximo_muestreo: {type: [string, 'null'], format: date}
+        veterinario_nombre: {type: [string, 'null']}
+        veterinario_matricula: {type: [string, 'null']}
+        protocolo_id: {type: [string, 'null'], format: uuid}
+        documento_id: {type: [string, 'null'], format: uuid}
+        observaciones: {type: [string, 'null']}
+        acciones: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/AccionSaneamiento'}}
+        estado: {type: string, enum: [activo, cumplido, anulado]}
+        cerrado_el: {type: [string, 'null'], format: date}
+        row_version: {type: integer}
+    VencimientoSanitario:
+      type: object
+      properties:
+        tipo: {type: string, enum: [estatus, protocolo, muestreo, accion]}
+        enfermedad: {type: string, enum: [brucelosis, tuberculosis]}
+        fecha: {$ref: '#/components/schemas/Fecha'}
+        dias: {type: integer, description: Negativo si ya venció}
+        vigencia: {type: string, enum: [vigente, por_vencer, vencido]}
+        titulo: {type: string}
+        ref_id: {$ref: '#/components/schemas/Uuid'}
+    CondicionSanitaria:
+      type: object
+      properties:
+        enfermedades:
+          type: array
+          items:
+            type: object
+            properties:
+              enfermedad: {type: string, enum: [brucelosis, tuberculosis]}
+              estatus:
+                oneOf:
+                - {$ref: '#/components/schemas/EstatusSanitario'}
+                - {type: 'null'}
+              historial: {type: array, items: {$ref: '#/components/schemas/EstatusSanitario'}}
+              plan_saneamiento:
+                oneOf:
+                - {$ref: '#/components/schemas/PlanSaneamiento'}
+                - {type: 'null'}
+              ultimo_protocolo:
+                oneOf:
+                - {$ref: '#/components/schemas/ProtocoloSanitario'}
+                - {type: 'null'}
+              positivos:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    animal_id: {$ref: '#/components/schemas/Uuid'}
+                    identificacion: {type: [string, 'null']}
+                    especie: {type: string}
+                    categoria: {type: [string, 'null']}
+                    desde: {type: [string, 'null'], format: date}
+                    prueba: {type: string}
+        vencimientos: {type: array, items: {$ref: '#/components/schemas/VencimientoSanitario'}}
+        aviso: {type: string}
+        calculado_al: {$ref: '#/components/schemas/Fecha'}
+    PruebaAnimal:
+      allOf:
+      - {$ref: '#/components/schemas/ProtocoloResultado'}
+      - type: object
+        properties:
+          protocolo_id: {$ref: '#/components/schemas/Uuid'}
+          enfermedad: {type: string}
+          prueba: {type: string}
+          prueba_nombre: {type: string}
+          motivo: {type: string}
+          fecha_muestreo: {$ref: '#/components/schemas/Fecha'}
+          fecha_resultado: {type: [string, 'null'], format: date}
+          laboratorio: {type: [string, 'null']}
+          protocolo_numero: {type: [string, 'null']}
+          vence_el: {type: [string, 'null'], format: date}
+          origen: {type: string}
+          origen_leyenda: {type: string}
     BorradorDocumento:
       type: object
       description: >-
@@ -9136,7 +9741,7 @@ components:
         id: {$ref: '#/components/schemas/Uuid'}
         documento_id: {$ref: '#/components/schemas/Uuid'}
         documento_version_id: {$ref: '#/components/schemas/Uuid'}
-        familia: {type: string, enum: [acta_vacunacion, dte, guia_provincial]}
+        familia: {type: string, enum: [acta_vacunacion, dte, guia_provincial, protocolo_sanitario]}
         esquema: {type: [string, 'null']}
         estado: {type: string, enum: [esperando_archivos, en_cola, extrayendo, para_revisar, fallido, confirmado, descartado]}
         error: {type: [string, 'null']}
@@ -9203,6 +9808,14 @@ components:
           additionalProperties: false
         aviso: {type: string}
         row_version: {type: integer}
+        presentacion:
+          type: [object, 'null']
+          description: 'TPA-66 (aditivo): títulos de los grupos de campos y filas que se pueden agregar a mano. Null = presentación del acta de vacunación.'
+          properties:
+            grupos: {type: object, additionalProperties: {type: string}}
+            filas:
+              type: array
+              items: {type: object, properties: {grupo: {type: string}, etiqueta: {type: string}}}
         creado_por: {$ref: '#/components/schemas/Uuid'}
         created_at: {$ref: '#/components/schemas/FechaHora'}
         updated_at: {$ref: '#/components/schemas/FechaHora'}
