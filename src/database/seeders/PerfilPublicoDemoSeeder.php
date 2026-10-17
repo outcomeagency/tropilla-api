@@ -120,7 +120,7 @@ final class PerfilPublicoDemoSeeder extends Seeder
         $espViejo = DB::table('animales_estado')->where('establecimiento_id', $est->id)->where('estado', 'activo')->orderBy('especie_codigo')->value('especie_codigo') ?: 'BOV';
         $raza = self::RAZA[$perfil->slug] ?? ($espViejo === 'BUB' ? 'Murrah' : 'Braford');
         $esp = in_array($raza, ['Murrah', 'Mediterránea'], true) ? 'BUB' : 'BOV';
-        $sigla = collect(preg_split('/\s+/', (string) $est->nombre))->filter(fn ($w) => mb_strlen($w) > 2)->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->implode('') ?: 'TR';
+        $sigla = collect(preg_split('/\s+/', (string) $est->nombre))->filter(fn ($w) => mb_strlen($w) > 1)->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->implode('') ?: 'TR';
         $dueno = $this->dueno($est->id);
         $niveles = [];
         for ($gen = 1; $gen <= 5; $gen++) {
@@ -143,7 +143,7 @@ final class PerfilPublicoDemoSeeder extends Seeder
                 $anio = [1 => 2004, 2 => 2008, 3 => 2012, 4 => 2016, 5 => $macho ? 2020 : 2021][$gen] + ($i % 2);
                 $bufalo = $esp === 'BUB';
                 $peso = $macho ? ($bufalo ? 820 : 760) + ($semilla % 140) : ($bufalo ? 560 : 480) + ($semilla % 90);
-                $datos = ['nombre' => $nombres[($i + $gen * 3) % count($nombres)].' '.$numero, 'rp' => "{$sigla}-{$numero}", 'registro_genealogico' => 'Declarado '.(40000 + $semilla % 9000),
+                $datos = ['nombre' => $nombres[($i + $gen * 3 + crc32($perfil->slug)) % count($nombres)].' '.$numero, 'rp' => "{$sigla}-{$numero}", 'registro_genealogico' => 'Declarado '.(40000 + $semilla % 9000),
                     'raza' => $raza, 'especie_codigo' => $esp, 'sexo' => $macho ? 'M' : 'H', 'centro' => self::CENTROS[($gen + $i) % count(self::CENTROS)],
                     'fecha_nacimiento' => sprintf('%d-%02d-%02d', $anio, 3 + $semilla % 8, 1 + $semilla % 27),
                     'peso_kg' => $peso, 'peso_fecha' => '2026-09-12', 'cc_valor' => $macho ? 6 : 5 + ($semilla % 2),
