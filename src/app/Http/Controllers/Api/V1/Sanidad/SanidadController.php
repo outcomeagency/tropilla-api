@@ -4,13 +4,18 @@ namespace App\Http\Controllers\Api\V1\Sanidad;
 
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Hacienda\ConsultasAnimales;
+use App\Domain\Sanidad\LibroTratamientos;
 use App\Domain\Sanidad\Retiros;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Sanidad\SanidadListaRequest;
+use App\Http\Resources\V1\CursorOffset;
 use App\Http\Resources\V1\Hacienda\AnimalResumenResource;
+use App\Rules\Reglas;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Listas destacadas de Sanidad (TPA-35): retiro vigente y reactores. Datos **privados** del establecimiento: estas listas no
@@ -36,6 +41,25 @@ class SanidadController extends Controller
             ->filter(fn ($l) => ($l['retiro_carne_hasta'] ?? '') >= $hoy || ($l['retiro_leche_hasta'] ?? '') >= $hoy)->values()->all();
 
         return response()->json(['data' => AnimalResumenResource::collection($animales)->resolve(), 'lotes' => $lotes], 200, [], JSON_UNESCAPED_UNICODE);
+    }
+
+    /** Libro de tratamientos de TROPILLA (TPA-65): buscable, con documentos fuente. No es el libro oficial. */
+    public function libroTratamientos(Request $request, Establecimiento $establecimiento): JsonResponse
+    {
+        Gate::authorize('sanidad.ver', $establecimiento);
+        $f = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'], 'desde' => ['nullable', 'date_format:Y-m-d'], 'hasta' => ['nullable', 'date_format:Y-m-d'],
+            'tipo' => ['nullable', 'in:'.implode(',', array_keys(LibroTratamientos::TIPOS))], 'lote_id' => ['nullable', Reglas::UUID],
+        ]);
+        $verDocs = Gate::allows('documentos.ver', $establecimiento);
+        $verFiscales = Gate::allows('documentos.fiscal', $establecimiento);
+        $respuesta = CursorOffset::responder(LibroTratamientos::consulta($establecimiento->id, $f), $request, $f, fn ($e) => $e);
+        $cuerpo = $respuesta->getData(true);
+        $docs = $verDocs ? LibroTratamientos::documentos(array_column($cuerpo['data'], 'evento_raiz_id'), $verFiscales) : [];
+        $cuerpo['data'] = array_map(fn ($e) => LibroTratamientos::fila((object) $e, $docs), $cuerpo['data']);
+        $cuerpo['aviso'] = __(LibroTratamientos::AVISO);
+
+        return response()->json($cuerpo, 200, [], JSON_UNESCAPED_UNICODE);
     }
 
     public function reactores(SanidadListaRequest $request, Establecimiento $establecimiento): JsonResponse

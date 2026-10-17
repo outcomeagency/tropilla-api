@@ -3569,6 +3569,43 @@ paths:
         '401': {$ref: '#/components/responses/NoAutenticado'}
         '403': {$ref: '#/components/responses/Prohibido'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
+  /establecimientos/{establecimiento}/sanidad/libro-tratamientos:
+    get:
+      tags: [Sanidad]
+      summary: Libro de tratamientos de TROPILLA (buscable)
+      operationId: get_establecimientos_establecimiento_sanidad_libro_tratamientos
+      description: '**Ability:** `sanidad.ver`. TPA-65. Tratamientos, desparasitaciones e inspecciones de garrapata (observaciones clínicas con el signo «inspección de garrapata») vigentes, de la más reciente a la más vieja. `q` busca en el payload, las observaciones, el responsable y el nombre del lote. `documentos`: documentos fuente vinculados (con `documentos.ver`; fiscales solo con `documentos.fiscal`). `transcripto`: vino de la lectura asistida de un documento. `aviso`: no reemplaza al libro rubricado (Res. 666/2011) ni al FIDHA. Privado.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - {name: q, in: query, required: false, schema: {type: string, maxLength: 100}}
+      - {name: desde, in: query, required: false, schema: {type: string, format: date}}
+      - {name: hasta, in: query, required: false, schema: {type: string, format: date}}
+      - {name: tipo, in: query, required: false, schema: {type: string, enum: [tratamiento, desparasitacion, inspeccion]}}
+      - {name: lote_id, in: query, required: false, schema: {$ref: '#/components/schemas/Uuid'}}
+      - {name: cursor, in: query, required: false, schema: {type: string}}
+      - {name: limit, in: query, required: false, schema: {type: integer}}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: {$ref: '#/components/schemas/LibroTratamientoFila'}
+                  meta: {$ref: '#/components/schemas/MetaCursor'}
+                  aviso: {type: string}
+                required: [data, meta, aviso]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
   /establecimientos/{establecimiento}/documentos:
     get:
       tags: [Documentos]
@@ -4009,7 +4046,7 @@ paths:
       tags: [Documentos]
       summary: Revisar campos (correcto / editado / no legible / no aplica)
       operationId: patch_establecimientos_establecimiento_borradores_borrador_campos
-      description: '**Ability:** `documentos.crear`. Solo en `para_revisar` (si no, 409 `estado_invalido`). Cada decisión queda en el historial (quién, cuándo, valor anterior y nuevo). `editado` exige `valor` válido para el `tipo` del campo (fecha YYYY-MM-DD, entero ≥ 0, booleano, una de `opciones`, texto ≤ 500). `agregar_fila` suma una fila vacía que el modelo no vio (grupos de `presentacion.agregables`: `vacunas` | `categorias` en el acta, `detalle` en DT-e y guía, `animales` en el protocolo sanitario). Tipo `decimal` (lecturas en mm, TPA-66): hasta un decimal, coma o punto. Tipos `lote` y `evento` = UUID de un lote / movimiento del establecimiento (sus `opciones` se calculan al leer; la pertenencia se verifica en las advertencias y al confirmar). Las advertencias se recalculan. `row_version` opcional (409 `conflicto_row_version`).'
+      description: '**Ability:** `documentos.crear`. Solo en `para_revisar` (si no, 409 `estado_invalido`). Cada decisión queda en el historial (quién, cuándo, valor anterior y nuevo). `editado` exige `valor` válido para el `tipo` del campo (fecha YYYY-MM-DD, entero ≥ 0, booleano, una de `opciones`, texto ≤ 500). `agregar_fila` suma una fila vacía que el modelo no vio (grupos de `presentacion.agregables`: `vacunas` | `categorias` en el acta, `detalle` en DT-e y guía, `animales` en el protocolo sanitario, `tratamientos` en el libro). Tipo `decimal` (lecturas en mm, TPA-66): hasta un decimal, coma o punto. Tipos `lote` y `evento` = UUID de un lote / movimiento del establecimiento (sus `opciones` se calculan al leer; la pertenencia se verifica en las advertencias y al confirmar). Campo **dudoso** (TPA-65: leído con `confianza` < 0,6, típico del manuscrito): en un pedido de varios campos, `correcto` no lo acepta y sigue `pendiente` (sugerencia bloqueada); se confirma de a uno, se corrige o se marca. Las advertencias se recalculan. `row_version` opcional (409 `conflicto_row_version`).'
       parameters:
       - name: establecimiento
         in: path
@@ -9410,12 +9447,55 @@ components:
         huella: {$ref: '#/components/schemas/Hash'}
         confianza: {type: string, enum: [declarado, integridad_registrada]}
       additionalProperties: false
+    LibroTratamientoFila:
+      type: object
+      description: Fila del libro de tratamientos de TROPILLA (TPA-65); una por evento vigente.
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        evento_raiz_id: {$ref: '#/components/schemas/Uuid'}
+        tipo: {type: string, enum: [tratamiento, desparasitacion, inspeccion]}
+        fecha: {type: string, format: date}
+        sujeto:
+          type: object
+          properties:
+            tipo: {type: string}
+            lote_id: {type: [string, 'null']}
+            lote_nombre: {type: [string, 'null']}
+            animales: {type: integer}
+          additionalProperties: false
+        diagnostico: {type: [string, 'null']}
+        producto: {type: [string, 'null']}
+        principio_activo: {type: [string, 'null']}
+        dosis: {type: [string, 'null']}
+        duracion_dias: {type: [integer, 'null']}
+        responsable: {type: [string, 'null']}
+        retiro_carne_dias: {type: [integer, 'null']}
+        retiro_leche_dias: {type: [integer, 'null']}
+        inspeccion:
+          type: [object, 'null']
+          properties:
+            resultado: {type: [string, 'null'], enum: [negativo, positivo, rechazada, null]}
+            descripcion: {type: [string, 'null']}
+          additionalProperties: false
+        observaciones: {type: [string, 'null']}
+        transcripto: {type: boolean}
+        documentos:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {$ref: '#/components/schemas/Uuid'}
+              titulo: {type: string}
+              tipo: {type: string}
+            additionalProperties: false
+      required: [id, evento_raiz_id, tipo, fecha, sujeto, transcripto, documentos]
+      additionalProperties: false
     BorradorInput:
       type: object
       properties:
         id: {$ref: '#/components/schemas/Uuid'}
         documento_id: {$ref: '#/components/schemas/Uuid'}
-        familia: {type: string, enum: [acta_vacunacion, dte, guia_provincial, protocolo_sanitario]}
+        familia: {type: string, enum: [acta_vacunacion, dte, guia_provincial, protocolo_sanitario, libro_tratamientos, fidha]}
       required: [id, documento_id, familia]
       additionalProperties: false
     BorradorCamposInput:
@@ -9737,11 +9817,18 @@ components:
         `dte_faltante`, `sentido_no_coincide`, `renspa_ajeno`, `vigencia_invalida`, `documento_anulado`, `conteo_insuficiente`; bloqueantes:
         `movimiento_sin_definir`, `sentido_sin_definir`, `movimiento_sin_elegir`, `movimiento_inexistente`, `lote_sin_elegir`, `lote_no_anonimo`,
         `lote_otra_especie`, `caravana_desconocida`, `detalle_sin_categoria`.
+        TPA-65: `libro_tratamientos.666_2011/1` (filas `tratamientos.N.*`: fecha, animales, caravanas, `lote_id`, diagnóstico, producto, principio
+        activo, dosis, vía, duración, responsable, retiros; la fecha «no aplica» omite la fila; confirmar = un `sanidad.tratamiento` por fila) y
+        `fidha.655_2026/1` / `fidha.anterior/1` (inspección, tropa, tratamiento precaucional; `lote_id`/`caravanas` propios; confirmar =
+        `sanidad.observacion_clinica` con el signo «inspección de garrapata: <resultado>» + `sanidad.desparasitacion` externo si hubo tratamiento, y
+        vínculo al movimiento con el mismo DT-e). Advertencias: `retiro_faltante`, `dato_minimo_faltante`, `inspeccion_positiva`,
+        `formulario_anterior`, `tratamiento_sin_producto`, `fecha_tratamiento_posterior`; bloqueantes `fila_sin_animales`, `sin_animales`,
+        `caravana_desconocida`.
       properties:
         id: {$ref: '#/components/schemas/Uuid'}
         documento_id: {$ref: '#/components/schemas/Uuid'}
         documento_version_id: {$ref: '#/components/schemas/Uuid'}
-        familia: {type: string, enum: [acta_vacunacion, dte, guia_provincial, protocolo_sanitario]}
+        familia: {type: string, enum: [acta_vacunacion, dte, guia_provincial, protocolo_sanitario, libro_tratamientos, fidha]}
         esquema: {type: [string, 'null']}
         estado: {type: string, enum: [esperando_archivos, en_cola, extrayendo, para_revisar, fallido, confirmado, descartado]}
         error: {type: [string, 'null']}
@@ -9793,7 +9880,7 @@ components:
           items: {$ref: '#/components/schemas/Uuid'}
         presentacion:
           type: object
-          description: 'Cómo mostrar la familia: nombre de cada esquema, títulos de grupo (`:n` = número de fila) y filas que se pueden agregar.'
+          description: 'Cómo mostrar la familia (TPA-64; también la usan TPA-65/66): nombre de cada esquema, títulos de grupo (`:n` = número de fila) y filas que se pueden agregar.'
           properties:
             esquemas: {type: object, additionalProperties: {type: string}}
             grupos: {type: object, additionalProperties: {type: string}}
@@ -9808,14 +9895,6 @@ components:
           additionalProperties: false
         aviso: {type: string}
         row_version: {type: integer}
-        presentacion:
-          type: [object, 'null']
-          description: 'TPA-66 (aditivo): títulos de los grupos de campos y filas que se pueden agregar a mano. Null = presentación del acta de vacunación.'
-          properties:
-            grupos: {type: object, additionalProperties: {type: string}}
-            filas:
-              type: array
-              items: {type: object, properties: {grupo: {type: string}, etiqueta: {type: string}}}
         creado_por: {$ref: '#/components/schemas/Uuid'}
         created_at: {$ref: '#/components/schemas/FechaHora'}
         updated_at: {$ref: '#/components/schemas/FechaHora'}

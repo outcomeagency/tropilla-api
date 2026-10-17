@@ -2,6 +2,7 @@
 
 namespace App\Domain\Documentos\Borradores\Actions;
 
+use App\Domain\Documentos\Borradores\Campos;
 use App\Domain\Documentos\Borradores\Familias\Familias;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Exceptions\ApiException;
@@ -11,7 +12,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * Revisión humana campo por campo (TPA-61): cada decisión (`correcto`, `editado` con valor nuevo, `no_legible`, `no_aplica`)
  * queda en `borrador_correcciones` (append-only: quién, cuándo, antes y después) y actualiza la proyección. También permite
- * agregar una fila (vacuna / categoría) que el modelo no vio. Las advertencias se recalculan con los valores revisados.
+ * agregar una fila que el modelo no vio. Las advertencias se recalculan con los valores revisados.
+ * TPA-65: un campo **dudoso** (leído con confianza < 0,6, típico del manuscrito) queda como sugerencia bloqueada: en un
+ * pedido de varios campos, «correcto» no lo acepta (sigue pendiente); hay que confirmarlo de a uno, corregirlo o marcarlo.
  */
 final class RevisarCampos
 {
@@ -34,11 +37,17 @@ final class RevisarCampos
                 array_push($campos, ...$familia->filaNueva($agregarFila, $campos));
             }
             $indice = array_flip(array_column($campos, 'ruta'));
+            $enBloque = count($cambios) > 1;
             foreach ($cambios as $c) {
                 if (! isset($indice[$c['ruta']])) {
                     throw ApiException::validacion(__('Campo inexistente: :r.', ['r' => $c['ruta']]), ["campos.{$c['ruta']}" => [__('No existe.')]]);
                 }
                 $campo = &$campos[$indice[$c['ruta']]];
+                if ($enBloque && $c['estado'] === 'correcto' && $campo['estado'] === 'pendiente' && Campos::dudoso($campo)) {
+                    unset($campo);
+
+                    continue;
+                }
                 $anterior = $campo['valor'];
                 if ($c['estado'] === 'editado') {
                     if (! array_key_exists('valor', $c)) {

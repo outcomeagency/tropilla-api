@@ -16,8 +16,7 @@ return new class extends Migration
         Schema::table('borradores_documento', function ($table) {
             $table->jsonb('eventos_vinculados')->default('[]');
         });
-        DB::statement('ALTER TABLE borradores_documento DROP CONSTRAINT borradores_documento_familia');
-        DB::statement("ALTER TABLE borradores_documento ADD CONSTRAINT borradores_documento_familia CHECK (familia IN ('acta_vacunacion','dte','guia_provincial'))");
+        $this->familias(fn (array $f) => array_values(array_unique([...$f, 'dte', 'guia_provincial'])));
         DB::table('tipos_documento')->insertOrIgnore([
             'codigo' => 'guia_provincial', 'nombres' => json_encode(['es' => 'Guía provincial / DUT', 'en' => 'Provincial livestock guide', 'pt' => 'Guia provincial'], JSON_UNESCAPED_UNICODE),
             'privacidad_default' => 'comercial', 'publicable' => false, 'orden' => 8,
@@ -26,8 +25,22 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE borradores_documento DROP CONSTRAINT borradores_documento_familia');
-        DB::statement("ALTER TABLE borradores_documento ADD CONSTRAINT borradores_documento_familia CHECK (familia IN ('acta_vacunacion')) NOT VALID");
+        $this->familias(fn (array $f) => array_values(array_diff($f, ['dte', 'guia_provincial'])));
         Schema::table('borradores_documento', fn ($table) => $table->dropColumn('eventos_vinculados'));
+    }
+
+    /**
+     * Rehace el CHECK de familias a partir del vigente: otras migraciones suman las suyas y el orden en que corren en
+     * cada ambiente puede variar.
+     *
+     * @param  callable(list<string>): list<string>  $cambio
+     */
+    private function familias(callable $cambio): void
+    {
+        $def = (string) DB::scalar("SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'borradores_documento_familia'");
+        preg_match_all("/'([a-z0-9_]+)'/", $def, $m);
+        DB::statement('ALTER TABLE borradores_documento DROP CONSTRAINT IF EXISTS borradores_documento_familia');
+        DB::statement('ALTER TABLE borradores_documento ADD CONSTRAINT borradores_documento_familia CHECK (familia IN ('
+            .implode(',', array_map(fn ($f) => "'{$f}'", $cambio($m[1]))).')) NOT VALID');
     }
 };

@@ -95,12 +95,15 @@ function rodeo(object $t): void
     $t->postJson("{$t->base}/eventos", altaBody($animales, '2026-01-10'))->assertCreated();
 }
 
-/** Marca todos los campos pendientes como correctos. */
+/** Marca todos los campos pendientes como correctos: en bloque, y los dudosos (que el bloque no acepta, TPA-65) de a uno. */
 function revisarTodo(object $t, string $id): void
 {
-    $campos = $t->getJson("{$t->base}/borradores/{$id}")->json('data.campos');
-    $t->patchJson("{$t->base}/borradores/{$id}/campos", ['campos' => array_values(array_map(fn ($c) => ['ruta' => $c['ruta'], 'estado' => 'correcto'],
-        array_filter($campos, fn ($c) => $c['estado'] === 'pendiente')))])->assertOk()->assertJsonPath('data.pendientes', 0);
+    $pendientes = fn () => array_values(array_filter($t->getJson("{$t->base}/borradores/{$id}")->json('data.campos'), fn ($c) => $c['estado'] === 'pendiente'));
+    $t->patchJson("{$t->base}/borradores/{$id}/campos", ['campos' => array_map(fn ($c) => ['ruta' => $c['ruta'], 'estado' => 'correcto'], $pendientes())])->assertOk();
+    foreach ($pendientes() as $c) {
+        $t->patchJson("{$t->base}/borradores/{$id}/campos", ['campos' => [['ruta' => $c['ruta'], 'estado' => 'correcto']]])->assertOk();
+    }
+    $t->getJson("{$t->base}/borradores/{$id}")->assertJsonPath('data.pendientes', 0);
 }
 
 it('foto offline → borrador idempotente → lectura al completar la subida → revisión campo a campo → confirmación crea las vacunaciones y versiona el documento', function () {

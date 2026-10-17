@@ -245,6 +245,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::post('sanidad/saneamiento', [SanidadOficialController::class, 'crearPlan'])->name('sanidad.saneamiento.store');
             Route::patch('sanidad/saneamiento/{plan}', [SanidadOficialController::class, 'actualizarPlan'])->name('sanidad.saneamiento.update');
             Route::get('animales/{animal}/pruebas', [SanidadOficialController::class, 'pruebasAnimal'])->name('animales.pruebas');
+            Route::get('sanidad/libro-tratamientos', [SanidadController::class, 'libroTratamientos'])->name('sanidad.libro-tratamientos');
             Route::get('tareas', [TareaController::class, 'index'])->name('tareas.index');
             Route::post('tareas', [TareaController::class, 'store'])->name('tareas.store');
             Route::patch('tareas/{tarea}', [TareaController::class, 'update'])->name('tareas.update');

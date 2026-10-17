@@ -19,6 +19,24 @@ final class Campos
         return null;
     }
 
+    /** Estado de revisión del campo (`null` si no existe). */
+    public static function estado(array $campos, string $ruta): ?string
+    {
+        foreach ($campos as $c) {
+            if ($c['ruta'] === $ruta) {
+                return $c['estado'];
+            }
+        }
+
+        return null;
+    }
+
+    /** Dudoso: leído con confianza baja (manuscrito, trazo ambiguo). No se acepta en bloque. */
+    public static function dudoso(array $campo): bool
+    {
+        return $campo['confianza'] !== null && $campo['confianza'] < Familias\FamiliaBase::UMBRAL_DUDOSO && $campo['valor_extraido'] !== null;
+    }
+
     /** Cantidad de filas de un grupo repetido (máximo índice + 1). */
     public static function filas(array $campos, string $grupo): int
     {

@@ -80,7 +80,9 @@ class TiposYListasSeeder extends Seeder
         $tipos = [
             ['certificado_sanitario', 'Certificado sanitario', 'sanitario', true], ['vacunacion_aftosa', 'Acta de vacunación aftosa', 'sanitario', true],
             ['vacunacion_rabia', 'Vacunación antirrábica', 'sanitario', true], ['informe_tuberculina', 'Informe de tuberculina', 'sanitario', true],
-            ['analisis_laboratorio', 'Análisis de laboratorio', 'sanitario', true], ['constancia_renspa', 'Constancia de RENSPA', 'general', true],
+            ['analisis_laboratorio', 'Análisis de laboratorio', 'sanitario', true],
+            ['libro_tratamientos', 'Libro de registro de tratamientos', 'sanitario', false], ['fidha', 'FIDHA (inspección de garrapata)', 'sanitario', true],
+            ['constancia_renspa', 'Constancia de RENSPA', 'general', true],
             ['dte_copia', 'Copia de DT-e', 'comercial', true], ['guia_provincial', 'Guía provincial / DUT', 'comercial', false],
             ['boleto_compraventa', 'Boleto de compraventa', 'comercial', true],
             ['factura', 'Factura', 'fiscal', false], ['constancia_fiscal', 'Constancia fiscal', 'fiscal', false],
