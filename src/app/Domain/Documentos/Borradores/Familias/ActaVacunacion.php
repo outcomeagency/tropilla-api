@@ -6,7 +6,6 @@ use App\Domain\Documentos\Borradores\Campos;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Exceptions\ApiException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 /**
  * Acta de vacunación aftosa/brucelosis (TPA-62, senasa-planillas.md §4). Dos esquemas versionados:
@@ -15,7 +14,7 @@ use Illuminate\Support\Str;
  * El modelo identifica la variante; si no la reconoce se usa la vigente y se advierte. Cantidad vacunada > existencias,
  * totales que no cierran, RENSPA distinto o existencias distintas a TROPILLA son **advertencias**: nunca se corrige nada solo.
  */
-final class ActaVacunacion implements Familia
+final class ActaVacunacion extends FamiliaBase
 {
     public const ESQUEMA_711 = 'acta_vacunacion.711_2025/1';
 
@@ -128,7 +127,7 @@ final class ActaVacunacion implements Familia
         foreach (array_values((array) ($salida['categorias'] ?? [])) as $i => $fila) {
             foreach (self::CATEGORIA as $col => [$etiqueta, $tipo, $opciones, $critico]) {
                 $campos[] = $col === 'categoria_codigo'
-                    ? $this->sugerenciaCategoria($i, $fila)
+                    ? $this->sugerenciaCategoria("categorias.{$i}.categoria_codigo", 'categorias', $fila)
                     : $this->campo("categorias.{$i}.{$col}", 'categorias', $etiqueta, $tipo, $opciones, $critico, $fila[$col] ?? null);
             }
         }
@@ -136,39 +135,40 @@ final class ActaVacunacion implements Familia
         return ['esquema' => $es879 ? self::ESQUEMA_879 : self::ESQUEMA_711, 'campos' => $campos];
     }
 
-    public function filaNueva(string $grupo, array $campos): array
-    {
-        $defs = match ($grupo) {
-            'vacunas' => self::VACUNA,
-            'categorias' => self::CATEGORIA,
-            default => throw ApiException::validacion(__('Solo se agregan filas de vacunas o categorías.'), ['grupo' => [__('Valor inválido.')]]),
-        };
-        $n = Campos::filas($campos, $grupo);
-        $nuevos = [];
-        foreach ($defs as $col => [$etiqueta, $tipo, $opciones, $critico]) {
-            $c = $this->campo("{$grupo}.{$n}.{$col}", $grupo, $etiqueta, $tipo, $col === 'categoria_codigo' ? self::opcionesCategoria() : $opciones, $critico, null);
-            $c['confianza'] = null;
-            $nuevos[] = $c;
-        }
+    protected const ETIQUETAS = [
+        'sistematica' => 'Sistemática', 'estrategica' => 'Estratégica', 'total' => 'Total', 'parcial' => 'Parcial', 'cero' => 'Cero',
+        'aftosa' => 'Aftosa', 'brucelosis' => 'Brucelosis',
+    ];
 
-        return $nuevos;
+    protected function variantes(): array
+    {
+        return ['711_2025' => self::ESQUEMA_711, '879_2002' => self::ESQUEMA_879];
     }
 
-    public function validarValor(array $campo, mixed $valor): mixed
+    protected function escalares(string $variante): array
     {
-        if ($valor === null) {
-            return null;
-        }
-        $error = fn (string $m) => throw ApiException::validacion($m, ["campos.{$campo['ruta']}" => [$m]]);
+        return array_map(fn ($d) => array_slice($d, 0, 5), array_filter(self::CAMPOS, fn ($d) => ! ($d[5] && $variante === '879_2002')));
+    }
 
-        return match ($campo['tipo']) {
-            'fecha' => is_string($valor) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $valor) && checkdate((int) substr($valor, 5, 2), (int) substr($valor, 8, 2), (int) substr($valor, 0, 4))
-                ? $valor : $error(__('Fecha YYYY-MM-DD.')),
-            'entero' => is_int($valor) && $valor >= 0 && $valor <= 1_000_000 ? $valor : $error(__('Entero entre 0 y 1.000.000.')),
-            'booleano' => is_bool($valor) ? $valor : $error(__('Sí o no.')),
-            'opcion', 'categoria' => is_string($valor) && in_array($valor, array_column($campo['opciones'] ?? [], 'valor'), true) ? $valor : $error(__('Opción inválida.')),
-            default => is_string($valor) && mb_strlen(trim($valor)) <= 200 ? (trim($valor) === '' ? null : trim($valor)) : $error(__('Texto de hasta 200 caracteres.')),
-        };
+    protected function filasDef(): array
+    {
+        return ['vacunas' => self::VACUNA, 'categorias' => self::CATEGORIA];
+    }
+
+    protected function nombreEsquema(string $esquema): string
+    {
+        return $esquema === self::ESQUEMA_879 ? 'Acta histórica (Res. 879/2002)' : 'Acta única (Res. 711/2025)';
+    }
+
+    protected function titulosGrupos(): array
+    {
+        return ['acta' => 'Datos del acta', 'vacunador' => 'Vacunador', 'vacunas' => 'Vacuna :n', 'categorias' => 'Categoría :n', 'totales' => 'Totales',
+            'firmas' => 'Firmas y responsable'];
+    }
+
+    protected function etiquetaAgregar(string $grupo): string
+    {
+        return $grupo === 'vacunas' ? 'Agregar vacuna' : 'Agregar categoría';
     }
 
     public function advertencias(Establecimiento $est, array $campos, array $salida): array
@@ -243,12 +243,12 @@ final class ActaVacunacion implements Familia
         return $adv;
     }
 
-    public function eventos(array $campos): array
+    public function confirmacion(Establecimiento $est, array $campos, string $documentoId): array
     {
         $v = fn (string $ruta) => Campos::valor($campos, $ruta);
         $fecha = $v('fecha');
-        if ($fecha === null || $v('alcance') === 'cero') {
-            return [];
+        if ($v('alcance') === 'cero') {
+            return ['eventos' => [], 'vincular' => []]; // acta «cero»: solo se versiona el documento
         }
         $vacunador = trim(implode(' ', array_filter([$v('vacunador_nombre'), $v('vacunador_matricula') ? '(Mat. '.$v('vacunador_matricula').')' : null])));
         $acta = $v('numero_acta');
@@ -280,10 +280,38 @@ final class ActaVacunacion implements Familia
                 'vacunador' => $vacunador !== '' ? mb_substr($vacunador, 0, 200) : null,
                 'campana' => $v('campana') !== null ? mb_substr((string) $v('campana'), 0, 200) : null,
             ], fn ($x) => $x !== null);
-            $eventos[] = ['tipo' => 'sanidad.vacunacion', 'ocurrido_en' => $fecha, 'payload' => $payload, 'categorias' => array_values(array_unique($cats)), 'observaciones' => $obs];
+            $sujetos = self::sujetosPorCategoria($est, array_values(array_unique($cats)));
+            if ($sujetos === []) {
+                throw ApiException::reglaBloqueante(__('No hay animales ni lotes de esas categorías en el establecimiento para registrar la vacunación.'),
+                    ['categorias' => array_values(array_unique($cats))]);
+            }
+            $eventos[] = ['tipo' => 'sanidad.vacunacion', 'ocurrido_en' => $fecha, 'payload' => $payload, 'sujetos' => $sujetos, 'observaciones' => $obs];
+        }
+        if ($fecha === null || $eventos === []) {
+            throw ApiException::reglaBloqueante(__('No hay nada para registrar: faltan la fecha, la enfermedad o categorías con vacunados.'));
         }
 
-        return $eventos;
+        return ['eventos' => $eventos, 'vincular' => []];
+    }
+
+    /**
+     * Animales activos de las categorías vacunadas (en tandas de 1000) y lotes anónimos con cabezas de esas categorías.
+     *
+     * @param  list<string>  $categorias
+     * @return list<array<string, mixed>>
+     */
+    private static function sujetosPorCategoria(Establecimiento $est, array $categorias): array
+    {
+        $ids = DB::table('animales_estado')->where('establecimiento_id', $est->id)->where('estado', 'activo')->whereIn('categoria_codigo', $categorias)
+            ->orderBy('animal_id')->pluck('animal_id')->all();
+        $out = array_map(fn ($tanda) => ['tipo' => 'animales', 'animal_ids' => $tanda], array_chunk($ids, 1000));
+        $lotes = DB::table('lote_conteos as lc')->join('lotes as l', 'l.id', '=', 'lc.lote_id')->where('l.establecimiento_id', $est->id)->where('l.anonimo', true)
+            ->whereIn('lc.categoria_codigo', $categorias)->where('lc.cabezas', '>', 0)->distinct()->orderBy('l.id')->pluck('l.id')->all();
+        foreach ($lotes as $lote) {
+            $out[] = ['tipo' => 'lote', 'lote_id' => $lote];
+        }
+
+        return $out;
     }
 
     public function metadatosDocumento(array $campos): array
@@ -294,126 +322,5 @@ final class ActaVacunacion implements Familia
             'emitido_en' => Campos::valor($campos, 'fecha'),
             'emisor' => $ente ? array_filter(['nombre' => mb_substr($ente, 0, 200), 'identificacion' => Campos::valor($campos, 'vacunador_matricula')]) : null,
         ]);
-    }
-
-    /** @return list<array{valor: string, etiqueta: string}> */
-    public static function opcionesCategoria(): array
-    {
-        static $cache = null;
-
-        return $cache ??= DB::table('categorias')->where('activa', true)->orderBy('especie_codigo')->orderBy('orden')->get(['codigo', 'especie_codigo', 'nombres'])
-            ->map(fn ($c) => ['valor' => $c->codigo, 'etiqueta' => (json_decode($c->nombres, true)['es'] ?? $c->codigo).($c->especie_codigo === 'BUB' ? ' (búfalo)' : ' (bovino)')])->all();
-    }
-
-    /** @param array<string, mixed>|null $leido {valor, confianza, pagina, alternativas} */
-    private function campo(string $ruta, string $grupo, string $etiqueta, string $tipo, ?array $opciones, bool $critico, ?array $leido): array
-    {
-        $crudo = isset($leido['valor']) && is_string($leido['valor']) && trim($leido['valor']) !== '' ? trim($leido['valor']) : null;
-        $valor = $crudo === null ? null : $this->interpretar($tipo, $opciones, $crudo);
-        $conf = isset($leido['confianza']) && is_numeric($leido['confianza']) ? round(max(0, min(1, (float) $leido['confianza'])), 2) : null;
-        if ($crudo !== null && $valor === null) {
-            $conf = min($conf ?? 0.3, 0.3); // se leyó algo que no se pudo interpretar: revisar sí o sí
-        }
-
-        return [
-            'ruta' => $ruta, 'grupo' => $grupo, 'etiqueta' => $etiqueta, 'tipo' => $tipo,
-            'opciones' => $opciones === null ? null : (array_is_list($opciones) && is_string($opciones[0] ?? null) ? array_map(fn ($o) => ['valor' => $o, 'etiqueta' => self::etiquetaOpcion($o)], $opciones) : $opciones),
-            'critico' => $critico, 'valor_extraido' => $crudo, 'valor' => $valor, 'confianza' => $conf,
-            'pagina' => isset($leido['pagina']) && is_int($leido['pagina']) ? $leido['pagina'] : null,
-            'alternativas' => array_values(array_filter((array) ($leido['alternativas'] ?? []), 'is_string')),
-            'sugerido' => false, 'estado' => 'pendiente',
-        ];
-    }
-
-    private function sugerenciaCategoria(int $i, array $fila): array
-    {
-        $c = $this->campo("categorias.{$i}.categoria_codigo", 'categorias', self::CATEGORIA['categoria_codigo'][0], 'categoria', self::opcionesCategoria(), true, null);
-        $texto = is_string($fila['categoria']['valor'] ?? null) ? $fila['categoria']['valor'] : null;
-        $especie = $this->interpretar('opcion', ['BOV', 'BUB'], (string) ($fila['especie']['valor'] ?? '')) ?? 'BOV';
-        $codigo = $texto === null ? null : self::mapearCategoria($texto, $especie);
-        if ($codigo !== null) {
-            // Sugerencia de TROPILLA, no lectura: confianza acotada y marcada como sugerida.
-            $c['valor'] = $codigo;
-            $c['confianza'] = min(0.7, (float) ($fila['categoria']['confianza'] ?? 0.5));
-            $c['sugerido'] = true;
-        }
-
-        return $c;
-    }
-
-    /** «Vacas» → BOV_VACA, «Terneras» → BOV_TERNERA (singular, sin acentos, contra el catálogo). */
-    public static function mapearCategoria(string $texto, string $especie): ?string
-    {
-        $norm = fn (string $s) => preg_replace('/[^a-z ]/', '', Str::lower(Str::ascii($s)));
-        $singular = function (string $s): string {
-            $s = trim($s);
-
-            return match (true) {
-                str_ends_with($s, 'yes') => substr($s, 0, -2),
-                str_ends_with($s, 'res'), str_ends_with($s, 'les'), str_ends_with($s, 'nes') => substr($s, 0, -2),
-                str_ends_with($s, 's') => substr($s, 0, -1),
-                default => $s,
-            };
-        };
-        $buscado = $singular($norm($texto));
-        foreach (self::opcionesCategoria() as $o) {
-            if (! str_starts_with($o['valor'], $especie.'_')) {
-                continue;
-            }
-            $nombre = $norm(explode('/', explode('(', $o['etiqueta'])[0])[0]);
-            if ($buscado !== '' && $buscado === trim($nombre)) {
-                return $o['valor'];
-            }
-        }
-
-        return null;
-    }
-
-    private function interpretar(string $tipo, ?array $opciones, string $crudo): mixed
-    {
-        $norm = Str::lower(Str::ascii($crudo));
-
-        return match ($tipo) {
-            'fecha' => self::fecha($crudo),
-            'entero' => preg_match('/^[\d.\s]+$/', $crudo) && preg_replace('/\D/', '', $crudo) !== '' ? (int) preg_replace('/\D/', '', $crudo) : null,
-            'booleano' => match (true) {
-                in_array($norm, ['si', 'sí', 'true', 'x', 'firmado', 'firma'], true) => true,
-                in_array($norm, ['no', 'false'], true) => false,
-                default => null,
-            },
-            'opcion' => match (true) {
-                $opciones === ['BOV', 'BUB'] => match (true) {
-                    str_contains($norm, 'bub') || str_contains($norm, 'bufal') => 'BUB',
-                    str_contains($norm, 'bov') || str_contains($norm, 'vacun') => 'BOV',
-                    default => null,
-                },
-                default => collect($opciones)->first(fn ($o) => str_contains($norm, Str::substr($o, 0, 5))),
-            },
-            'texto' => mb_substr($crudo, 0, 200),
-            default => null,
-        };
-    }
-
-    /** dd/mm/aaaa, dd-mm-aa, aaaa-mm-dd → aaaa-mm-dd (null si no es una fecha válida). */
-    public static function fecha(string $s): ?string
-    {
-        if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', trim($s), $m)) {
-            [$a, $mes, $d] = [(int) $m[1], (int) $m[2], (int) $m[3]];
-        } elseif (preg_match('/^(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{2}|\d{4})$/', trim($s), $m)) {
-            [$d, $mes, $a] = [(int) $m[1], (int) $m[2], (int) $m[3]];
-            $a = $a < 100 ? 2000 + $a : $a;
-        } else {
-            return null;
-        }
-
-        return checkdate($mes, $d, $a) ? sprintf('%04d-%02d-%02d', $a, $mes, $d) : null;
-    }
-
-    private static function etiquetaOpcion(string $o): string
-    {
-        return match ($o) {
-            'sistematica' => 'Sistemática', 'estrategica' => 'Estratégica', 'total' => 'Total', 'parcial' => 'Parcial', 'cero' => 'Cero',
-            'aftosa' => 'Aftosa', 'brucelosis' => 'Brucelosis', 'BOV' => 'Bovino', 'BUB' => 'Búfalo', default => $o,
-        };
     }
 }

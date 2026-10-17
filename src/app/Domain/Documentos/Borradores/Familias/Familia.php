@@ -53,12 +53,36 @@ interface Familia
     public function validarValor(array $campo, mixed $valor): mixed;
 
     /**
-     * Eventos que propone la confirmación (los sujetos los resuelve `ConfirmarBorrador` por categoría).
+     * Qué hace la confirmación: eventos nuevos (con sujetos ya resueltos; uno por sujeto) y eventos existentes a los
+     * que se vincula el documento (p. ej. el movimiento ya cargado de un DT-e). Lanza `regla_bloqueante` si no hay nada
+     * que registrar o falta resolver a quién se aplica.
      *
      * @param  list<array<string, mixed>>  $campos
-     * @return list<array{tipo: string, ocurrido_en: string, payload: array<string, mixed>, categorias: list<string>, observaciones: string}>
+     * @return array{eventos: list<array{tipo: string, ocurrido_en: string, payload: array<string, mixed>, sujetos: list<array<string, mixed>>, observaciones: string}>, vincular: list<string>}
      */
-    public function eventos(array $campos): array;
+    public function confirmacion(Establecimiento $est, array $campos, string $documentoId): array;
+
+    /**
+     * Completa los campos propios de TROPILLA después de leer (sugerencias que la persona confirma).
+     *
+     * @param  list<array<string, mixed>>  $campos
+     * @return list<array<string, mixed>>
+     */
+    public function completar(Establecimiento $est, array $campos): array;
+
+    /**
+     * Opciones que dependen del establecimiento (lotes, movimientos) al momento de mostrar.
+     *
+     * @param  list<array<string, mixed>>  $campos
+     * @return list<array<string, mixed>>
+     */
+    public function refrescarOpciones(string $establecimientoId, array $campos): array;
+
+    /** @return list<string> códigos de advertencia que impiden confirmar (se corrigen, no se aceptan). */
+    public function bloqueantes(): array;
+
+    /** @return array{esquemas: array<string, string>, grupos: array<string, string>, agregables: list<array{grupo: string, etiqueta: string}>} */
+    public function presentacion(): array;
 
     /**
      * Metadatos con los que se versiona el documento al confirmar (emisor, fecha de emisión).

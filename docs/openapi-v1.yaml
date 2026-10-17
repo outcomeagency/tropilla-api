@@ -3471,7 +3471,7 @@ paths:
       tags: [Documentos]
       summary: Revisar campos (correcto / editado / no legible / no aplica)
       operationId: patch_establecimientos_establecimiento_borradores_borrador_campos
-      description: '**Ability:** `documentos.crear`. Solo en `para_revisar` (si no, 409 `estado_invalido`). Cada decisión queda en el historial (quién, cuándo, valor anterior y nuevo). `editado` exige `valor` válido para el `tipo` del campo (fecha YYYY-MM-DD, entero ≥ 0, booleano, una de `opciones`, texto ≤ 200). `agregar_fila` suma una fila vacía (`vacunas` | `categorias`) que el modelo no vio. Las advertencias se recalculan. `row_version` opcional (409 `conflicto_row_version`).'
+      description: '**Ability:** `documentos.crear`. Solo en `para_revisar` (si no, 409 `estado_invalido`). Cada decisión queda en el historial (quién, cuándo, valor anterior y nuevo). `editado` exige `valor` válido para el `tipo` del campo (fecha YYYY-MM-DD, entero ≥ 0, booleano, una de `opciones`, texto ≤ 500). `agregar_fila` suma una fila vacía que el modelo no vio (grupos de `presentacion.agregables`: `vacunas` | `categorias` en el acta, `detalle` en DT-e y guía). Tipos `lote` y `evento` = UUID de un lote / movimiento del establecimiento (sus `opciones` se calculan al leer; la pertenencia se verifica en las advertencias y al confirmar). Las advertencias se recalculan. `row_version` opcional (409 `conflicto_row_version`).'
       parameters:
       - name: establecimiento
         in: path
@@ -3507,7 +3507,7 @@ paths:
       tags: [Documentos]
       summary: 'Confirmar: registra los eventos y versiona el documento'
       operationId: post_establecimientos_establecimiento_borradores_borrador_confirmar
-      description: '**Ability:** `documentos.crear` + la del tipo de evento (`sanidad.crear`). Única forma de que un borrador modifique datos. Exige todos los campos revisados (422 `revision_incompleta`) y, si hay advertencias, `confirmar_advertencias: true` (422 `requiere_confirmacion` con `advertencias`). Acta de vacunación (TPA-62): un `sanidad.vacunacion` por vacuna (aftosa / brucelosis) con fecha, producto, serie, vencimiento, vacunador y campaña; sujetos = animales activos de las categorías con vacunados (tandas de 1000) y lotes anónimos con esas categorías (422 `regla_bloqueante` si no hay); alcance `cero` no crea eventos. Las páginas originales van como `adjuntos` y el documento recibe una versión `correccion_metadatos` vinculada a los eventos (si el rol puede versionarlo). Todo o nada; idempotente (reconfirmar devuelve el mismo resultado).'
+      description: '**Ability:** `documentos.crear` + la del tipo de evento (`sanidad.crear` / `hacienda.crear`); vincular a un movimiento existente exige poder versionar el documento (`documentos.versionar`). Única forma de que un borrador modifique datos. Exige todos los campos revisados (422 `revision_incompleta`) y, si hay advertencias, `confirmar_advertencias: true` (422 `requiere_confirmacion` con `advertencias`). Acta de vacunación (TPA-62): un `sanidad.vacunacion` por vacuna (aftosa / brucelosis) con fecha, producto, serie, vencimiento, vacunador y campaña; sujetos = animales activos de las categorías con vacunados (tandas de 1000) y lotes anónimos con esas categorías (422 `regla_bloqueante` si no hay); alcance `cero` no crea eventos. DT-e y guía provincial (TPA-64): según el grupo `movimiento`, `vincular` relaciona el documento con el ingreso/egreso ya cargado (sin eventos nuevos; queda en `eventos_vinculados`) o `registrar` crea un `hacienda.egreso` (conteo del lote anónimo o animales por caravana) o `hacienda.ingreso` (conteo a un lote anónimo) con `dte_numero`, contraparte declarada y `documento_ids`. Las advertencias bloqueantes de la familia (p. ej. `caravana_desconocida`, `lote_sin_elegir`, `categoria_otra_especie`) dan 422 `regla_bloqueante` aunque se confirmen. Las páginas originales van como `adjuntos` y el documento recibe una versión `correccion_metadatos` vinculada a los eventos (si el rol puede versionarlo). Todo o nada; idempotente (reconfirmar devuelve el mismo resultado).'
       parameters:
       - name: establecimiento
         in: path
@@ -8601,7 +8601,7 @@ components:
       properties:
         id: {$ref: '#/components/schemas/Uuid'}
         documento_id: {$ref: '#/components/schemas/Uuid'}
-        familia: {type: string, enum: [acta_vacunacion]}
+        familia: {type: string, enum: [acta_vacunacion, dte, guia_provincial]}
       required: [id, documento_id, familia]
       additionalProperties: false
     BorradorCamposInput:
@@ -8618,7 +8618,7 @@ components:
               valor: {description: 'Obligatorio con `editado`; tipo según el campo (string | integer | boolean | null)'}
             required: [ruta, estado]
             additionalProperties: false
-        agregar_fila: {type: [string, 'null'], enum: [vacunas, categorias, null]}
+        agregar_fila: {type: [string, 'null'], description: 'Grupo de `presentacion.agregables` (vacunas, categorias, detalle)'}
         row_version: {type: [integer, 'null']}
       required: [campos]
       additionalProperties: false
@@ -8632,12 +8632,12 @@ components:
       description: >-
         Campo revisable (TPA-61). `valor_extraido` = lo que leyó el modelo tal cual; `valor` = interpretación (fecha ISO, entero, opción) o lo
         que editó la persona; `sugerido` = valor propuesto por TROPILLA (p. ej. categoría del catálogo), no leído. `confianza` 0–1 (null en
-        filas agregadas a mano); `alternativas` = otras lecturas posibles del trazo. Rutas de filas: `vacunas.N.*`, `categorias.N.*`.
+        filas agregadas a mano y en campos propios de TROPILLA); `alternativas` = otras lecturas posibles del trazo. Rutas de filas: `vacunas.N.*`, `categorias.N.*`, `detalle.N.*`.
       properties:
         ruta: {type: string}
-        grupo: {type: string, enum: [acta, vacunador, firmas, totales, vacunas, categorias]}
+        grupo: {type: string, description: 'Grupo visible; títulos en `BorradorDocumento.presentacion.grupos`'}
         etiqueta: {type: string}
-        tipo: {type: string, enum: [texto, fecha, entero, booleano, opcion, categoria]}
+        tipo: {type: string, enum: [texto, fecha, entero, booleano, opcion, categoria, lote, evento]}
         opciones:
           type: [array, 'null']
           items:
@@ -8666,11 +8666,18 @@ components:
         `acta_vacunacion.879_2002/1` (acta histórica). Advertencias (nunca se autocorrige): `vacunados_mayor_existentes`, `totales_no_cierran`,
         `existencias_distintas`, `renspa_distinto`, `renspa_formato`, `fecha_faltante`, `fecha_futura`, `firma_no_detectada`, `calidad_imagen`,
         `formulario_no_reconocido`, `categoria_otra_especie` (bloquea la confirmación). `aviso`: transcripción asistida, no es presentación oficial.
+        TPA-64: `dte.356_2008/1` (DT-e de SIGSA), `dte.dta_historico/1` (DTA en papel), `guia_provincial.dut_chaco/1` (DUT Chaco) y
+        `guia_provincial.generica/1` (otras provincias, `variante_no_verificada`). Campos propios `movimiento_sentido` (egreso/ingreso, sugerido por
+        RENSPA), `movimiento_registro` (vincular/registrar, sugerido si hay un movimiento con el mismo N.º de DT-e), `movimiento_evento_id`,
+        `movimiento_lote_id`, `movimiento_caravanas`. Advertencias: `totales_no_cierran`, `cantidades_no_concilian`, `dte_no_coincide`,
+        `dte_faltante`, `sentido_no_coincide`, `renspa_ajeno`, `vigencia_invalida`, `documento_anulado`, `conteo_insuficiente`; bloqueantes:
+        `movimiento_sin_definir`, `sentido_sin_definir`, `movimiento_sin_elegir`, `movimiento_inexistente`, `lote_sin_elegir`, `lote_no_anonimo`,
+        `lote_otra_especie`, `caravana_desconocida`, `detalle_sin_categoria`.
       properties:
         id: {$ref: '#/components/schemas/Uuid'}
         documento_id: {$ref: '#/components/schemas/Uuid'}
         documento_version_id: {$ref: '#/components/schemas/Uuid'}
-        familia: {type: string, enum: [acta_vacunacion]}
+        familia: {type: string, enum: [acta_vacunacion, dte, guia_provincial]}
         esquema: {type: [string, 'null']}
         estado: {type: string, enum: [esperando_archivos, en_cola, extrayendo, para_revisar, fallido, confirmado, descartado]}
         error: {type: [string, 'null']}
@@ -8714,7 +8721,27 @@ components:
           additionalProperties: false
         evento_ids:
           type: array
+          description: Eventos creados por la confirmación.
           items: {$ref: '#/components/schemas/Uuid'}
+        eventos_vinculados:
+          type: array
+          description: Eventos existentes con los que la confirmación relacionó el documento (TPA-64).
+          items: {$ref: '#/components/schemas/Uuid'}
+        presentacion:
+          type: object
+          description: 'Cómo mostrar la familia: nombre de cada esquema, títulos de grupo (`:n` = número de fila) y filas que se pueden agregar.'
+          properties:
+            esquemas: {type: object, additionalProperties: {type: string}}
+            grupos: {type: object, additionalProperties: {type: string}}
+            agregables:
+              type: array
+              items:
+                type: object
+                properties:
+                  grupo: {type: string}
+                  etiqueta: {type: string}
+                additionalProperties: false
+          additionalProperties: false
         aviso: {type: string}
         row_version: {type: integer}
         creado_por: {$ref: '#/components/schemas/Uuid'}
@@ -8734,7 +8761,7 @@ components:
               type: array
               items: {type: object, additionalProperties: true}
           additionalProperties: false
-      required: [id, documento_id, familia, estado, paginas, campos, pendientes, advertencias, extraccion, evento_ids, aviso, row_version]
+      required: [id, documento_id, familia, estado, paginas, campos, pendientes, advertencias, extraccion, evento_ids, eventos_vinculados, presentacion, aviso, row_version]
       additionalProperties: false
     Documento:
       type: object

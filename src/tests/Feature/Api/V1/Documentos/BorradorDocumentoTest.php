@@ -235,7 +235,7 @@ it('permisos, pertenencia, dependencia y validación', function () {
     FakeExtractor::$salida = salidaActa();
     $body = fn (array $x = []) => ['id' => (string) Str::uuid7(), 'documento_id' => $docId, 'familia' => 'acta_vacunacion', ...$x];
 
-    $this->postJson("{$this->base}/borradores", $body(['familia' => 'dte']))->assertStatus(422)->assertJsonPath('code', 'validacion');
+    $this->postJson("{$this->base}/borradores", $body(['familia' => 'otra']))->assertStatus(422)->assertJsonPath('code', 'validacion');
     $this->postJson("{$this->base}/borradores", ['documento_id' => $docId, 'familia' => 'acta_vacunacion'])->assertStatus(422);
     // El documento todavía no llegó por el push: la app reintenta.
     $this->postJson("{$this->base}/borradores", $body(['documento_id' => (string) Str::uuid7()]))->assertStatus(409)->assertJsonPath('code', 'dependencia_faltante');
