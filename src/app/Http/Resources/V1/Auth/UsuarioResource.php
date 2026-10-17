@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\Formato;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Schema `Usuario` del contrato.
@@ -33,6 +34,7 @@ class UsuarioResource extends JsonResource
             'es_staff' => (bool) $u->es_staff,
             'es_comprador' => false, // TPA-57
             'es_profesional' => false, // TPA-58
+            'es_proveedor' => DB::table('proveedores')->where('usuario_id', $u->id)->exists(), // TPA-82
             'created_at' => Formato::fechaHora($u->created_at),
         ];
     }

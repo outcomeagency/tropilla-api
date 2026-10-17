@@ -117,13 +117,14 @@ final class RegistrarOperacion
                 'id' => (string) Str::uuid7(), 'operacion_id' => $id, 'establecimiento_id' => $est->id, 'version' => $version, 'accion' => $accion,
                 'hash_anterior' => $hashAnterior, 'motivo' => $d['motivo'] ?? null, 'tipo' => $d['tipo'], 'fecha' => $d['fecha'], 'especie' => $d['especie'],
                 'categoria' => $d['categoria'], 'cantidad' => $d['cantidad'], 'trato' => $t, 'liquidacion' => $liq, 'trazabilidad' => $d['trazabilidad'] ?? null,
-                'evento_raiz_id' => $d['evento_raiz_id'] ?? null, 'contrato_id' => $d['contrato_id'] ?? null, 'pdf_sha256' => $pdfSha,
+                'evento_raiz_id' => $d['evento_raiz_id'] ?? null, 'contrato_id' => $d['contrato_id'] ?? null, 'proveedor_id' => $d['proveedor_id'] ?? null, 'pdf_sha256' => $pdfSha,
                 'creado_en' => now()->utc()->format('Y-m-d\TH:i:s.v\Z'), 'autor_id' => $u->id, 'origen' => 'web',
             ]);
 
             $cab = [
                 'tipo' => $d['tipo'], 'estado' => 'registrada', 'version_vigente' => $version, 'evento_raiz_id' => $d['evento_raiz_id'] ?? null,
                 'simulacion_id' => $d['simulacion_id'] ?? null, 'contrato_id' => $d['contrato_id'] ?? null, 'oferta_id' => $d['oferta_id'] ?? null,
+                'proveedor_id' => $d['proveedor_id'] ?? null,
                 'especie_codigo' => $d['especie'], 'categoria_codigo' => $d['categoria'], 'cantidad' => $d['cantidad'], 'fecha' => $d['fecha'],
                 'contraparte' => $t['comprador'] ?? null, 'destino' => $t['destino'] ?? null, 'modalidad' => $modalidad, 'precio_kg' => $liq['precio_kg'],
                 'moneda' => $liq['moneda'], 'neto_total' => $liq['neto_total'], 'neto_kg_vivo' => $liq['neto_kg_vivo'],
