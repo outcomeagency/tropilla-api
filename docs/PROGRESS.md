@@ -1015,6 +1015,36 @@ los tests usan `FakeExtractor`. No hay integración con SIGSA: TROPILLA no emite
 - Pendiente: catálogo completo de campos de la pantalla SIGSA y ejemplares vigentes de guías de Corrientes, Formosa y Misiones (investigación,
   incertidumbres 2 y 3); validar contra fotos reales de DT-e/DUT.
 
+## TPA-66 · Pruebas, certificados y estatus brucelosis/TBC · ✅ (parte API)
+
+**Endpoints (aditivos):** `GET …/sanidad/oficial` (`?horizonte_dias`), `GET …/sanidad/oficial/resumen-veterinario` (`?formato=pdf|csv&meses`),
+`GET|POST …/sanidad/protocolos`, `GET …/sanidad/protocolos/{p}`, `POST …/sanidad/protocolos/{p}/anular`, `POST …/sanidad/estatus`,
+`POST …/sanidad/estatus/{e}/anular`, `POST …/sanidad/saneamiento`, `PATCH …/sanidad/saneamiento/{p}`, `GET …/animales/{a}/pruebas`;
+familia de borrador `protocolo_sanitario`.
+
+**Comentario del dev:**
+- Tablas `protocolos_sanitarios` (laboratorio, protocolo, prueba, motivo DOES/recertificación/saneamiento/movimiento/rutina, modalidad total/muestreo,
+  stock base, fechas, veterinario, vencimiento, documento original), `protocolo_resultados` (**append-only**: identificación tal como figura + animal
+  asociado si coincide, muestra, lecturas en mm, resultado), `estatus_sanitarios` (historial por enfermedad: libre/en saneamiento/en certificación/sin
+  estatus/suspendido, certificado, autoridad, vigencia; uno vigente, el nuevo reemplaza) y `planes_saneamiento` (acciones con responsable y fecha,
+  próximo muestreo; uno activo, edición con `row_version`). `tipos_prueba.enfermedad` + pruebas SAT, 2-ME, ELISA y FC.
+- **Transcripción vs condición oficial:** todo lleva `origen` = `transcripcion_revisada` (exige el original no fiscal; CHECK en la base) o `declarado`, con
+  su leyenda y el aviso «no es la condición sanitaria oficial; la certifica SENASA (SIGSA)». Nada se presenta como certificado por TROPILLA.
+- Registrar un protocolo crea `sanidad.prueba_diagnostica` por los resultados asociados (agrupados por resultado en tandas de 1000; con lecturas, uno por
+  animal) → positivo = reactor por el proyector de siempre. Advertencias con confirmación: sin asociar, reactor, fecha futura, muestreo incompleto, vencido.
+  Un protocolo no se edita: se anula (anula sus eventos; 409 si respalda el estatus vigente).
+- Vencimientos como datos: `brucelosis_seronegatividad_validez_dias` (60, resultado para movimiento) y `sanidad_oficial_aviso_dias` (30), editables
+  por establecimiento. `…/sanidad/oficial` junta estatus, plan, positivos de la enfermedad y vencimientos (estatus, movimiento, muestreo, acciones).
+- Resumen para el veterinario: PDF (Gotenberg, plantilla `pdf/resumen-veterinario`; 503 si no responde) y CSV `;` con BOM; se genera a pedido, no se guarda.
+- Foto → borrador (TPA-61/62 reutilizado): familia `protocolo_sanitario/1` (protocolo de laboratorio, planilla de sangrado o de tuberculinización).
+  Sobre el refactor de TPA-64 (`Familia::confirmacion()` propone eventos sueltos), un protocolo es una entidad propia: `ConfirmarBorrador` delega
+  en `FamiliaConRegistroPropio::registrar()` (misma transacción, mismo versionado del documento). La migración (`2026_10_21_120000`, después de la
+  de TPA-64) rehace el CHECK de familias **a partir del vigente**, sin pisar las de otros tickets. Tipo de campo nuevo `decimal` (lecturas en mm).
+- Smoke real con Gemini (`gemini-3.8-flash`) sobre un protocolo sintético de La Esperanza: leyó enfermedad, técnica, motivo, protocolo, fechas, RENSPA,
+  vet/matrícula, firma, totales y las 4 filas; advirtió la caravana inexistente y el positivo; la confirmación dejó 3 asociados y 1 reactor. PDF real revisado.
+- Verificado: 5 tests (protocolo con asociación/confirmación/reactor/vencimiento/idempotencia/anulación/append-only; tuberculina con lecturas y original;
+  estatus/reemplazo/anulación, plan con 409 y cierre, vencimientos; CSV/PDF/503 y 403/404; foto → revisión → confirmación) + suite completa.
+
 ---
 
 ## TPA-77 · Bot de Telegram del productor · ✅ (parte API)
@@ -1093,6 +1123,7 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-64: familias `dte` y `guia_provincial`; `BorradorDocumento.eventos_vinculados` y `presentacion`; `BorradorCampo.tipo` suma `lote` y `evento`; `agregar_fila` acepta los grupos de la familia; `aviso` ya no nombra solo a SENASA.
 - TPA-51: `POST /organizaciones` (staff) y `POST /organizaciones/{o}/miembros` aditivos; `Adherido.datos` con solo lo consentido; 409 `ya_adherido`.
 - TPA-77: tag `Telegram` (`/me/telegram*`, `/telegram/webhook`); `Evento.origen` suma `telegram`; `preferencias-notificacion` suma `telegram` (opcional en el PUT).
+- TPA-66: endpoints de `sanidad/oficial`, `sanidad/protocolos`, `sanidad/estatus`, `sanidad/saneamiento` y `animales/{a}/pruebas`; familia `protocolo_sanitario` (grupo agregable `animales`, tipo de campo `decimal`); `TipoPrueba.enfermedad` en catálogos.
 
 ### TPA-76 · Ficha completa del establecimiento · ✅
 

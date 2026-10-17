@@ -208,6 +208,9 @@ class EspeciesSeeder extends Seeder
         foreach ([
             ['token_kg_default', 100, 'kg'], ['toma_vencimiento_horas', 48, 'horas'], ['entrega_tolerancia_pct', '5', 'pct'],
             ['iva_hacienda_pct', '10.5', 'pct'], ['snapshot_offline_dias', 400, 'dias'], ['plan_horizonte_dias', 90, 'dias'],
+            // TPA-66: validez del resultado seronegativo de brucelosis para movimiento (operatoria vigente, Res. 67/2019) y
+            // anticipación con la que se avisa un vencimiento sanitario. Editables por establecimiento.
+            ['brucelosis_seronegatividad_validez_dias', 60, 'dias'], ['sanidad_oficial_aviso_dias', 30, 'dias'],
         ] as [$clave, $valor, $unidad]) {
             $this->parametro($clave, null, null, $valor, $unidad, 'TROPILLA');
         }

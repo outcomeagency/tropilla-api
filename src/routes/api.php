@@ -47,6 +47,7 @@ use App\Http\Controllers\Api\V1\Reproduccion\ReproductorExternoController;
 use App\Http\Controllers\Api\V1\Sanidad\PlanSanitarioController;
 use App\Http\Controllers\Api\V1\Sanidad\ProductoSanitarioController;
 use App\Http\Controllers\Api\V1\Sanidad\SanidadController;
+use App\Http\Controllers\Api\V1\Sanidad\SanidadOficialController;
 use App\Http\Controllers\Api\V1\Sanidad\TareaController;
 use App\Http\Controllers\Api\V1\Sistema\AuditoriaController;
 use App\Http\Controllers\Api\V1\Sync\SyncController;
@@ -232,6 +233,18 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::post('plan-sanitario/items/{item}/archivar', [PlanSanitarioController::class, 'archivarItem'])->name('plan-sanitario.items.archivar');
             Route::get('sanidad/retiros', [SanidadController::class, 'retiros'])->name('sanidad.retiros');
             Route::get('sanidad/reactores', [SanidadController::class, 'reactores'])->name('sanidad.reactores');
+            // Pruebas, certificados y estatus de brucelosis/TBC (TPA-66)
+            Route::get('sanidad/oficial', [SanidadOficialController::class, 'resumen'])->name('sanidad.oficial');
+            Route::get('sanidad/oficial/resumen-veterinario', [SanidadOficialController::class, 'exportar'])->name('sanidad.oficial.exportar');
+            Route::get('sanidad/protocolos', [SanidadOficialController::class, 'protocolos'])->name('sanidad.protocolos.index');
+            Route::post('sanidad/protocolos', [SanidadOficialController::class, 'crearProtocolo'])->name('sanidad.protocolos.store');
+            Route::get('sanidad/protocolos/{protocolo}', [SanidadOficialController::class, 'protocolo'])->name('sanidad.protocolos.show');
+            Route::post('sanidad/protocolos/{protocolo}/anular', [SanidadOficialController::class, 'anularProtocolo'])->name('sanidad.protocolos.anular');
+            Route::post('sanidad/estatus', [SanidadOficialController::class, 'crearEstatus'])->name('sanidad.estatus.store');
+            Route::post('sanidad/estatus/{estatus}/anular', [SanidadOficialController::class, 'anularEstatus'])->name('sanidad.estatus.anular');
+            Route::post('sanidad/saneamiento', [SanidadOficialController::class, 'crearPlan'])->name('sanidad.saneamiento.store');
+            Route::patch('sanidad/saneamiento/{plan}', [SanidadOficialController::class, 'actualizarPlan'])->name('sanidad.saneamiento.update');
+            Route::get('animales/{animal}/pruebas', [SanidadOficialController::class, 'pruebasAnimal'])->name('animales.pruebas');
             Route::get('tareas', [TareaController::class, 'index'])->name('tareas.index');
             Route::post('tareas', [TareaController::class, 'store'])->name('tareas.store');
             Route::patch('tareas/{tarea}', [TareaController::class, 'update'])->name('tareas.update');

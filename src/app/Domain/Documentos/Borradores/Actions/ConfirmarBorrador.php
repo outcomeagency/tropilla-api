@@ -5,6 +5,7 @@ namespace App\Domain\Documentos\Borradores\Actions;
 use App\Domain\Documentos\Actions\RegistrarDocumentoVersion;
 use App\Domain\Documentos\ArmarSobreDocumentoWeb;
 use App\Domain\Documentos\Borradores\Borradores;
+use App\Domain\Documentos\Borradores\Familias\FamiliaConRegistroPropio;
 use App\Domain\Documentos\Borradores\Familias\Familias;
 use App\Domain\Establecimientos\Models\Establecimiento;
 use App\Domain\Hacienda\Eventos\ArmarSobreWeb;
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 /**
- * Confirmación **explícita** (TPA-61/62/64/65): única forma de que un borrador toque datos del establecimiento.
+ * Confirmación **explícita** (TPA-61/62/64/65/66): única forma de que un borrador toque datos del establecimiento.
  * Exige todos los campos revisados, que no haya advertencias bloqueantes de la familia y, si hay advertencias,
  * `confirmar_advertencias`. Registra los eventos que propone la familia por el camino de siempre (`ArmarSobreWeb` +
  * `RegistrarEvento`: permisos, hash, cadena, proyecciones) con las páginas originales como adjuntos, y versiona el
@@ -65,6 +66,19 @@ final class ConfirmarBorrador
             $b = DB::table('borradores_documento')->where('id', $b->id)->lockForUpdate()->first();
             if ($b->estado === 'confirmado') {
                 return $b;
+            }
+            // TPA-66: familias que registran su propia entidad (protocolo sanitario) por la Action de su dominio.
+            if ($familia instanceof FamiliaConRegistroPropio) {
+                $eventoIds = $familia->registrar($est, $usuario, $b, $campos, $confirmarAdvertencias);
+                $this->vincularDocumento($est, $usuario, $b, $familia->metadatosDocumento($campos), $eventoIds);
+                DB::table('borradores_documento')->where('id', $b->id)->update([
+                    'estado' => 'confirmado', 'evento_ids' => json_encode($eventoIds), 'confirmado_por' => $usuario->id, 'confirmado_en' => now(),
+                    'row_version' => $b->row_version + 1, 'updated_at' => now(),
+                ]);
+                $this->auditoria->handle($est->id, $usuario->id, 'borrador_documento', $b->id, 'confirmacion', null,
+                    ['eventos' => $eventoIds, 'extraccion' => (int) $b->extraccion_vigente, 'esquema' => $b->esquema]);
+
+                return DB::table('borradores_documento')->where('id', $b->id)->first();
             }
             $plan = $familia->confirmacion($est, $campos, $b->documento_id);
             if ($plan['vincular'] !== [] && ! $this->puedeVersionar($est, $usuario, $b)) {
