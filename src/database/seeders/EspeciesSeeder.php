@@ -179,6 +179,22 @@ class EspeciesSeeder extends Seeder
             $this->parametro($clave, 'BOV', null, $vBov, $unidad, $bov);
             $this->parametro($clave, 'BUB', null, $vBub, $unidad, $bub);
         }
+        // Identificación electrónica (TPA-63, investigacion/senasa-planillas §8): hitos por fecha y especie como datos. Hoy la norma
+        // trata igual a bovinos y bubalinos (Res. SENASA 530/2025 incorpora ambos); si cambia para una especie se edita su fila.
+        $norma = 'Res. SAGyP 71/2024 · Res. SENASA 530/2025 · 841/2025';
+        $hitos = [
+            ['desde' => '2025-03-01', 'alcance' => 'destete_primer_movimiento', 'norma' => 'Res. SENASA 530/2025',
+                'texto' => 'Terneros y terneras llevan identificación electrónica oficial al destete o antes del primer movimiento.'],
+            ['desde' => '2026-01-01', 'alcance' => 'stock_sin_oficial', 'norma' => 'Res. SENASA 530/2025',
+                'texto' => 'El stock sin identificación oficial tenía que identificarse antes del 31/12/2025.'],
+            ['desde' => '2026-07-01', 'alcance' => 'todas_categorias', 'norma' => 'Res. SENASA 530/2025 · 841/2025',
+                'texto' => 'Identificación electrónica obligatoria en todas las categorías y registro de movimientos individuales.'],
+        ];
+        foreach (['BOV', 'BUB'] as $esp) {
+            $this->parametro('identificacion_electronica_hitos', $esp, null, $hitos, null, $norma);
+            // ISO 11784: los 3 primeros dígitos del RFID son el país (032 = Argentina). Otro prefijo solo advierte.
+            $this->parametro('rfid_prefijo_pais', $esp, null, '032', null, 'ISO 11784 · '.$norma);
+        }
         // Gestación por raza bubalina (§3.3).
         foreach (['BUB_MURRAH' => 303, 'BUB_MEDITERRANEA' => 313, 'BUB_JAFARABADI' => 330] as $raza => $dias) {
             $this->parametro('gestacion_media_dias', 'BUB', $raza, $dias, 'dias', $bub);

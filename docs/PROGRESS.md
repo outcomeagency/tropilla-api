@@ -1142,6 +1142,28 @@ y `fidha` en los borradores existentes. **Real vs mock:** real (pipeline Gemini/
   inspección + tratamiento + vínculo al movimiento y variante anterior; permisos/validación del libro); suite 342 verde, Pint (sin cambios en los archivos del ticket).
 - Pendiente: casilleros literales del FIDHA 2026 y del anexo de contenidos mínimos contra ejemplares reales (investigación, incertidumbre 2).
 
+## TPA-63 · Importar identificaciones electrónicas y planilla de caravanas · ✅ (parte API)
+
+Endpoints: `GET …/identificaciones/importaciones`, `GET|PUT …/identificaciones/importaciones/{id}` (PUT idempotente por UUIDv7
+del teléfono: 201/200). Migración `identificacion_importaciones` + `identificacion_importacion_filas`. Payload de
+`hacienda.identificacion` con campos opcionales nuevos `motivo`, `origen`, `dispositivo {tipo, lector}`, `vinculada_a` e
+`importacion_id`. Parámetros `identificacion_electronica_hitos` y `rfid_prefijo_pais` por especie; tipo de documento `planilla_identificacion`.
+
+**Comentario del dev:**
+- La importación la arma el teléfono sin señal (bastón, archivo CSV/TXT del lector, código de barras o planilla en papel con la foto
+  como respaldo); las colocaciones viajan como eventos `hacienda.identificacion` por el push y la importación entera se sube después
+  con **todas** sus filas. El servidor las reverifica (`ConciliadorIdentificaciones`, misma regla que el teléfono) y guarda
+  `estado` (teléfono) y `estado_servidor`: `lista`, `reposicion`, `sin_cambios`, `registrada`, `duplicada`, `invalida`, `en_uso`,
+  `sin_conciliar`, `otra_especie`, `omitida`. Nada se descarta: un PUT sin alguna fila ya guardada → 422; confirmada, la cabecera queda fija.
+- Identificaciones anteriores: la reposición deja la RFID previa no vigente en el historial (proyector existente); el evento lleva
+  fecha (`colocada_en`), tipo, motivo, origen y dispositivo/lector, y `vinculada_a` con la caravana con que se concilió.
+- Especie y fecha: hitos de la Res. SENASA 530/2025 (destete/primer movimiento 1/3/2025, stock sin oficial 31/12/2025, todas las
+  categorías 1/7/2026) como **datos por especie** (hoy iguales para BOV y BUB); la respuesta trae `reglas.vigentes/proximos` a la
+  fecha. RFID sin prefijo 032 solo advierte. Otra especie que la de la importación queda `otra_especie`.
+- Verificado: 4 tests Pest nuevos (10 estados con ceros a la izquierda, prefijo, ambigüedad; evento con los campos nuevos;
+  idempotencia y filas que no se borran; reglas por fecha/especie y catálogo; 403/404/422); suite 331 verde, Pint.
+- Desvío: el brain no tiene estos endpoints ni los campos nuevos del payload (anotado abajo y en `openapi-v1.yaml`).
+
 ## Desvíos del contrato
 
 Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
@@ -1154,6 +1176,7 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-30: `sin_estado`, `partos_proximos`, `partos_vencidos` en `TableroVientres`.
 - TPA-48: `compromiso` en `AnimalResumen`; PDF público de oferta como `200 application/pdf` en vez de `302` a URL prefirmada.
 - TPA-43 (bugfix): catálogos con `especie_codigo` (+ alias `especie`); `/sync/catalogos` `private, no-cache`; identificador tolerante a ceros.
+- TPA-63: `GET|PUT …/identificaciones/importaciones[/{id}]` + schemas `ImportacionIdentificaciones*`; `hacienda.identificacion` con `motivo`, `origen`, `dispositivo`, `vinculada_a`, `importacion_id` (opcionales); parámetros `identificacion_electronica_hitos`/`rfid_prefijo_pais`; tipo de documento `planilla_identificacion`.
 - TPA-31: `ProductoSanitario.id` nullable + `codigo` en la base sugerida; `sugerido_codigo` en el input; filtro `especie`.
 - TPA-32: la web expande sanidad a lote no anónimo y completa el snapshot del producto en el payload; sujeto potrero resuelto a animales presentes.
 - TPA-33: `PlanItem` + `nota`, `aplica`, `requiere_configuracion`, `archivado_en`; `Tarea.reprogramada`; filtro `estado=abiertas`; formato de `disparador` documentado.

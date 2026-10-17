@@ -91,6 +91,7 @@ class TiposYListasSeeder extends Seeder
             ['registro_genealogico', 'Registro genealógico', 'general', true], ['habilitacion', 'Habilitación', 'general', true],
             ['contrato', 'Contrato', 'comercial', true], ['resumen_trato', 'Resumen de trato', 'comercial', true],
             ['contrato_futuro_pdf', 'Contrato a futuro', 'comercial', true], ['foto_evidencia', 'Foto de evidencia', 'general', true],
+            ['planilla_identificacion', 'Planilla de identificación (caravanas)', 'general', false],
             ['otro', 'Otro', 'general', true],
         ];
         foreach ($tipos as $i => [$codigo, $nombre, $privacidad, $publicable]) {

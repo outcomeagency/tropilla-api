@@ -4093,6 +4093,128 @@ paths:
         '403': {$ref: '#/components/responses/Prohibido'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
         '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/identificaciones/importaciones:
+    get:
+      tags: [Hacienda]
+      summary: Importaciones de identificaciones electrónicas
+      operationId: get_establecimientos_establecimiento_identificaciones_importaciones
+      description: '**Ability:** `hacienda.ver`. TPA-63. Más nuevas primero, sin filas (las trae el GET por id).'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: estado
+        in: query
+        required: false
+        schema: {type: string, enum: [abierta, confirmada]}
+      - name: especie
+        in: query
+        required: false
+        schema: {type: string, enum: [BOV, BUB]}
+      - name: cursor
+        in: query
+        required: false
+        schema: {type: string}
+      - name: limit
+        in: query
+        required: false
+        schema: {type: integer}
+      responses:
+        '200':
+          description: OK (paginado por cursor)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: {$ref: '#/components/schemas/ImportacionIdentificaciones'}
+                  meta: {$ref: '#/components/schemas/MetaCursor'}
+                required: [data, meta]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /establecimientos/{establecimiento}/identificaciones/importaciones/{importacion}:
+    get:
+      tags: [Hacienda]
+      summary: Importación de identificaciones con todas sus filas
+      operationId: get_establecimientos_establecimiento_identificaciones_importaciones_importacion
+      description: '**Ability:** `hacienda.ver`. TPA-63.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: importacion
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ImportacionIdentificaciones'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+    put:
+      tags: [Hacienda]
+      summary: Guardar (crear o actualizar) una importación armada en el teléfono
+      operationId: put_establecimientos_establecimiento_identificaciones_importaciones_importacion
+      description: >-
+        **Ability:** `hacienda.crear`. TPA-63 (desvío aditivo). Idempotente por `importacion` (UUIDv7 del teléfono): 201 al crearla,
+        200 al actualizarla. Lleva **todas** las filas leídas (lector, archivo CSV/TXT del bastón, código de barras, tipeo o planilla),
+        también las duplicadas, inválidas, sin conciliar u omitidas; el servidor las reverifica (`estado_servidor`) y nunca las borra:
+        un PUT sin alguna fila ya guardada → 422. Las colocaciones viajan aparte como eventos `hacienda.identificacion` por el push
+        (con `importacion_id`); la fila guarda su `evento_id`. Confirmada, la cabecera queda fija y solo cambian las filas.
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: importacion
+        in: path
+        required: true
+        schema: {$ref: '#/components/schemas/Uuid'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ImportacionIdentificacionesInput'}
+      responses:
+        '201':
+          description: Creada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ImportacionIdentificaciones'}
+                required: [data]
+                additionalProperties: false
+        '200':
+          description: Actualizada (reintento idempotente o filas resueltas después)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/ImportacionIdentificaciones'}
+                required: [data]
+                additionalProperties: false
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
   /establecimientos/{establecimiento}/borradores:
     get:
       tags: [Documentos]
@@ -10546,6 +10668,115 @@ components:
                     estado: {type: string, enum: [conciliado, faltante, no_estaba_en_la_venta]}
               avisos: {type: array, items: {type: string}}
         required: [conciliacion]
+    EstadoFilaIdentificacion:
+      type: string
+      description: >-
+        TPA-63. Importables: `lista` (colocación) y `reposicion` (reemplaza el RFID vigente, que queda en el historial). No se registran
+        pero quedan: `sin_cambios`, `registrada` (ya tiene evento), `duplicada` (mismo RFID en otra fila), `invalida` (formato),
+        `en_uso` (vigente en otro animal), `sin_conciliar` (no hay animal o hay más de uno), `otra_especie`, `omitida` (decisión de la persona).
+      enum: [lista, reposicion, sin_cambios, registrada, duplicada, invalida, en_uso, sin_conciliar, otra_especie, omitida]
+    FilaImportacionIdentificacion:
+      type: object
+      properties:
+        numero: {type: integer, minimum: 1}
+        rfid: {type: [string, 'null'], description: 'Solo dígitos (15 si es válido).'}
+        visual: {type: [string, 'null'], description: Caravana visual/oficial o tatuaje con que se concilió.}
+        leido: {type: [string, 'null'], description: Línea cruda del lector o del archivo.}
+        origen: {type: string, enum: [lector, archivo, escaner, manual, planilla]}
+        fecha: {type: [string, 'null'], format: date}
+        animal_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        animal_identificacion: {type: [string, 'null']}
+        estado: {$ref: '#/components/schemas/EstadoFilaIdentificacion'}
+        estado_servidor: {$ref: '#/components/schemas/EstadoFilaIdentificacion'}
+        mensajes:
+          type: array
+          items:
+            type: object
+            properties:
+              codigo: {type: string, description: 'sin_rfid, rfid_formato, duplicada, animal_desconocido, sin_animal, ambigua, animal_baja, otra_especie, sin_cambios, en_uso, reposicion, rfid_prefijo'}
+              nivel: {type: string, enum: [error, advertencia, info]}
+              mensaje: {type: string}
+            required: [codigo, nivel, mensaje]
+            additionalProperties: false
+        evento_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+      required: [numero, rfid, visual, leido, origen, fecha, animal_id, animal_identificacion, estado, estado_servidor, mensajes, evento_id]
+      additionalProperties: false
+    HitoIdentificacion:
+      type: object
+      description: Parámetro `identificacion_electronica_hitos` por especie (catálogo).
+      properties:
+        desde: {type: string, format: date}
+        alcance: {type: string, enum: [destete_primer_movimiento, stock_sin_oficial, todas_categorias]}
+        texto: {type: string}
+        norma: {type: string}
+      required: [desde, alcance, texto, norma]
+      additionalProperties: false
+    ImportacionIdentificaciones:
+      type: object
+      description: >-
+        TPA-63. Importación de identificaciones electrónicas (Res. SAGyP 71/2024, Res. SENASA 530/2025 y 841/2025). `reglas`: hitos
+        vigentes y próximos a la `fecha` para la especie. `resumen`: total y cantidad por `estado_servidor`. `aviso`: registro interno,
+        no reemplaza la declaración en SIGSA. `filas` solo en el detalle.
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        especie: {type: string, enum: [BOV, BUB]}
+        fecha: {type: string, format: date}
+        motivo: {type: string, enum: [destete, primer_movimiento, regularizacion, reposicion, ingreso, otro]}
+        origen: {type: string, enum: [lector, archivo, escaner, manual, planilla]}
+        dispositivo_tipo: {type: [string, 'null'], enum: [boton, tarjeta, bolo, inyectable, otro, null]}
+        lector: {type: [string, 'null']}
+        archivo_nombre: {type: [string, 'null']}
+        documento_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}], description: Foto de la planilla de caravanas (documento `planilla_identificacion`).}
+        estado: {type: string, enum: [abierta, confirmada]}
+        resumen:
+          type: object
+          additionalProperties: {type: integer}
+        reglas:
+          type: object
+          properties:
+            vigentes: {type: array, items: {$ref: '#/components/schemas/HitoIdentificacion'}}
+            proximos: {type: array, items: {$ref: '#/components/schemas/HitoIdentificacion'}}
+          required: [vigentes, proximos]
+          additionalProperties: false
+        aviso: {type: string}
+        creado_por: {$ref: '#/components/schemas/Uuid'}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        confirmada_en: {type: [string, 'null'], format: date-time}
+        filas: {type: array, items: {$ref: '#/components/schemas/FilaImportacionIdentificacion'}}
+      required: [id, especie, fecha, motivo, origen, dispositivo_tipo, lector, archivo_nombre, documento_id, estado, resumen, reglas, aviso, creado_por, created_at, updated_at, confirmada_en]
+      additionalProperties: false
+    ImportacionIdentificacionesInput:
+      type: object
+      properties:
+        especie: {type: string, enum: [BOV, BUB]}
+        fecha: {type: string, format: date}
+        motivo: {type: string, enum: [destete, primer_movimiento, regularizacion, reposicion, ingreso, otro]}
+        origen: {type: string, enum: [lector, archivo, escaner, manual, planilla]}
+        dispositivo_tipo: {type: [string, 'null'], enum: [boton, tarjeta, bolo, inyectable, otro, null]}
+        lector: {type: [string, 'null'], maxLength: 120}
+        archivo_nombre: {type: [string, 'null'], maxLength: 200}
+        documento_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        estado: {type: string, enum: [abierta, confirmada]}
+        filas:
+          type: array
+          maxItems: 2000
+          items:
+            type: object
+            properties:
+              numero: {type: integer, minimum: 1}
+              rfid: {type: [string, 'null'], maxLength: 64}
+              visual: {type: [string, 'null'], maxLength: 64}
+              leido: {type: [string, 'null'], maxLength: 200}
+              origen: {type: string, enum: [lector, archivo, escaner, manual, planilla]}
+              fecha: {type: [string, 'null'], format: date}
+              animal_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+              estado: {$ref: '#/components/schemas/EstadoFilaIdentificacion'}
+              evento_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+            required: [numero, origen, estado]
+            additionalProperties: false
+      required: [especie, fecha, motivo, origen, estado, filas]
+      additionalProperties: false
     BorradorDocumento:
       type: object
       description: >-

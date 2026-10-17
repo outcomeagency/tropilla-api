@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\V1\Hacienda\AnimalController;
 use App\Http\Controllers\Api\V1\Hacienda\CorreccionController;
 use App\Http\Controllers\Api\V1\Hacienda\EventoController;
 use App\Http\Controllers\Api\V1\Hacienda\ImportacionController;
+use App\Http\Controllers\Api\V1\Hacienda\ImportacionIdentificacionController;
 use App\Http\Controllers\Api\V1\Hacienda\LoteController;
 use App\Http\Controllers\Api\V1\Hacienda\PotreroController;
 use App\Http\Controllers\Api\V1\HealthController;
@@ -263,6 +264,11 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('documentos/{documento}/enlaces', [DocumentoController::class, 'enlaces'])->name('documentos.enlaces.index');
             Route::post('documentos/{documento}/enlaces', [DocumentoController::class, 'crearEnlace'])->name('documentos.enlaces.store');
             Route::post('documentos/{documento}/enlaces/{enlace}/revocar', [DocumentoController::class, 'revocarEnlace'])->name('documentos.enlaces.revocar');
+
+            // Importación de identificaciones electrónicas y planilla de caravanas (TPA-63)
+            Route::get('identificaciones/importaciones', [ImportacionIdentificacionController::class, 'index'])->name('identificaciones.importaciones.index');
+            Route::get('identificaciones/importaciones/{importacion}', [ImportacionIdentificacionController::class, 'show'])->name('identificaciones.importaciones.show');
+            Route::put('identificaciones/importaciones/{importacion}', [ImportacionIdentificacionController::class, 'update'])->name('identificaciones.importaciones.update');
 
             // Borradores de documento desde foto (TPA-61/62)
             Route::get('borradores', [BorradorController::class, 'index'])->name('borradores.index');
