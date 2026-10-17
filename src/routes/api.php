@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Busco\ProfesionalController;
 use App\Http\Controllers\Api\V1\Catalogos\CatalogoController;
 use App\Http\Controllers\Api\V1\Catalogos\ParametroController;
 use App\Http\Controllers\Api\V1\Clima\ClimaController;
+use App\Http\Controllers\Api\V1\Clima\EscenarioClimaticoController;
 use App\Http\Controllers\Api\V1\Comercial\ConsultaController;
 use App\Http\Controllers\Api\V1\Comercial\FaenaController;
 use App\Http\Controllers\Api\V1\Comercial\OfertaController;
@@ -382,6 +383,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
 
             // Alertas climáticas (TPA-70)
             Route::get('clima', [ClimaController::class, 'show'])->name('clima.show');
+            Route::get('clima/escenarios', [EscenarioClimaticoController::class, 'show'])->name('clima.escenarios');
             Route::get('clima/reglas', [ClimaController::class, 'reglas'])->name('clima.reglas');
             Route::put('clima/reglas/{codigo}', [ClimaController::class, 'actualizarRegla'])->where('codigo', '[a-z0-9_]+')->name('clima.reglas.update');
 
