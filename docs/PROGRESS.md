@@ -1026,6 +1026,16 @@ Dominio `App\Domain\Telegram` + cliente genérico `App\Domain\Ia\GeminiCliente`.
   header. `php artisan telegram:webhook --url=… | --info | --borrar` registra el webhook sin mostrar nada. `telegram:limpiar` cada hora.
 - Verificado: Pest `Telegram/BotTelegramTest` 15 tests con `Http::fake` (Telegram y Gemini) + suite completa verde.
 
+## TPA-61 · bugfix: la cola reentregaba la extracción antes de que terminara · ✅
+
+**Comentario del dev:**
+- `retry_after` de redis/database/beanstalkd pasa de 90 s a **360 s** (override por env `*_QUEUE_RETRY_AFTER`): con 90 s,
+  una lectura de Gemini/Claude de hasta 300 s se daba por perdida y otro worker la volvía a tomar (y con `tries=1` terminaba en `MaxAttemptsExceeded`).
+- `ExtraerBorradorJob`: `timeout` 300 s (< retry_after con margen), `failOnTimeout` y `failed()` que pasa el borrador de `extrayendo` a `fallido`
+  con un mensaje claro, para que un corte del worker no lo deje colgado; el productor lo relee a mano.
+- El worker de compose no cambia: el `$timeout` del job pisa el `--timeout` por defecto (60 s) y los demás jobs siguen cortando a los 60 s.
+- Verificado: test Pest nuevo (retry_after > timeout + 30 en las tres conexiones y timeout → fallido); suite 308 verde, Pint.
+
 ## Desvíos del contrato
 
 Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):

@@ -7,6 +7,7 @@ use App\Domain\Documentos\Borradores\Extraccion\ExtraccionFallida;
 use App\Domain\Documentos\Borradores\Extraccion\Extractor;
 use App\Domain\Documentos\Borradores\Extraccion\FakeExtractor;
 use App\Domain\Documentos\Borradores\Extraccion\GeminiExtractor;
+use App\Domain\Documentos\Borradores\ExtraerBorradorJob;
 use App\Domain\Documentos\Borradores\Familias\ActaVacunacion;
 use GuzzleHttp\Psr7\Response;
 use Illuminate\Http\Client\Request;
@@ -465,4 +466,20 @@ it('driver por defecto: gemini si hay GEMINI_API_KEY, si no claude si hay ANTHRO
     } finally {
         $driver(['TROPILLA_EXTRACCION_DRIVER' => 'fake']);
     }
+});
+
+it('cola: retry_after supera el timeout de la extracción (no se reentrega mientras corre) y un timeout deja el borrador fallido', function () {
+    $job = new ExtraerBorradorJob('x');
+    foreach (['redis', 'database', 'beanstalkd'] as $con) {
+        expect(config("queue.connections.{$con}.retry_after"))->toBeGreaterThan($job->timeout + 30);
+    }
+    expect($job->tries)->toBe(1)->and($job->failOnTimeout)->toBeTrue();
+
+    [$docId] = documentoCapturado($this, [paginaJpeg('t')]);
+    $id = (string) Str::uuid7();
+    $this->postJson("{$this->base}/borradores", ['id' => $id, 'documento_id' => $docId, 'familia' => 'acta_vacunacion'])->assertStatus(202);
+    DB::table('borradores_documento')->where('id', $id)->update(['estado' => 'extrayendo']);
+    (new ExtraerBorradorJob($id))->failed(new RuntimeException('timeout'));
+    $this->getJson("{$this->base}/borradores/{$id}")->assertOk()->assertJsonPath('data.estado', 'fallido')
+        ->assertJsonPath('data.error', 'La lectura tardó demasiado. Probá leerla de nuevo.');
 });
