@@ -481,6 +481,69 @@
                 "maxLength": 64
               }
             }
+          },
+          "motivo": {
+            "enum": [
+              "destete",
+              "primer_movimiento",
+              "regularizacion",
+              "reposicion",
+              "ingreso",
+              "otro"
+            ],
+            "description": "TPA-63: por qué se identifica (Res. SENASA 530/2025)."
+          },
+          "origen": {
+            "enum": [
+              "lector",
+              "archivo",
+              "escaner",
+              "manual",
+              "planilla"
+            ],
+            "description": "TPA-63: cómo llegó el número (bastón/lector, archivo CSV del lector, código de barras, tipeo, planilla en papel)."
+          },
+          "dispositivo": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "tipo": {
+                "enum": [
+                  "boton",
+                  "tarjeta",
+                  "bolo",
+                  "inyectable",
+                  "otro"
+                ]
+              },
+              "lector": {
+                "type": "string",
+                "maxLength": 120
+              }
+            },
+            "description": "TPA-63: dispositivo físico (botón, tarjeta…) y lector con el que se leyó."
+          },
+          "vinculada_a": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tipo",
+              "valor"
+            ],
+            "properties": {
+              "tipo": {
+                "$ref": "#/$defs/identificacion/properties/tipo"
+              },
+              "valor": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "description": "TPA-63: identificación visual con la que se concilió el dispositivo."
+          },
+          "importacion_id": {
+            "$ref": "#/$defs/uuid",
+            "description": "TPA-63: importación de identificaciones de la que sale."
           }
         },
         "required": [
