@@ -749,6 +749,189 @@ paths:
         '403': {$ref: '#/components/responses/Prohibido'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
         '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/forraje/insumos:
+    get:
+      tags: [Establecimientos]
+      summary: 'Brief de forraje: datos de partida (inventario declarado, superficie, receptividad, supuestos y clima)'
+      operationId: get_establecimientos_establecimiento_forraje_insumos
+      description: '**Ability:** `forraje.ver`. TPA-71. Inventario desde `existencias` con equivalencias EV (parámetro `forraje_ev_categoria` por especie), superficie del establecimiento (o suma de potreros), receptividad de la ficha (`capacidad_carga.carga_ug_ha`), supuestos con fuente/origen y contexto climático ya calculado por TPA-70 (no consulta fuentes).'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/BriefForrajeInsumos'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /establecimientos/{establecimiento}/forraje/briefs/calcular:
+    post:
+      tags: [Establecimientos]
+      summary: 'Brief de forraje: calcular escenarios sin guardar'
+      operationId: post_establecimientos_establecimiento_forraje_briefs_calcular
+      description: '**Ability:** `forraje.crear`. TPA-71. Escenarios base/moderado/severo de oferta de pasto con rango de incertidumbre. Exploratorio: no receta manejo ni calcula carga óptima.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BriefForrajeInput'}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/BriefForrajeResultado'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/forraje/briefs:
+    get:
+      tags: [Establecimientos]
+      summary: 'Briefs de forraje guardados'
+      operationId: get_establecimientos_establecimiento_forraje_briefs
+      description: '**Ability:** `forraje.ver`. TPA-71. Paginado por cursor, más nuevo primero; resumen sin `resultado`.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: cursor
+        in: query
+        required: false
+        schema: {type: string}
+      - name: limit
+        in: query
+        required: false
+        schema: {type: integer, minimum: 1, maximum: 100}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/BriefForraje'}}
+                  meta: {$ref: '#/components/schemas/MetaCursor'}
+                required: [data, meta]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+    post:
+      tags: [Establecimientos]
+      summary: 'Guardar un brief de forraje (inmutable)'
+      operationId: post_establecimientos_establecimiento_forraje_briefs
+      description: '**Ability:** `forraje.crear`. TPA-71. Guarda entradas, supuestos usados y resultado; cambiar un supuesto = brief nuevo.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BriefForrajeInput'}
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/BriefForraje'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/forraje/briefs/{brief}:
+    get:
+      tags: [Establecimientos]
+      summary: 'Brief de forraje con resultado y revisiones'
+      operationId: get_establecimientos_establecimiento_forraje_briefs_brief
+      description: '**Ability:** `forraje.ver`. TPA-71.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: brief
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/BriefForraje'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /establecimientos/{establecimiento}/forraje/briefs/{brief}/revisiones:
+    post:
+      tags: [Establecimientos]
+      summary: 'Revisión humana del brief (piloto con asesor)'
+      operationId: post_establecimientos_establecimiento_forraje_briefs_brief_revisiones
+      description: '**Ability:** `forraje.revisar` (asesor, dueño o admin). TPA-71. Append-only; la última revisión define `estado_revision` y queda el rol de quien revisó.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: brief
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resultado: {type: string, enum: [revisado, con_observaciones]}
+                nota: {type: string, minLength: 10, maxLength: 2000}
+              required: [resultado, nota]
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/BriefForraje'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
   /establecimientos/{establecimiento}/existencias:
     get:
       tags: [Establecimientos]
@@ -7512,6 +7695,282 @@ components:
         horizonte_dias: {type: integer}
         emitida_en: {type: string, format: date-time}
         calculada_en: {type: string, format: date-time}
+    BriefForrajeInput:
+      type: object
+      description: 'TPA-71. Todo opcional: lo que no se manda sale del inventario declarado, la ficha y los parámetros (`forraje_*`).'
+      properties:
+        nombre: {type: string, nullable: true, maxLength: 120}
+        horizonte_dias: {type: integer, minimum: 7, maximum: 365, default: 90}
+        superficie_ha: {type: number, nullable: true}
+        receptividad_ev_ha: {type: number, nullable: true, maximum: 20}
+        inventario:
+          type: array
+          description: 'Reemplaza las existencias para explorar (categorías de especies del establecimiento, sin repetir).'
+          items:
+            type: object
+            properties:
+              categoria: {type: string}
+              cabezas: {type: integer, minimum: 0}
+            required: [categoria, cabezas]
+        reservas:
+          type: object
+          additionalProperties: false
+          properties:
+            rollos:
+              type: object
+              nullable: true
+              properties:
+                cantidad: {type: integer, nullable: true, minimum: 0}
+                kg_por_rollo: {type: number, nullable: true}
+            silo:
+              type: object
+              nullable: true
+              properties:
+                toneladas: {type: number, nullable: true, minimum: 0}
+            suplemento:
+              type: object
+              nullable: true
+              properties:
+                kg: {type: number, nullable: true, minimum: 0}
+        supuestos:
+          type: object
+          additionalProperties: false
+          properties:
+            consumo_ms_kg_ev_dia: {type: number, nullable: true}
+            aprovechamiento_reservas_pct: {type: number, nullable: true}
+            incertidumbre_pct: {type: number, nullable: true}
+            reduccion_moderado_pct: {type: number, nullable: true}
+            reduccion_severo_pct: {type: number, nullable: true}
+            rollo_kg: {type: number, nullable: true}
+            ms_rollos_pct: {type: number, nullable: true}
+            ms_silo_pct: {type: number, nullable: true}
+            ms_suplemento_pct: {type: number, nullable: true}
+    BriefInventarioFila:
+      type: object
+      properties:
+        especie: {type: string}
+        categoria: {type: string}
+        categoria_nombre: {type: string}
+        cabezas: {type: integer}
+        ev_por_cabeza: {$ref: '#/components/schemas/Decimal'}
+        ev: {$ref: '#/components/schemas/Decimal'}
+        ev_origen: {type: string, enum: [parametro, establecimiento, sin_coeficiente]}
+      required: [especie, categoria, categoria_nombre, cabezas, ev_por_cabeza, ev, ev_origen]
+    BriefSupuestoVigente:
+      type: object
+      properties:
+        valor: {$ref: '#/components/schemas/Decimal'}
+        origen: {type: string, enum: [parametro, establecimiento]}
+        fuente: {type: string}
+        validado: {type: boolean}
+      required: [valor, origen, fuente, validado]
+    BriefClima:
+      type: object
+      description: 'Contexto de TPA-70 al momento del cálculo; `disponible: false` si todavía no se calculó.'
+      properties:
+        disponible: {type: boolean}
+        mensaje: {type: string}
+        zona: {type: string}
+        calculado_en: {type: string, format: date-time}
+        alertas:
+          type: array
+          items:
+            type: object
+            properties:
+              tipo: {type: string}
+              severidad: {type: string}
+              titulo: {type: string}
+              fuente: {type: string}
+              fuente_url: {type: string}
+              desde: {type: string, format: date}
+              hasta: {type: string, format: date}
+        lluvia:
+          type: object
+          nullable: true
+          properties:
+            ventana_dias: {type: integer, nullable: true}
+            anomalia_pct: {type: number, nullable: true}
+            acumulada_mm: {type: number, nullable: true}
+            normal_mm: {type: number, nullable: true}
+            fuente: {type: string}
+        enso:
+          type: object
+          nullable: true
+          properties:
+            fase: {type: string, nullable: true}
+            oni: {type: number, nullable: true}
+            fuente: {type: string}
+      required: [disponible]
+    BriefForrajeInsumos:
+      type: object
+      properties:
+        inventario: {type: array, items: {$ref: '#/components/schemas/BriefInventarioFila'}}
+        inventario_actualizado_en: {type: string, format: date-time, nullable: true}
+        superficie:
+          type: object
+          properties:
+            valor: {allOf: [{$ref: '#/components/schemas/Decimal'}], nullable: true}
+            origen: {type: string, enum: [establecimiento, potreros, sin_dato]}
+            detalle: {type: string}
+          required: [valor, origen, detalle]
+        receptividad:
+          type: object
+          properties:
+            valor: {allOf: [{$ref: '#/components/schemas/Decimal'}], nullable: true}
+            origen: {type: string, enum: [ficha, sin_dato]}
+            periodo: {type: string, nullable: true}
+            criterio: {type: string, nullable: true}
+          required: [valor, origen, periodo, criterio]
+        supuestos: {type: object, additionalProperties: {$ref: '#/components/schemas/BriefSupuestoVigente'}}
+        clima: {$ref: '#/components/schemas/BriefClima'}
+        reservas_ultimo_brief: {type: object, nullable: true, additionalProperties: true}
+        aviso: {type: string}
+      required: [inventario, inventario_actualizado_en, superficie, receptividad, supuestos, clima, reservas_ultimo_brief, aviso]
+    BriefCobertura:
+      type: object
+      nullable: true
+      description: 'Días que cubren las reservas; rango aplicando ±incertidumbre a la demanda.'
+      properties:
+        dias: {type: integer}
+        dias_min: {type: integer}
+        dias_max: {type: integer}
+      required: [dias, dias_min, dias_max]
+    BriefEscenario:
+      type: object
+      properties:
+        codigo: {type: string, enum: [base, moderado, severo]}
+        nombre: {type: string}
+        reduccion_oferta_pct: {$ref: '#/components/schemas/Decimal'}
+        estado: {type: string, enum: [sin_datos, sin_faltante, sin_reservas, cubierto, parcial]}
+        lectura: {type: string}
+        ev_referencia: {$ref: '#/components/schemas/Decimal'}
+        diferencia_ev: {type: string, description: 'EV declarados − EV de referencia del escenario (negativo = margen).'}
+        faltante_ms_kg_dia: {$ref: '#/components/schemas/Decimal'}
+        faltante_ms_kg_horizonte: {$ref: '#/components/schemas/Decimal'}
+        balance_reservas_kg: {type: string}
+        cobertura: {$ref: '#/components/schemas/BriefCobertura'}
+      required: [codigo, nombre, reduccion_oferta_pct, estado, lectura]
+    BriefForrajeResultado:
+      type: object
+      properties:
+        aviso: {type: string}
+        piloto: {type: boolean}
+        horizonte_dias: {type: integer}
+        inventario:
+          type: object
+          properties:
+            origen: {type: string, enum: [existencias, brief]}
+            cabezas: {type: integer}
+            ev: {$ref: '#/components/schemas/Decimal'}
+            filas: {type: array, items: {$ref: '#/components/schemas/BriefInventarioFila'}}
+            actualizado_en: {type: string, format: date-time, nullable: true}
+          required: [origen, cabezas, ev, filas, actualizado_en]
+        superficie:
+          type: object
+          properties:
+            valor_ha: {type: string, nullable: true}
+            origen: {type: string}
+            detalle: {type: string}
+          required: [valor_ha, origen, detalle]
+        receptividad:
+          type: object
+          properties:
+            valor_ev_ha: {type: string, nullable: true}
+            origen: {type: string}
+            periodo: {type: string, nullable: true}
+            criterio: {type: string, nullable: true}
+          required: [valor_ev_ha, origen, periodo, criterio]
+        carga_declarada_ev_ha: {type: string, nullable: true}
+        reservas:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  tipo: {type: string, enum: [rollos, silo, suplemento]}
+                  nombre: {type: string}
+                  kg_tal_cual: {$ref: '#/components/schemas/Decimal'}
+                  ms_pct: {$ref: '#/components/schemas/Decimal'}
+                  ms_utilizable_kg: {$ref: '#/components/schemas/Decimal'}
+                required: [tipo, nombre, kg_tal_cual, ms_pct, ms_utilizable_kg]
+            ms_utilizable_kg: {$ref: '#/components/schemas/Decimal'}
+            cobertura_rodeo_completo: {$ref: '#/components/schemas/BriefCobertura'}
+          required: [items, ms_utilizable_kg, cobertura_rodeo_completo]
+        escenarios: {type: array, items: {$ref: '#/components/schemas/BriefEscenario'}}
+        escenario_cercano_al_clima:
+          type: object
+          description: 'Referencia para leer los escenarios según las señales de TPA-70; no es un pronóstico del pasto.'
+          properties:
+            codigo: {type: string, enum: [base, moderado, severo]}
+            motivo: {type: string}
+          required: [codigo, motivo]
+        supuestos:
+          type: array
+          items:
+            type: object
+            properties:
+              clave: {type: string}
+              nombre: {type: string}
+              unidad: {type: string}
+              valor: {$ref: '#/components/schemas/Decimal'}
+              origen: {type: string, enum: [parametro, establecimiento, brief]}
+              fuente: {type: string}
+              validado: {type: boolean}
+            required: [clave, nombre, unidad, valor, origen, fuente, validado]
+        incertidumbre:
+          type: object
+          properties:
+            margen_pct: {$ref: '#/components/schemas/Decimal'}
+            explicacion: {type: string}
+            no_contempla: {type: array, items: {type: string}}
+          required: [margen_pct, explicacion, no_contempla]
+        clima: {$ref: '#/components/schemas/BriefClima'}
+        faltantes:
+          type: array
+          items:
+            type: object
+            properties:
+              campo: {type: string}
+              mensaje: {type: string}
+            required: [campo, mensaje]
+        avisos: {type: array, items: {type: string}}
+        preguntas_asesor: {type: array, items: {type: string}, description: 'Protocolo de preguntas para el asesor; nunca indicaciones de manejo.'}
+      required: [aviso, piloto, horizonte_dias, inventario, superficie, receptividad, carga_declarada_ev_ha, reservas, escenarios, escenario_cercano_al_clima, supuestos, incertidumbre, clima, faltantes, avisos, preguntas_asesor]
+    BriefRevision:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        resultado: {type: string, enum: [revisado, con_observaciones]}
+        nota: {type: string}
+        rol: {type: string}
+        revisor: {type: string}
+        created_at: {type: string, format: date-time}
+      required: [id, resultado, nota, rol, revisor, created_at]
+    BriefForraje:
+      type: object
+      description: 'TPA-71. Inmutable. En el listado no vienen `entradas`, `resultado` ni `revisiones`.'
+      properties:
+        id: {type: string, format: uuid}
+        nombre: {type: string, nullable: true}
+        horizonte_dias: {type: integer}
+        autor: {type: string}
+        created_at: {type: string, format: date-time}
+        estado_revision: {type: string, enum: [sin_revisar, revisado, con_observaciones]}
+        revisado_por_asesor: {type: boolean}
+        resumen:
+          type: object
+          properties:
+            cabezas: {type: integer}
+            ev: {$ref: '#/components/schemas/Decimal'}
+            escenario_cercano: {type: string, enum: [base, moderado, severo]}
+            estados: {type: object, additionalProperties: {type: string}}
+          required: [cabezas, ev, escenario_cercano, estados]
+        entradas: {$ref: '#/components/schemas/BriefForrajeInput'}
+        resultado: {$ref: '#/components/schemas/BriefForrajeResultado'}
+        revisiones: {type: array, items: {$ref: '#/components/schemas/BriefRevision'}}
+      required: [id, nombre, horizonte_dias, autor, created_at, estado_revision, revisado_por_asesor, resumen]
     ClimaRegla:
       type: object
       properties:

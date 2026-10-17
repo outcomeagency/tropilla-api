@@ -183,6 +183,27 @@ class EspeciesSeeder extends Seeder
         foreach (['BUB_MURRAH' => 303, 'BUB_MEDITERRANEA' => 313, 'BUB_JAFARABADI' => 330] as $raza => $dias) {
             $this->parametro('gestacion_media_dias', 'BUB', $raza, $dias, 'dias', $bub);
         }
+        // Brief de forraje y carga (TPA-71): equivalencias EV por categoría y supuestos del escenario. Orientativos, sin validar
+        // por un profesional; el productor/asesor los ajusta por establecimiento (PUT …/parametros/{clave}) o en cada brief.
+        $ev = 'Orientativo: tabla de equivalencias EV de uso habitual en AR (vaca de cría ≈ 1 EV); validar con asesor';
+        $this->parametro('forraje_ev_categoria', 'BOV', null, [
+            'BOV_TERNERO' => 0.4, 'BOV_TERNERA' => 0.4, 'BOV_NOVILLITO' => 0.65, 'BOV_NOVILLO' => 0.8, 'BOV_VAQUILLONA' => 0.7,
+            'BOV_VACA' => 1.0, 'BOV_TORITO' => 0.9, 'BOV_TORO' => 1.3, 'BOV_BUEY' => 1.0,
+        ], 'ev', $ev);
+        $this->parametro('forraje_ev_categoria', 'BUB', null, [
+            'BUB_BUCERRO' => 0.45, 'BUB_BUCERRA' => 0.45, 'BUB_BUBILLITO' => 0.75, 'BUB_BUBILLO' => 0.95, 'BUB_BUBILLA' => 0.8,
+            'BUB_BUFALA' => 1.15, 'BUB_BUTORITO' => 1.05, 'BUB_BUFALO_TORO' => 1.5, 'BUB_BUEY' => 1.2,
+        ], 'ev', 'Orientativo: equivalencia bovina ajustada por mayor peso adulto del búfalo; sin validar, ajustar con asesor');
+        foreach ([
+            ['forraje_consumo_ms_kg_ev_dia', '10', 'kg', 'Orientativo: ≈ 2,5 % del peso vivo de una vaca de 400 kg'],
+            ['forraje_aprovechamiento_reservas_pct', '80', 'pct', 'Orientativo: pérdidas de almacenamiento y suministro'],
+            ['forraje_incertidumbre_pct', '20', 'pct', 'Margen de TROPILLA para mostrar rangos, no un intervalo estadístico'],
+            ['forraje_reduccion_oferta_pct', ['moderado' => 25, 'severo' => 50], 'pct', 'Escenarios ilustrativos de menor oferta de pasto, no un pronóstico'],
+            ['forraje_rollo_kg', '450', 'kg', 'Orientativo: rollo de 1,5 m tal cual'],
+            ['forraje_ms_pct', ['rollos' => 85, 'silo' => 35, 'suplemento' => 88], 'pct', 'Orientativo: materia seca típica por tipo de reserva'],
+        ] as [$clave, $valor, $unidad, $fuente]) {
+            $this->parametro($clave, null, null, $valor, $unidad, $fuente);
+        }
         // Globales.
         foreach ([
             ['token_kg_default', 100, 'kg'], ['toma_vencimiento_horas', 48, 'horas'], ['entrega_tolerancia_pct', '5', 'pct'],

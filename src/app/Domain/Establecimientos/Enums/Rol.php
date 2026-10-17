@@ -61,6 +61,9 @@ enum Rol: string
         'revisiones.resolver' => ['dueno', 'admin', 'encargado', 'asesor'], // E/As: solo no comerciales
         'auditoria.ver' => ['dueno', 'admin'],
         'exportar.todo' => ['dueno'],
+        'forraje.ver' => ['dueno', 'admin', 'encargado', 'asesor', 'lectura'],
+        'forraje.crear' => ['dueno', 'admin', 'encargado', 'asesor'],
+        'forraje.revisar' => ['dueno', 'admin', 'asesor'],
         'sync.pull' => ['dueno', 'admin', 'encargado', 'asesor', 'lectura'],
         'sync.snapshot' => ['dueno', 'admin', 'encargado', 'asesor', 'lectura'],
         'sync.push' => ['dueno', 'admin', 'encargado', 'asesor'],

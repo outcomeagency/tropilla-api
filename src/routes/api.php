@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\V1\Establecimientos\InvitacionController;
 use App\Http\Controllers\Api\V1\Establecimientos\MembresiaController;
 use App\Http\Controllers\Api\V1\Establecimientos\OnboardingController;
 use App\Http\Controllers\Api\V1\Establecimientos\ProductorController;
+use App\Http\Controllers\Api\V1\Forraje\BriefForrajeController;
 use App\Http\Controllers\Api\V1\Hacienda\AnimalController;
 use App\Http\Controllers\Api\V1\Hacienda\CorreccionController;
 use App\Http\Controllers\Api\V1\Hacienda\EventoController;
@@ -352,6 +353,14 @@ Route::prefix('v1')->name('v1.')->group(function () {
             Route::get('clima', [ClimaController::class, 'show'])->name('clima.show');
             Route::get('clima/reglas', [ClimaController::class, 'reglas'])->name('clima.reglas');
             Route::put('clima/reglas/{codigo}', [ClimaController::class, 'actualizarRegla'])->where('codigo', '[a-z0-9_]+')->name('clima.reglas.update');
+
+            // Brief preventivo de forraje y carga (TPA-71)
+            Route::get('forraje/insumos', [BriefForrajeController::class, 'insumos'])->name('forraje.insumos');
+            Route::post('forraje/briefs/calcular', [BriefForrajeController::class, 'calcular'])->name('forraje.briefs.calcular');
+            Route::get('forraje/briefs', [BriefForrajeController::class, 'index'])->name('forraje.briefs.index');
+            Route::post('forraje/briefs', [BriefForrajeController::class, 'store'])->name('forraje.briefs.store');
+            Route::get('forraje/briefs/{brief}', [BriefForrajeController::class, 'show'])->name('forraje.briefs.show');
+            Route::post('forraje/briefs/{brief}/revisiones', [BriefForrajeController::class, 'revisar'])->name('forraje.briefs.revisiones');
 
             // Potreros (TPA-14)
             Route::get('potreros', [PotreroController::class, 'index'])->name('potreros.index');
