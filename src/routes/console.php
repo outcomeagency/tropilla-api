@@ -36,3 +36,6 @@ Schedule::command('clima:actualizar')->everySixHours()->withoutOverlapping();
 
 // Bot de Telegram (TPA-77): vencer propuestas sin confirmar y podar updates/códigos viejos.
 Schedule::command('telegram:limpiar')->hourly()->withoutOverlapping();
+
+// TPA-72: depura el detalle de las consultas de contraparte vencida la retención (queda el registro de quién consultó y para qué).
+Schedule::command('contrapartes:depurar')->dailyAt('05:00')->timezone('America/Argentina/Buenos_Aires')->withoutOverlapping();
