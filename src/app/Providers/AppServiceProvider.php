@@ -102,6 +102,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('fotos', fn (Request $request) => Limit::perMinute(1200)->by('fotos|'.$request->ip()));
         RateLimiter::for('sync-push', fn (Request $request) => Limit::perMinute(60)->by('push|'.($request->user()?->currentAccessToken()?->getKey() ?? $request->ip())));
         RateLimiter::for('consultas', fn (Request $request) => Limit::perHour(3)->by('consultas|'.$request->ip()));
+        RateLimiter::for('campos', fn (Request $request) => Limit::perMinute(10)->by('campos|'.($request->user()?->id ?? $request->ip())));
         // TPA-77: webhook de Telegram (lo frena el secreto; el límite solo corta abusos) y códigos de vinculación.
         RateLimiter::for('telegram', fn (Request $request) => Limit::perMinute(600)->by('telegram|'.$request->ip()));
         RateLimiter::for('telegram-codigo', fn (Request $request) => Limit::perMinute(10)->by('telegram-codigo|'.($request->user()?->getAuthIdentifier() ?: $request->ip())));

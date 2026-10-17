@@ -1193,6 +1193,32 @@ semilla fija, generado al primer uso) que no lee ningún dato de productores. El
 - Verificado: 5 tests Pest nuevos (cubo protegido y consistente entre recortes, permisos/cupo/ajenos, CSV, gate y política, la prueba
   falla si se apaga la complementaria); suite completa y Pint. Demo local: `DemoAgregadosSeeder` (`analista@tropilla.test`, `equipo@tropilla.test`).
 
+## TPA-74 · Mercado de campos y pastajes · ✅ (parte API)
+
+Dominio `App\Domain\Campos` (`Campos`, `Compatibilidad`, Actions `GestionarAviso`, `GestionarConsulta`, `Disputas`). Endpoints:
+`GET /campos/condiciones`, `GET /campos`, `GET /campos/{a}`, `POST /campos/{a}/consultas`, `POST /campos/{a}/disputas`;
+`GET|POST …/campos/avisos`, `GET|PATCH …/campos/avisos/{a}`, `POST …/campos/avisos/{a}/{publicar|pausar|cerrar}`,
+`POST …/campos/avisos/{a}/disputas/{d}/descargo`, `GET …/campos/consultas/{recibidas|enviadas}`, `PATCH …/campos/consultas/{lado}/{c}`;
+staff: `GET /staff/campos/disputas`, `POST /staff/campos/disputas/{d}/resolver`, `PUT /staff/campos/avisos/{a}/verificacion`.
+Abilities `campos.ver` (dueño/admin/asesor), `campos.gestionar` y `campos.consultar` (dueño/admin). Migración
+`2026_10_23_090000_create_campo_avisos_tables` (`campo_avisos`, `campo_consultas`, `campo_disputas`). Notificaciones `campo_consulta`,
+`campo_respuesta`, `campo_disputa`. Variables: `TROPILLA_CAMPOS_PROVINCIAS` (18,22,34,54), `TROPILLA_CAMPOS_UMBRAL_REVISION` (3),
+`TROPILLA_CAMPOS_MAX_CONSULTAS_DIA` (10).
+
+**Comentario del dev:**
+- Piloto regional NEA: el aviso se publica solo en Corrientes, Chaco, Formosa y Misiones, con modalidad (pastaje, arrendamiento,
+  capitalización), especies/categorías, capacidad declarada, temporada, precio por unidad, agua, alambrado e instalaciones. La
+  ubicación es provincia + departamento (localidad solo si el anunciante la elige); nunca coordenadas ni lindero.
+- «Compatibles con mi rodeo»: puntaje contra las existencias (especie 40, capacidad 30 contra las cabezas que se quieren mover, categorías 15, temporada 15) y distancia
+  aproximada al centro del departamento redondeada a 10 km. Piloto de 20–30 avisos: búsqueda sin cursor, tope 200.
+- Sin garantía del inmueble: cada aviso dice «publicado por…» y su nivel real de comprobación (`declarado`, `contacto_verificado`,
+  `documentacion_revisada`, solo staff); si cambian datos verificados vuelve a `declarado`. Checklist de visita/contrato y avisos en la respuesta.
+- Consulta con consentimiento versionado para compartir contacto; el anunciante comparte el suyo al responder; ambos registran visita,
+  acuerdo o sin acuerdo, y el cierre del aviso lleva motivo (métrica del piloto). Disputa: reporte anónimo para el anunciante, descargo,
+  `en_revision` con 3 reportes abiertos y resolución del staff con acción (pausar, cerrar, retirar verificación). Todo auditado.
+- Verificado: 3 tests Pest nuevos (flujo completo, disputa/moderación, permisos/422) + seeder demo (6 avisos y una consulta,
+  idempotente); suite completa 382 tests / 5.639 assertions en verde; Pint.
+
 ## Desvíos del contrato
 
 Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
@@ -1228,6 +1254,7 @@ Todos documentados en `docs/openapi-v1.yaml` (aditivos salvo que se diga):
 - TPA-77: tag `Telegram` (`/me/telegram*`, `/telegram/webhook`); `Evento.origen` suma `telegram`; `preferencias-notificacion` suma `telegram` (opcional en el PUT).
 - TPA-66: endpoints de `sanidad/oficial`, `sanidad/protocolos`, `sanidad/estatus`, `sanidad/saneamiento` y `animales/{a}/pruebas`; familia `protocolo_sanitario` (grupo agregable `animales`, tipo de campo `decimal`); `TipoPrueba.enfermedad` en catálogos.
 - TPA-75: tag `Agregados` nuevo (tablero agregado con datos sintéticos, gobernanza, licencias); códigos `metrica_no_habilitada`, `licencia_suspendida`, `licencia_vencida`, `cupo_consultas_agotado`, `desglose_no_permitido`, `prueba_pendiente`.
+- TPA-74: tag `Campos` con `/campos*`, `…/campos/*` y `/staff/campos/*`; schemas `CampoAviso*`, `CampoCompatibilidad`, `CampoConsulta`, `CampoDisputa`; tipos de notificación `campo_*`.
 - TPA-67: endpoints `faena/*` (tag Comercial) y schemas `ResultadoFaena*`, `ResFaenaInput`, `LiquidacionFaena`; familia `resultado_faena` en borradores.
 
 ### TPA-76 · Ficha completa del establecimiento · ✅

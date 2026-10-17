@@ -30,6 +30,7 @@ tags:
 - {name: Comprador}
 - {name: Perfil}
 - {name: Organizaciones}
+- {name: Campos}
 - {name: Fletes}
 - {name: Público}
 - {name: Agregados}
@@ -9554,6 +9555,517 @@ paths:
         '401': {$ref: '#/components/responses/NoAutenticado'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
         '422': {$ref: '#/components/responses/Validacion'}
+  /campos/condiciones:
+    get:
+      tags: [Campos]
+      summary: 'Vocabulario, provincias del piloto, checklist y límites del mercado de campos'
+      operationId: get_campos_condiciones
+      description: 'TPA-74. Cualquier usuario con sesión.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: object, description: "provincias_piloto, modalidades, precio_unidades, agua, instalaciones, alambrado, verificacion, motivos_disputa, motivos_cierre, estados_consulta (listas {codigo, nombre}); checklist y avisos (textos); consentimiento_version; umbral_revision."}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+  /campos:
+    get:
+      tags: [Campos]
+      summary: 'Buscar campos publicados (compatibles con mi rodeo)'
+      operationId: get_campos
+      description: 'TPA-74. Avisos `publicado` con temporada vigente. Con `establecimiento_id` (ability `campos.ver`) cada aviso trae `compatibilidad` contra las existencias del rodeo y la distancia aproximada (centro del departamento, redondeada a 10 km); orden por defecto `compatibilidad`. Piloto: hasta 200 resultados, sin cursor. Nunca devuelve coordenadas.'
+      parameters:
+      - {name: establecimiento_id, in: query, required: false, schema: {type: string, format: uuid}}
+      - {name: modalidad, in: query, required: false, schema: {type: string, enum: [pastaje, arrendamiento, capitalizacion]}}
+      - {name: especie, in: query, required: false, schema: {type: string}}
+      - {name: 'categorias[]', in: query, required: false, schema: {type: array, items: {type: string}}}
+      - {name: provincia, in: query, required: false, schema: {type: string}}
+      - {name: departamento, in: query, required: false, schema: {type: string}}
+      - {name: cabezas, in: query, required: false, schema: {type: integer, minimum: 1}}
+      - {name: desde, in: query, required: false, schema: {type: string, format: date}}
+      - {name: hasta, in: query, required: false, schema: {type: string, format: date}}
+      - {name: solo_compatibles, in: query, required: false, schema: {type: boolean}}
+      - {name: orden, in: query, required: false, schema: {type: string, enum: [compatibilidad, recientes, capacidad, distancia]}}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: array, items: {allOf: [{$ref: '#/components/schemas/CampoAviso'}, {type: object, properties: {compatibilidad: {allOf: [{$ref: '#/components/schemas/CampoCompatibilidad'}], nullable: true}, propio: {type: boolean}}}]}}
+                  meta:
+                    type: object
+                    properties:
+                      total: {type: integer}
+                      orden: {type: string}
+                      rodeo: {type: array, nullable: true, items: {type: object, properties: {especie: {type: string}, cabezas: {type: integer}}}}
+                required: [data, meta]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /campos/{aviso}:
+    get:
+      tags: [Campos]
+      summary: 'Detalle de un aviso de campo'
+      operationId: get_campos_aviso
+      description: 'TPA-74. Publicado (o propio / staff). Con `establecimiento_id` agrega `compatibilidad` y `mi_consulta`. Incluye `checklist` de diligencias y `avisos` (sin garantía del inmueble).'
+      parameters:
+      - name: aviso
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - {name: establecimiento_id, in: query, required: false, schema: {type: string, format: uuid}}
+      - {name: cabezas, in: query, required: false, schema: {type: integer, minimum: 1}}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {allOf: [{$ref: '#/components/schemas/CampoAviso'}, {type: object, properties: {compatibilidad: {allOf: [{$ref: '#/components/schemas/CampoCompatibilidad'}], nullable: true}, propio: {type: boolean}, mi_consulta: {allOf: [{$ref: '#/components/schemas/CampoConsulta'}], nullable: true}, reportado: {type: boolean}, checklist: {type: array, items: {type: string}}, avisos: {type: array, items: {type: string}}}}]}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /campos/{aviso}/consultas:
+    post:
+      tags: [Campos]
+      summary: 'Consultar por un campo en nombre de mi establecimiento'
+      operationId: post_campos_aviso_consultas
+      description: '**Ability:** `campos.consultar` sobre `establecimiento_id` (dueño/admin). TPA-74. Requiere `consentimiento: true` para compartir nombre, email y teléfono con el anunciante. Una consulta abierta por aviso y establecimiento; no se consulta un aviso propio (422 `regla_bloqueante`). Tope diario por establecimiento (429). Notifica `campo_consulta` al anunciante.'
+      parameters:
+      - name: aviso
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                establecimiento_id: {type: string, format: uuid}
+                mensaje: {type: string, minLength: 10, maxLength: 2000}
+                especie: {type: string, description: 'Debe estar entre las especies del aviso.'}
+                cabezas: {type: integer, minimum: 1}
+                categorias: {type: array, items: {type: string}}
+                desde: {type: string, format: date, nullable: true}
+                hasta: {type: string, format: date, nullable: true}
+                consentimiento: {type: boolean, description: 'Debe ser true.'}
+              required: [establecimiento_id, mensaje, especie, cabezas, consentimiento]
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/CampoConsulta'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+        '429': {$ref: '#/components/responses/DemasiadosIntentos'}
+  /campos/{aviso}/disputas:
+    post:
+      tags: [Campos]
+      summary: 'Reportar un aviso de campo (inicio de disputa)'
+      operationId: post_campos_aviso_disputas
+      description: 'TPA-74. Cualquier usuario con sesión salvo miembros del establecimiento anunciante. Un reporte abierto por persona y aviso. El anunciante es notificado sin la identidad de quien reporta y puede dejar descargo. Con `umbral_revision` reportes abiertos el aviso pasa a `en_revision` hasta que el equipo resuelva.'
+      parameters:
+      - name: aviso
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                motivo: {type: string, enum: [aviso_inexistente, datos_falsos, incumplimiento, conducta, otro]}
+                detalle: {type: string, minLength: 20, maxLength: 3000}
+                consulta_id: {type: string, format: uuid, nullable: true, description: 'Consulta propia sobre este aviso, si la hubo.'}
+              required: [motivo, detalle]
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/CampoDisputa'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /staff/campos/disputas:
+    get:
+      tags: [Campos]
+      summary: 'Disputas del mercado de campos (moderación)'
+      operationId: get_staff_campos_disputas
+      description: 'Solo `es_staff`. TPA-74. `estado` = pendientes (default: abierta + en_revision) | abierta | en_revision | resuelta | desestimada. Incluye identidad de quien reporta y resumen del aviso.'
+      parameters:
+      - {name: estado, in: query, required: false, schema: {type: string}}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/CampoDisputa'}}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+  /staff/campos/disputas/{disputa}/resolver:
+    post:
+      tags: [Campos]
+      summary: 'Tomar o resolver una disputa'
+      operationId: post_staff_campos_disputas_disputa_resolver
+      description: 'Solo `es_staff`. TPA-74. `en_revision` la toma; `resuelta`/`desestimada` la cierran con `resolucion` y `accion` (default `ninguna`). Si el aviso estaba `en_revision`, sin acción y sin otros reportes abiertos vuelve a `publicado`. Notifica a ambas partes (`campo_disputa`).'
+      parameters:
+      - name: disputa
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estado: {type: string, enum: [en_revision, resuelta, desestimada]}
+                resolucion: {type: string, minLength: 10, maxLength: 3000, description: 'Obligatoria para resuelta/desestimada.'}
+                accion: {type: string, enum: [ninguna, aviso_pausado, aviso_cerrado, verificacion_retirada]}
+              required: [estado]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/CampoDisputa'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /staff/campos/avisos/{aviso}/verificacion:
+    put:
+      tags: [Campos]
+      summary: 'Asignar el nivel real de comprobación de un aviso'
+      operationId: put_staff_campos_avisos_aviso_verificacion
+      description: 'Solo `es_staff`. TPA-74. `contacto_verificado` o `documentacion_revisada` no implican inspección ni garantía del inmueble. Si el anunciante cambia modalidad, capacidad, especies, superficie o zona, vuelve a `declarado`.'
+      parameters:
+      - name: aviso
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nivel: {type: string, enum: [declarado, contacto_verificado, documentacion_revisada]}
+                nota: {type: string, minLength: 10, maxLength: 1000}
+              required: [nivel, nota]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/CampoAviso'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/campos/avisos:
+    get:
+      tags: [Campos]
+      summary: 'Avisos de campo del establecimiento'
+      operationId: get_establecimientos_establecimiento_campos_avisos
+      description: '**Ability:** `campos.ver` (dueño/admin/asesor). TPA-74. En revisión primero; incluye contadores de consultas y disputas.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - {name: estado, in: query, required: false, schema: {type: string}}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/CampoAviso'}}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+    post:
+      tags: [Campos]
+      summary: 'Crear aviso de campo (borrador)'
+      operationId: post_establecimientos_establecimiento_campos_avisos
+      description: '**Ability:** `campos.gestionar` (dueño/admin). TPA-74. Zona por defecto: la del establecimiento; solo provincias del piloto. Auditoría `campo_aviso`.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CampoAvisoInput'}
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/CampoAviso'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/campos/avisos/{aviso}:
+    get:
+      tags: [Campos]
+      summary: 'Aviso propio con disputas'
+      operationId: get_establecimientos_establecimiento_campos_avisos_aviso
+      description: '**Ability:** `campos.ver`. TPA-74. `disputas` sin identidad de quien reportó.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: aviso
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {allOf: [{$ref: '#/components/schemas/CampoAviso'}, {type: object, properties: {disputas: {type: array, items: {$ref: '#/components/schemas/CampoDisputa'}}}}]}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+    patch:
+      tags: [Campos]
+      summary: 'Editar aviso de campo'
+      operationId: patch_establecimientos_establecimiento_campos_avisos_aviso
+      description: '**Ability:** `campos.gestionar`. TPA-74. Parcial con `row_version` (409 si cambió). No se edita un aviso cerrado.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: aviso
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {allOf: [{$ref: '#/components/schemas/CampoAvisoInput'}, {type: object, properties: {row_version: {type: integer}}, required: [row_version]}]}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/CampoAviso'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '409': {$ref: '#/components/responses/Conflicto'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/campos/avisos/{aviso}/{accion}:
+    post:
+      tags: [Campos]
+      summary: 'Publicar, pausar o cerrar un aviso'
+      operationId: post_establecimientos_establecimiento_campos_avisos_aviso_accion
+      description: '**Ability:** `campos.gestionar`. TPA-74. publicar: desde borrador/pausado, exige email verificado y temporada vigente. pausar: desde publicado. cerrar: requiere `motivo` (acuerdo_tropilla | acuerdo_otro_medio | no_disponible | otro). Un aviso `en_revision` solo se puede cerrar.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: aviso
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - {name: accion, in: path, required: true, schema: {type: string, enum: [publicar, pausar, cerrar]}}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                motivo: {type: string, enum: [acuerdo_tropilla, acuerdo_otro_medio, no_disponible, otro]}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/CampoAviso'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/campos/avisos/{aviso}/disputas/{disputa}/descargo:
+    post:
+      tags: [Campos]
+      summary: 'Descargo del anunciante ante un reporte'
+      operationId: post_establecimientos_establecimiento_campos_avisos_aviso_disputas_disputa_descargo
+      description: '**Ability:** `campos.gestionar`. TPA-74. Solo con la disputa abierta o en revisión.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - name: aviso
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: disputa
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                descargo: {type: string, minLength: 10, maxLength: 3000}
+              required: [descargo]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/CampoDisputa'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
+  /establecimientos/{establecimiento}/campos/consultas/{lado}:
+    get:
+      tags: [Campos]
+      summary: 'Consultas por campos recibidas o enviadas'
+      operationId: get_establecimientos_establecimiento_campos_consultas_lado
+      description: '**Ability:** `campos.ver`. TPA-74. `recibidas`: por avisos del establecimiento, con el contacto del interesado. `enviadas`: con el contacto del anunciante cuando respondió. `estado=abiertas` filtra enviada/respondida/visita_coordinada.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - {name: lado, in: path, required: true, schema: {type: string, enum: [recibidas, enviadas]}}
+      - {name: estado, in: query, required: false, schema: {type: string, enum: [abiertas]}}
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {type: array, items: {$ref: '#/components/schemas/CampoConsulta'}}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+  /establecimientos/{establecimiento}/campos/consultas/{lado}/{consulta}:
+    patch:
+      tags: [Campos]
+      summary: 'Avanzar una consulta (respuesta, visita, acuerdo)'
+      operationId: patch_establecimientos_establecimiento_campos_consultas_lado_consulta
+      description: '**Ability:** `campos.gestionar` (recibidas) o `campos.consultar` (enviadas). TPA-74. Anunciante: enviada → respondida (con `respuesta`; comparte su contacto) | descartada; respondida → visita_coordinada | acuerdo | sin_acuerdo; visita_coordinada → acuerdo | sin_acuerdo. Interesado: retirada desde cualquier estado abierto; respondida/visita → visita_coordinada | acuerdo | sin_acuerdo. Transición inválida: 422 `regla_bloqueante`.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string}
+      - {name: lado, in: path, required: true, schema: {type: string, enum: [recibidas, enviadas]}}
+      - name: consulta
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estado: {type: string, enum: [respondida, visita_coordinada, acuerdo, sin_acuerdo, descartada, retirada]}
+                respuesta: {type: string, maxLength: 2000, nullable: true}
+                nota: {type: string, maxLength: 500, nullable: true}
+              required: [estado]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/CampoConsulta'}
+                required: [data]
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
+        '422': {$ref: '#/components/responses/Validacion'}
 components:
   securitySchemes:
     sanctum:
@@ -14802,3 +15314,134 @@ components:
         motivo: {type: [string, 'null']}
       required: [rol]
       additionalProperties: false
+    CampoAvisoInput:
+      type: object
+      description: 'TPA-74. POST: obligatorios titulo, modalidad, especies, capacidad_cabezas, temporada_desde y precio_unidad. precio_valor obligatorio salvo a_convenir. Zona solo en provincias del piloto (TROPILLA_CAMPOS_PROVINCIAS).'
+      properties:
+        titulo: {type: string, minLength: 5, maxLength: 120}
+        descripcion: {type: string, nullable: true, maxLength: 3000}
+        modalidad: {type: string, enum: [pastaje, arrendamiento, capitalizacion]}
+        especies: {type: array, items: {type: string}, minItems: 1}
+        categorias: {type: array, items: {type: string}, description: 'Vacío = cualquier categoría de las especies.'}
+        capacidad_cabezas: {type: integer, minimum: 1, description: 'Receptividad declarada por el anunciante.'}
+        superficie_ha: {type: string, nullable: true}
+        temporada_desde: {type: string, format: date}
+        temporada_hasta: {type: string, format: date, nullable: true}
+        plazo_minimo_meses: {type: integer, nullable: true}
+        precio_unidad: {type: string, enum: [por_cabeza_mes, por_ha_anio, kg_carne_ha_anio, porcentaje_ganancia, a_convenir]}
+        precio_valor: {type: string, nullable: true}
+        condiciones: {type: string, nullable: true, maxLength: 2000}
+        agua: {type: array, items: {type: string, enum: [aguada_natural, tajamar, rio_arroyo, perforacion, molino, bebederos]}}
+        alambrado: {type: string, nullable: true, enum: [bueno, regular, a_reparar]}
+        instalaciones: {type: array, items: {type: string, enum: [manga, corrales, balanza, embarcadero, casa_puesto, galpon, potreros_divididos]}}
+        accesos: {type: string, nullable: true, maxLength: 500}
+        provincia_codigo: {type: string}
+        departamento_codigo: {type: string}
+        localidad: {type: string, nullable: true}
+        mostrar_localidad: {type: boolean, description: 'Por defecto false: el mercado muestra solo provincia y departamento.'}
+    CampoAviso:
+      type: object
+      description: 'TPA-74. Declaración del anunciante; `verificacion` informa el nivel real de comprobación de TROPILLA (no es inspección ni garantía). Los campos marcados como «propio» solo vienen en endpoints del establecimiento.'
+      properties:
+        id: {type: string, format: uuid}
+        titulo: {type: string}
+        descripcion: {type: string, nullable: true}
+        modalidad: {type: string, enum: [pastaje, arrendamiento, capitalizacion]}
+        modalidad_nombre: {type: string}
+        especies: {type: array, items: {type: string}}
+        categorias: {type: array, items: {type: string}}
+        capacidad_cabezas: {type: integer}
+        superficie_ha: {type: string, nullable: true}
+        temporada_desde: {type: string, format: date}
+        temporada_hasta: {type: string, format: date, nullable: true}
+        plazo_minimo_meses: {type: integer, nullable: true}
+        precio: {type: object, properties: {unidad: {type: string}, unidad_nombre: {type: string}, valor: {type: string, nullable: true}}, required: [unidad, unidad_nombre, valor]}
+        condiciones: {type: string, nullable: true}
+        agua: {type: array, items: {type: string}}
+        alambrado: {type: string, nullable: true}
+        instalaciones: {type: array, items: {type: string}}
+        accesos: {type: string, nullable: true}
+        zona: {$ref: '#/components/schemas/CampoZona'}
+        mostrar_localidad: {type: boolean}
+        estado: {type: string, enum: [borrador, publicado, pausado, en_revision, cerrado]}
+        verificacion: {type: object, properties: {nivel: {type: string, enum: [declarado, contacto_verificado, documentacion_revisada]}, nombre: {type: string}, detalle: {type: string}, verificado_en: {type: string, format: date-time, nullable: true}}, required: [nivel, nombre, detalle, verificado_en]}
+        publicado_por: {type: object, properties: {establecimiento: {type: string}, perfil_slug: {type: string, nullable: true}}, required: [establecimiento, perfil_slug]}
+        publicado_en: {type: string, format: date-time, nullable: true}
+        actualizado_en: {type: string, format: date-time}
+        establecimiento_id: {type: string, format: uuid, description: 'Propio.'}
+        row_version: {type: integer, description: 'Propio.'}
+        verificacion_nota: {type: string, nullable: true, description: 'Propio.'}
+        motivo_cierre: {type: string, nullable: true, description: 'Propio.'}
+        cerrado_en: {type: string, format: date-time, nullable: true, description: 'Propio.'}
+        consultas_abiertas: {type: integer, description: 'Propio.'}
+        consultas_total: {type: integer, description: 'Propio.'}
+        disputas_abiertas: {type: integer, description: 'Propio.'}
+      required: [id, titulo, descripcion, modalidad, modalidad_nombre, especies, categorias, capacidad_cabezas, superficie_ha, temporada_desde, temporada_hasta, plazo_minimo_meses, precio, condiciones, agua, alambrado, instalaciones, accesos, zona, mostrar_localidad, estado, verificacion, publicado_por, publicado_en, actualizado_en]
+    CampoZona:
+      type: object
+      description: 'TPA-74. Zona publicable del aviso: nunca coordenadas. `departamento` null si el padrón de la provincia no está cargado; `localidad` null si el anunciante no la muestra.'
+      properties:
+        provincia_codigo: {type: string}
+        provincia: {type: string, nullable: true}
+        departamento_codigo: {type: string}
+        departamento: {type: string, nullable: true}
+        localidad: {type: string, nullable: true}
+      required: [provincia_codigo, provincia, departamento_codigo, departamento, localidad]
+    CampoCompatibilidad:
+      type: object
+      description: 'TPA-74. Puntaje 0–100: especie 40 + capacidad 30 (parcial o sin `cabezas` pedidas: 15) + categorías 15 + temporada 15. La capacidad se compara solo con las `cabezas` que pide el productor (no con todo el rodeo). `compatible` = especie común, capacidad no insuficiente y temporada coincidente. Distancia aproximada al centro del departamento del aviso, redondeada a 10 km.'
+      properties:
+        puntaje: {type: integer}
+        compatible: {type: boolean}
+        especie: {type: string, nullable: true}
+        cabezas_requeridas: {type: integer}
+        capacidad: {type: string, enum: [suficiente, parcial, insuficiente, sin_dato]}
+        categorias: {type: boolean}
+        temporada: {type: boolean}
+        distancia_km: {type: integer, nullable: true}
+        motivos: {type: array, items: {type: string}}
+      required: [puntaje, compatible, especie, cabezas_requeridas, capacidad, categorias, temporada, distancia_km, motivos]
+    CampoConsulta:
+      type: object
+      description: 'TPA-74. `contacto`: en recibidas, el del interesado (consentido al enviar); en enviadas, el del anunciante una vez que respondió (si no, null).'
+      properties:
+        id: {type: string, format: uuid}
+        lado: {type: string, enum: [recibida, enviada]}
+        aviso: {type: object, properties: {id: {type: string, format: uuid}, titulo: {type: string}, modalidad: {type: string}, estado: {type: string}, zona: {$ref: '#/components/schemas/CampoZona'}}, required: [id, titulo, modalidad, estado, zona]}
+        interesado: {type: object, properties: {establecimiento: {type: string}, provincia: {type: string, nullable: true}}, required: [establecimiento, provincia]}
+        publicado_por: {type: string, description: 'Solo en enviadas.'}
+        mensaje: {type: string}
+        especie: {type: string}
+        categorias: {type: array, items: {type: string}}
+        cabezas: {type: integer}
+        desde: {type: string, format: date, nullable: true}
+        hasta: {type: string, format: date, nullable: true}
+        estado: {type: string, enum: [enviada, respondida, visita_coordinada, acuerdo, sin_acuerdo, descartada, retirada]}
+        estado_nombre: {type: string}
+        respuesta: {type: string, nullable: true}
+        nota_cierre: {type: string, nullable: true}
+        contacto: {type: object, nullable: true, properties: {nombre: {type: string}, email: {type: string, nullable: true}, telefono: {type: string, nullable: true}}, required: [nombre, email, telefono]}
+        created_at: {type: string, format: date-time}
+        respondida_en: {type: string, format: date-time, nullable: true}
+        cerrada_en: {type: string, format: date-time, nullable: true}
+      required: [id, lado, aviso, interesado, mensaje, especie, categorias, cabezas, desde, hasta, estado, estado_nombre, respuesta, nota_cierre, contacto, created_at, respondida_en, cerrada_en]
+    CampoDisputa:
+      type: object
+      description: 'TPA-74. `denunciante` y `aviso` solo para staff.'
+      properties:
+        id: {type: string, format: uuid}
+        aviso_id: {type: string, format: uuid}
+        consulta_id: {type: string, format: uuid, nullable: true}
+        motivo: {type: string, enum: [aviso_inexistente, datos_falsos, incumplimiento, conducta, otro]}
+        motivo_nombre: {type: string}
+        detalle: {type: string}
+        estado: {type: string, enum: [abierta, en_revision, resuelta, desestimada]}
+        descargo: {type: string, nullable: true}
+        descargo_en: {type: string, format: date-time, nullable: true}
+        resolucion: {type: string, nullable: true}
+        accion: {type: string, nullable: true, enum: [ninguna, aviso_pausado, aviso_cerrado, verificacion_retirada, null]}
+        resuelta_en: {type: string, format: date-time, nullable: true}
+        created_at: {type: string, format: date-time}
+        denunciante: {type: object, properties: {nombre: {type: string}, email: {type: string, nullable: true}, telefono: {type: string, nullable: true}}}
+        aviso: {type: object, properties: {titulo: {type: string}, estado: {type: string}, verificacion: {type: string}, establecimiento: {type: string}}}
+      required: [id, aviso_id, consulta_id, motivo, motivo_nombre, detalle, estado, descargo, descargo_en, resolucion, accion, resuelta_en, created_at]

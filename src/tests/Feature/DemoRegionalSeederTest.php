@@ -22,6 +22,8 @@ it('siembra la región en modo aditivo e idempotente sin alterar prueba@tropilla
     expect(DB::table('perfiles_publicos')->whereIn('slug', ['la-esperanza', 'el-timbo', 'don-anselmo', 'los-caranday', 'la-paloma', 'santa-rita'])->count())->toBe(6)
         ->and(DB::table('documentos')->where('titulo', 'Constancia sanitaria de ejemplo (declarada)')->count())->toBe(6)
         ->and(DB::table('organizaciones')->where('slug', 'like', 'demo-%')->count())->toBe(3)
+        ->and(DB::table('campo_avisos')->where('estado', 'publicado')->count())->toBe(6)
+        ->and(DB::table('campo_consultas')->where('estado', 'respondida')->count())->toBe(1)
         ->and(DB::table('reproductores_externos')->where('rp', 'like', 'TPA76-BOV-%')->count())->toBe(62)
         ->and(DB::table('eventos')->where('tipo', 'reproduccion.inseminacion')->whereRaw("sobre->'payload'->'semen'->>'partida' = 'PAJ-NEA-2026-014'")->count())->toBe(1)
         ->and(DB::table('establecimientos')->where('nombre', 'La Esperanza')->value('ficha_ampliada->clima->fuente'))->toBe('INTA EEA Corrientes')

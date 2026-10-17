@@ -115,6 +115,15 @@ return [
         'revision_legal' => env('TROPILLA_FLETES_REVISION_LEGAL', 'pendiente'),
     ],
 
+    // Mercado de campos y pastajes (TPA-74): piloto regional NEA. Con `umbral_revision` reportes abiertos de personas distintas
+    // el aviso pasa a «en revisión» hasta que el equipo lo resuelva.
+    'campos' => [
+        'provincias_piloto' => array_values(array_filter(explode(',', (string) env('TROPILLA_CAMPOS_PROVINCIAS', '18,22,34,54')))),
+        'umbral_revision' => (int) env('TROPILLA_CAMPOS_UMBRAL_REVISION', 3),
+        'max_consultas_dia' => (int) env('TROPILLA_CAMPOS_MAX_CONSULTAS_DIA', 10),
+        'max_resultados' => 200,
+    ],
+
     // Pepper del HMAC de CUIT (búsqueda exacta / unicidad sin descifrar). modelo-datos §2.3.
     'cuit_pepper' => env('TROPILLA_CUIT_PEPPER', env('APP_KEY')),
 ];
