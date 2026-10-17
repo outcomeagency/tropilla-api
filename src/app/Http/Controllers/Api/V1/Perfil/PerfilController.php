@@ -38,6 +38,9 @@ class PerfilController extends Controller
             'textos.*.titulo' => ['nullable', 'string', 'max:120'], 'textos.*.descripcion' => ['nullable', 'string', 'max:1000'], 'textos.*.historia' => ['nullable', 'string', 'max:5000'],
             'contacto_visible' => ['nullable', 'array:telefono,email,whatsapp'], 'contacto_visible.*' => ['boolean'],
             'secciones' => ['nullable', 'array'], 'secciones.*.activa' => ['sometimes', 'boolean'], 'secciones.rodeo.modo' => ['sometimes', 'in:exacto,rango'],
+            'secciones.reproductores.ids' => ['sometimes', 'array', 'max:24'], 'secciones.reproductores.ids.*' => ['array:tipo,id'],
+            'secciones.reproductores.ids.*.tipo' => ['required', 'in:interno,externo'], 'secciones.reproductores.ids.*.id' => ['required', 'uuid'],
+            'secciones.composicion.modo' => ['sometimes', 'in:exacto,rango'],
             'fotos' => ['sometimes', 'array', 'max:12'], 'fotos.*' => [Reglas::HASH, Reglas::FOTO, 'distinct'],
         ]);
 

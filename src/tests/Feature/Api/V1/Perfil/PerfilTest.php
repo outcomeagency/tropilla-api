@@ -2,6 +2,7 @@
 
 use App\Domain\Integridad\CanonicalJson;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 
 beforeEach(function () {
@@ -50,6 +51,41 @@ it('rodeo exacto, congelar una sección (no se actualiza sola) y descongelar', f
     $this->postJson("{$this->base}/perfil/secciones/rodeo/descongelar")->assertOk();
     $this->getJson("{$this->base}/perfil/preview")->assertJsonPath('data.secciones.rodeo.por_especie.0.cabezas', 260);
     $this->postJson("{$this->base}/perfil/secciones/inventada/congelar")->assertNotFound();
+});
+
+it('mantiene los bloques nuevos privados por defecto y publica un pedigrí externo encadenado con allowlist', function () {
+    $p = $this->getJson("{$this->base}/perfil")->json('data');
+    $this->postJson("{$this->base}/perfil/preview/aceptar")->assertOk();
+    $this->postJson("{$this->base}/perfil/publicar")->assertOk();
+    $this->app['auth']->forgetGuards();
+    $this->getJson('/api/v1/public/establecimientos/la-esperanza/reproductores')->assertOk()->assertJsonPath('data', []);
+
+    $g1 = (string) Str::uuid();
+    $g2 = (string) Str::uuid();
+    $root = (string) Str::uuid();
+    foreach ([[$g1, 'Abuelo declarado', null, null], [$g2, 'Abuela declarada', null, null], [$root, 'Toro destacado', $g1, $g2]] as [$id, $nombre, $madre, $padre]) {
+        DB::table('reproductores_externos')->insert(['id' => $id, 'establecimiento_id' => $this->est->id, 'nombre' => $nombre, 'rp' => 'RP-'.$nombre,
+            'registro_genealogico' => 'REG-'.$nombre, 'raza' => 'Braford', 'especie_codigo' => 'BOV', 'centro' => 'Centro declarado',
+            'madre_externa_id' => $madre, 'padre_externa_id' => $padre, 'row_version' => 1, 'created_at' => now(), 'updated_at' => now()]);
+    }
+    Sanctum::actingAs(duenoDe($this->est));
+    $p = $this->getJson("{$this->base}/perfil")->json('data');
+    $this->patchJson("{$this->base}/perfil", ['row_version' => $p['row_version'], 'secciones' => [
+        'reproductores' => ['activa' => true, 'ids' => [['tipo' => 'externo', 'id' => $root]]], 'composicion' => ['activa' => true], 'indicadores' => ['activa' => true],
+    ]])->assertOk();
+    $this->getJson("{$this->base}/perfil/preview?locale=es")->assertJsonPath('data.secciones.indicadores.antiguedad_fuente.fuente', 'Fecha de alta del establecimiento en TROPILLA')
+        ->assertJsonPath('data.secciones.galeria', null);
+    $this->postJson("{$this->base}/perfil/publicar")->assertOk();
+    $this->app['auth']->forgetGuards();
+    $r = $this->getJson('/api/v1/public/establecimientos/la-esperanza/reproductores')->assertOk()
+        ->assertJsonPath('data.0.nombre', 'Toro destacado')->assertJsonPath('data.0.madre.nombre', 'Abuelo declarado')
+        ->assertJsonPath('data.0.padre.nombre', 'Abuela declarada');
+    $json = json_encode($r->json());
+    expect($json)->toContain('Centro declarado')->toContain('REG-Toro destacado')
+        ->not->toContain('establecimiento_id')->not->toContain('caravana')->not->toContain('renspa')->not->toContain('foto_sha256');
+    $this->getJson('/api/v1/public/establecimientos/la-esperanza/composicion')->assertOk();
+    $this->getJson('/api/v1/public/establecimientos/la-esperanza/indicadores?locale=es')->assertOk()
+        ->assertJsonPath('data.antiguedad_fuente.fuente', 'Fecha de alta del establecimiento en TROPILLA');
 });
 
 it('slug: disponibilidad, cambio con redirección 301 y 404 si no está publicado', function () {

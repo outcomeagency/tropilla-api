@@ -1232,3 +1232,15 @@ Endpoints: `PUT /api/v1/me/comprador`; revalidación diaria `compradores:revalid
 Dominio `App\Domain\Contrapartes\SemaforoContraparte`; reglas versionadas en `contraparte_reglas`. Endpoints: `GET /api/v1/contrapartes/cheques/bancos`, `POST /api/v1/contrapartes/cheques/verificar`. Migración `2026_10_23_100000_create_contraparte_rules_and_cheques_tables`; comando de retención `contrapartes:depurar`. Central de Deudores y Cheques Denunciados BCRA usan API pública real con timeout/cache. Resumen IA pasa por el extractor TPA-61/62 y cae a resumen determinístico. Señales TROPILLA se limitan al establecimiento consultante.
 
 **Comentario del dev:** Cada señal lleva fuente y fecha, y las reglas viven en datos versionables; “sin datos” o falla del BCRA nunca produce verde ni afirma ausencia de deuda. La IA recibe únicamente las señales calculadas y su resumen se descarta si cita IDs que no existen; ante indisponibilidad se usa fallback. El cheque puntual compara banco/número y, si está disponible, cuenta; la cuenta se enmascara y la consulta se audita. Se probaron en vivo la Central de Deudores, el catálogo de bancos y Cheques Denunciados del BCRA. No hay módulo de reclamos ni fuente disponible para fecha oficial de alta del CUIT, por eso esas señales quedan pendientes; ARCA continúa deshabilitada. Pest completo aprobado; Pint reporta una infracción preexistente en `ReproductorExternoController.php`, fuera de este cambio.
+### TPA-78 · Perfil público con reproductores, genealogía e historia del rodeo · ✅
+
+**Endpoints:** `GET /public/establecimientos/{slug}/{reproductores|composicion|indicadores|galeria}`; también quedan agregados en `GET /public/establecimientos/{slug}`. `PATCH /establecimientos/{id}/perfil` acepta `secciones.reproductores.ids` y los opt-in por bloque.
+
+**Comentario del dev:**
+- Los bloques nuevos nacen privados; la ficha de cada reproductor se arma desde animales activos o reproductores externos del mismo campo, con hasta cinco generaciones y allowlist recursiva.
+- El público recibe RP/registro declarado, raza, especie, centro declarado, nacimiento y métricas disponibles; quedan fuera caravanas oficiales, RENSPA, IDs de establecimiento y procedencia del campo de origen.
+- Composición agrupa categorías por especie y razas en rango por defecto; los indicadores usan fecha de tacto/eventos y fuente explícita; el plan sanitario requiere opt-in TPA-76.
+- La galería usa fotos del perfil y de animales seleccionados, y la ruta pública de fotos solo acepta hashes referenciados por contenido publicado.
+- Migraciones aditivas `2026_10_19_100000` y `2026_10_19_110000` agregan sexo y ficha productiva opcional a reproductores externos. Sin variables nuevas ni datos mock. Pest completo: 362 tests / 5.099 aserciones; Pint en los archivos PHP del ticket.
+
+Seeder aditivo e idempotente aislado en `PerfilPublicoDemoSeeder`; apunta a slugs regionales exactos y al dueño `prueba@tropilla.ar`, preserva IDs elegidos y no publica perfiles que estaban privados. No se ejecutó en producción. Comando posterior al deploy: `php artisan db:seed --class=PerfilPublicoDemoSeeder --force`.

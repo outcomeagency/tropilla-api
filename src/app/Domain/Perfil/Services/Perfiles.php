@@ -37,6 +37,8 @@ final class Perfiles
         return [
             'portada' => $s(), 'actividad' => $s(), 'rodeo' => [...$s(), 'modo' => 'rango'], 'sanidad' => $s(),
             'trazabilidad' => $s(), 'documentos' => $s(false), 'oferta' => $s(), 'contacto' => $s(),
+            'reproductores' => [...$s(false), 'ids' => []], 'composicion' => [...$s(false), 'modo' => 'rango'],
+            'indicadores' => $s(false), 'galeria' => $s(false),
         ];
     }
 }

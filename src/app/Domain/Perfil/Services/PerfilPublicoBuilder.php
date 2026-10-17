@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class PerfilPublicoBuilder
 {
-    public const SECCIONES = ['portada', 'actividad', 'rodeo', 'sanidad', 'trazabilidad', 'documentos', 'oferta', 'contacto'];
+    public const SECCIONES = ['portada', 'actividad', 'rodeo', 'sanidad', 'trazabilidad', 'documentos', 'oferta', 'contacto', 'reproductores', 'composicion', 'indicadores', 'galeria'];
 
     /** @return array<string, mixed> PerfilPublico */
     public static function armar(object $perfil, string $locale): array
@@ -35,7 +35,7 @@ final class PerfilPublicoBuilder
 
         $out = [];
         foreach (self::SECCIONES as $s) {
-            $conf = $secciones[$s] ?? ['activa' => true];
+            $conf = $secciones[$s] ?? ['activa' => ! in_array($s, ['reproductores', 'composicion', 'indicadores', 'galeria'], true)];
             if (! ($conf['activa'] ?? true)) {
                 $out[$s] = null;
 
@@ -46,6 +46,12 @@ final class PerfilPublicoBuilder
                 : self::seccion($s, $perfil, $est, $prod, $t, $locale, $conf);
         }
         $out['ficha_establecimiento'] = self::fichaEstablecimiento($est);
+        // Los bloques nuevos son opt-in; la selección de reproductores vive dentro de su configuración.
+        foreach (['reproductores', 'composicion', 'indicadores', 'galeria'] as $nuevo) {
+            if (! (($secciones[$nuevo]['activa'] ?? false) === true)) {
+                $out[$nuevo] = null;
+            }
+        }
         $out['ofertas'] = $out['oferta'];
         unset($out['oferta']);
         // Contratos a futuro abiertos (TPA-56): sin precios (son solo para compradores con cuenta, ver /public/contratos/{codigo}).
@@ -119,6 +125,110 @@ final class PerfilPublicoBuilder
         return $salida;
     }
 
+    /** @param list<array{tipo:string,id:string}> $seleccion */
+    private static function reproductoresPublicos(string $est, array $seleccion, string $locale): array
+    {
+        $salida = [];
+        foreach (array_slice($seleccion, 0, 24) as $ref) {
+            if (! is_array($ref) || ! isset($ref['tipo'], $ref['id'])) {
+                continue;
+            }
+            $salida[] = self::nodoReproductor($est, (string) $ref['tipo'], (string) $ref['id'], 0, [], $locale);
+        }
+
+        return array_values(array_filter($salida));
+    }
+
+    /** Allowlist deliberada: no caravanas, RENSPA ni procedencia del campo de origen. */
+    private static function nodoReproductor(string $est, string $tipo, string $id, int $nivel, array $ruta, string $locale): ?array
+    {
+        if ($nivel > 5 || ! in_array($tipo, ['interno', 'externo'], true) || in_array($tipo.':'.$id, $ruta, true)) {
+            return null;
+        }
+        $ruta[] = $tipo.':'.$id;
+        if ($tipo === 'externo') {
+            $a = DB::table('reproductores_externos')->where('establecimiento_id', $est)->where('id', $id)->whereNull('archivado_en')->first();
+            if (! $a) {
+                return null;
+            }
+            $base = ['tipo' => 'externo', 'nombre' => $a->nombre, 'rp' => $a->rp, 'registro' => $a->registro_genealogico,
+                'raza' => $a->raza, 'especie' => $a->especie_codigo, 'sexo' => $a->sexo ?? null, 'centro' => $a->centro, 'fecha_nacimiento' => $a->fecha_nacimiento,
+                'peso_kg' => $nivel === 0 ? $a->peso_kg : null, 'peso_fecha' => $nivel === 0 ? $a->peso_fecha : null,
+                'condicion_corporal' => $nivel === 0 ? $a->cc_valor : null, 'partos' => $nivel === 0 ? $a->partos : null,
+                'crias' => $nivel === 0 ? DB::table('reproductores_externos')->where('establecimiento_id', $est)->where(fn ($q) => $q->where('madre_externa_id', $id)->orWhere('padre_externa_id', $id))->count() : null, 'foto' => null];
+            $madre = $a->madre_id ? ['interno', $a->madre_id] : ($a->madre_externa_id ? ['externo', $a->madre_externa_id] : null);
+            $padre = $a->padre_id ? ['interno', $a->padre_id] : ($a->padre_externa_id ? ['externo', $a->padre_externa_id] : null);
+        } else {
+            $a = DB::table('animales_estado as s')->join('animales as a', 'a.id', '=', 's.animal_id')->where('s.establecimiento_id', $est)->where('s.animal_id', $id)->where('s.estado', 'activo')->first();
+            if (! $a) {
+                return null;
+            }
+            $rp = DB::table('animal_identificaciones')->where('animal_id', $id)->where('tipo', 'registro_genealogico')->where('vigente', true)->value('valor');
+            $nombre = $rp ?: (['es' => 'Animal del rodeo', 'en' => 'Herd animal', 'pt' => 'Animal do rebanho'][$locale] ?? 'Animal del rodeo');
+            $base = ['tipo' => 'interno', 'nombre' => $nombre, 'rp' => $rp, 'registro' => null,
+                'raza' => $a->raza_codigo, 'especie' => $a->especie_codigo, 'sexo' => $a->sexo, 'centro' => null, 'fecha_nacimiento' => $a->fecha_nacimiento,
+                'peso_kg' => $nivel === 0 ? $a->peso_kg : null, 'peso_fecha' => $nivel === 0 ? $a->peso_fecha : null,
+                'condicion_corporal' => $nivel === 0 ? $a->cc_valor : null, 'partos' => $nivel === 0 ? (int) $a->partos : null,
+                'crias' => $nivel === 0 ? DB::table('animales_estado')->where('establecimiento_id', $est)->where(fn ($q) => $q->where('madre_id', $id)->orWhere('padre_id', $id))->count() : null,
+                'foto' => $nivel === 0 ? Fotos::publica($a->foto_sha256, $locale) : null];
+            $madre = $a->madre_id ? ['interno', $a->madre_id] : ($a->madre_externa_id ? ['externo', $a->madre_externa_id] : null);
+            $padre = $a->padre_id ? ['interno', $a->padre_id] : ($a->padre_externa_id ? ['externo', $a->padre_externa_id] : null);
+        }
+        $base['madre'] = $madre ? self::nodoReproductor($est, $madre[0], $madre[1], $nivel + 1, $ruta, $locale) : null;
+        $base['padre'] = $padre ? self::nodoReproductor($est, $padre[0], $padre[1], $nivel + 1, $ruta, $locale) : null;
+
+        return $base;
+    }
+
+    private static function composicionPublica(string $est, string $modo, string $locale): array
+    {
+        $r = self::rodeo($est, $modo === 'exacto' ? 'exacto' : 'rango', $locale);
+        $razas = DB::table('animales_estado')->where('establecimiento_id', $est)->where('estado', 'activo')->whereNotNull('raza_codigo')
+            ->select('especie_codigo', 'raza_codigo')->selectRaw('count(*) as cabezas')->groupBy('especie_codigo', 'raza_codigo')->orderBy('especie_codigo')->orderBy('raza_codigo')->get();
+
+        return ['por_especie' => $r['por_especie'], 'razas' => $razas->map(fn ($x) => ['especie' => $x->especie_codigo, 'raza' => $x->raza_codigo,
+            'cantidad' => $modo === 'exacto' ? (int) $x->cabezas : null])->all()];
+    }
+
+    /** @param array<string, mixed> $conf @return list<array<string, mixed>> */
+    private static function galeriaPublica(object $perfil, array $conf, string $locale): array
+    {
+        $shas = PgTextArray::parse($perfil->fotos) ?? [];
+        foreach ($conf['ids'] ?? [] as $ref) {
+            if (($ref['tipo'] ?? null) !== 'interno' || ! isset($ref['id'])) {
+                continue;
+            }
+            $sha = DB::table('animales_estado')->where('animal_id', $ref['id'])->where('establecimiento_id', $perfil->establecimiento_id)->value('foto_sha256');
+            if ($sha) {
+                $shas[] = $sha;
+            }
+        }
+
+        return Fotos::lista(array_values(array_unique($shas)), true, $locale);
+    }
+
+    private static function indicadoresPublicos(object $establecimiento, string $locale): array
+    {
+        $est = $establecimiento->id;
+        $inicio = $establecimiento->created_at;
+        $ultimoTacto = DB::table('animales_estado')->where('establecimiento_id', $est)->whereNotNull('tacto_fecha')->max('tacto_fecha');
+        $tactos = $ultimoTacto ? DB::table('animales_estado')->where('establecimiento_id', $est)->whereDate('tacto_fecha', $ultimoTacto)->whereIn('estado_reproductivo', ['preñada', 'vacia'])->get(['estado_reproductivo']) : collect();
+        $evaluados = $tactos->count();
+        $preñadas = $tactos->where('estado_reproductivo', 'preñada')->count();
+        $partos = DB::table('eventos_vigentes')->where('establecimiento_id', $est)->where('tipo', 'reproduccion.parto')->where('ocurrido_en', '>=', now()->subYears(3)->toDateString())->selectRaw('extract(year from ocurrido_en)::int as temporada, count(*) as cantidad, max(ocurrido_en)::date as fecha')->groupBy('temporada')->orderBy('temporada')->get();
+        $fuente = ['es' => 'Registros de manejo cargados en TROPILLA', 'en' => 'Management records entered in TROPILLA', 'pt' => 'Registros de manejo lançados no TROPILLA'][$locale];
+        $ficha = is_array($establecimiento->ficha_ampliada ?? null) ? $establecimiento->ficha_ampliada : (json_decode((string) ($establecimiento->ficha_ampliada ?? '{}'), true) ?: []);
+        $vis = is_array($establecimiento->visibilidad_ficha ?? null) ? $establecimiento->visibilidad_ficha : (json_decode((string) ($establecimiento->visibilidad_ficha ?? '{}'), true) ?: []);
+        $plan = ($vis['sanidad_renspa'] ?? false) === true ? ($ficha['sanidad_renspa']['plan_sanitario'] ?? null) : null;
+        $fechaPlan = $ficha['sanidad_renspa']['fecha'] ?? null;
+
+        return ['prenez_ultimo_tacto' => $evaluados ? ['porcentaje' => round(100 * $preñadas / $evaluados, 1), 'evaluados' => $evaluados, 'fecha' => $ultimoTacto, 'fuente' => $fuente] : null,
+            'partos_por_temporada' => $partos->map(fn ($x) => ['temporada' => (int) $x->temporada, 'partos' => (int) $x->cantidad, 'fuente' => $fuente, 'fecha' => (string) $x->fecha])->all(),
+            'anios_en_tropilla' => $inicio ? max(0, (int) floor(Carbon::parse($inicio)->diffInYears(now(), true))) : 0,
+            'antiguedad_fuente' => ['fuente' => ['es' => 'Fecha de alta del establecimiento en TROPILLA', 'en' => 'Farm registration date in TROPILLA', 'pt' => 'Data de cadastro do estabelecimento no TROPILLA'][$locale], 'fecha' => Carbon::parse($inicio)->toDateString()],
+            'plan_sanitario' => $plan && $fechaPlan ? ['texto' => $plan, 'fuente' => ['es' => 'Ficha declarada por el productor', 'en' => 'Farm details declared by the producer', 'pt' => 'Ficha declarada pelo produtor'][$locale], 'fecha' => $fechaPlan] : null];
+    }
+
     /**
      * @param  array<string, mixed>  $t  textos del idioma
      * @param  array<string, mixed>  $conf
@@ -141,6 +251,10 @@ final class PerfilPublicoBuilder
                 ],
                 'asociaciones' => $perfil->asociaciones_visibles ? array_map(fn ($a) => ['entidad' => $a['entidad']], json_decode($prod->asociaciones, true) ?: []) : [],
             ],
+            'reproductores' => self::reproductoresPublicos($est->id, $conf['ids'] ?? [], $locale),
+            'composicion' => self::composicionPublica($est->id, $conf['modo'] ?? 'rango', $locale),
+            'indicadores' => self::indicadoresPublicos($est, $locale),
+            'galeria' => ['fotos' => self::galeriaPublica($perfil, $conf, $locale)],
             'actividad' => [
                 'actividades' => array_map(fn ($c) => ['codigo' => $c, 'nombre' => $item('actividades', $c)], $arr($est->actividades)),
                 'especies' => array_map(fn ($c) => ['codigo' => $c, 'nombre' => $nombre('especies', $c)], $arr($est->especies)),
