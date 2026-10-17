@@ -35,7 +35,7 @@ final class GeminiExtractor implements Extractor
         private readonly ?string $razonamiento = 'low',
     ) {}
 
-    public function extraer(array $paginas, string $instrucciones, array $esquema): ResultadoExtraccion
+    public function extraer(array $paginas, string $instrucciones, array $esquema, ?string $instruccionSistema = null): ResultadoExtraccion
     {
         $partes = [];
         foreach ($paginas as $i => $p) {
@@ -59,7 +59,7 @@ final class GeminiExtractor implements Extractor
         $partes[] = ['text' => $instrucciones];
 
         $r = $this->pedir([
-            'systemInstruction' => ['parts' => [['text' => self::SISTEMA]]],
+            'systemInstruction' => ['parts' => [['text' => $instruccionSistema ?? self::SISTEMA]]],
             'contents' => [['role' => 'user', 'parts' => $partes]],
             'generationConfig' => $generacion,
         ]);

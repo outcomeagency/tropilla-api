@@ -37,6 +37,7 @@ final class ChequeoContraparte
         'Que una fuente no tenga información no significa que no haya deudas ni juicios: cada fuente cubre solo lo que le informan.',
         'Verificá que la denominación coincida con tu contraparte: puede haber homónimos o errores de carga del CUIT.',
         'Si sos el titular y un dato es incorrecto, el reclamo se hace ante la entidad que lo informó; la fuente publica lo que recibe.',
+        'Cheques denunciados no se consultan por CUIT en la API del BCRA: verificá cada cheque por banco y número antes de aceptar el documento.',
     ];
 
     /** @return list<FuenteContraparte> */

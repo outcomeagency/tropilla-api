@@ -15,7 +15,7 @@ use RuntimeException;
  */
 final class BcraCentralDeudores implements FuenteContraparte
 {
-    public const URL = 'https://www.bcra.gob.ar/apis-banco-central/';
+    public const URL = 'https://api.bcra.gob.ar/CentralDeDeudores/v1.0/';
 
     public const SITUACIONES = [
         1 => 'Situación 1 — normal',
@@ -90,7 +90,7 @@ final class BcraCentralDeudores implements FuenteContraparte
     private function get(string $ruta): ?array
     {
         /** @var Response $r */
-        $r = Http::timeout((int) config('tropilla.contrapartes.timeout_segundos'))->acceptJson()
+        $r = Http::connectTimeout(5)->timeout((int) config('tropilla.contrapartes.timeout_segundos'))->acceptJson()
             ->retry((int) config('tropilla.contrapartes.reintentos'), 800, fn ($e) => $e instanceof ConnectionException, throw: false)
             ->get(rtrim((string) config('tropilla.contrapartes.bcra_url'), '/').$ruta);
         if ($r->status() === 404) {

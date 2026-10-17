@@ -17,5 +17,5 @@ interface Extractor
      *
      * @throws ExtraccionFallida
      */
-    public function extraer(array $paginas, string $instrucciones, array $esquema): ResultadoExtraccion;
+    public function extraer(array $paginas, string $instrucciones, array $esquema, ?string $instruccionSistema = null): ResultadoExtraccion;
 }

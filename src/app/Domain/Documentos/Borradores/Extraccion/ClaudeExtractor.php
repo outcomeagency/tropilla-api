@@ -30,7 +30,7 @@ final class ClaudeExtractor implements Extractor
         private readonly ?Client $cliente = null,
     ) {}
 
-    public function extraer(array $paginas, string $instrucciones, array $esquema): ResultadoExtraccion
+    public function extraer(array $paginas, string $instrucciones, array $esquema, ?string $instruccionSistema = null): ResultadoExtraccion
     {
         $contenido = [];
         foreach ($paginas as $i => $p) {
@@ -49,7 +49,7 @@ final class ClaudeExtractor implements Extractor
                 maxTokens: $this->maxTokens,
                 messages: [MessageParam::with(content: $contenido, role: 'user')],
                 model: $this->modelo,
-                system: 'Transcribís planillas ganaderas argentinas fotografiadas. Copiás solo lo que se ve escrito; si un dato no '
+                system: $instruccionSistema ?? 'Transcribís planillas ganaderas argentinas fotografiadas. Copiás solo lo que se ve escrito; si un dato no '
                     .'está o no se lee, va null con confianza baja. Nunca completás con valores probables ni corregís números.',
                 outputConfig: OutputConfig::with(format: ['type' => 'json_schema', 'schema' => $esquema]),
             );
