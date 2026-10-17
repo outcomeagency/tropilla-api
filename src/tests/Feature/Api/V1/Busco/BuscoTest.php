@@ -30,7 +30,7 @@ it('Busco: publicar → calza con la hacienda (aviso) → el productor responde 
 
     Sanctum::actingAs($this->dueno);
     $d = $this->getJson("{$this->base}/demandas")->assertOk()->assertJsonCount(1, 'data')->json('data.0');
-    expect($d['puntaje'])->toBe(100)->and($d['respondida'])->toBeFalse()->and($d['busco']['comprador'])->toBe(['tipo' => 'exportador', 'pais' => 'CN'])
+    expect($d['puntaje'])->toBe(100)->and($d['respondida'])->toBeFalse()->and($d['busco']['comprador'])->toBe(['tipo' => 'exportador', 'pais' => 'CN', 'validacion_cuit_estado' => 'pendiente'])
         ->and($d['motivo']['cabezas'])->toBe(30);
     $this->postJson("{$this->base}/demandas/{$b['id']}/respuestas", ['mensaje' => 'Tenemos 30 bubillos Mediterráneos, entrega en noviembre.'])->assertCreated()
         ->assertJsonPath('data.establecimiento.slug', 'la-esperanza');

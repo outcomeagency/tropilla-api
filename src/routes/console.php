@@ -39,3 +39,4 @@ Schedule::command('telegram:limpiar')->hourly()->withoutOverlapping();
 
 // TPA-72: depura el detalle de las consultas de contraparte vencida la retención (queda el registro de quién consultó y para qué).
 Schedule::command('contrapartes:depurar')->dailyAt('05:00')->timezone('America/Argentina/Buenos_Aires')->withoutOverlapping();
+Schedule::command('compradores:revalidar-cuit --limite=100')->dailyAt('05:20')->timezone('America/Argentina/Buenos_Aires')->withoutOverlapping();

@@ -28,6 +28,8 @@ class ConsultaResource extends JsonResource
             'id' => $c->id, 'origen' => $c->origen, 'estado' => $c->estado, 'idioma' => $c->idioma,
             'nombre' => $c->nombre, 'empresa' => $c->empresa, 'pais' => $c->pais, 'email' => $c->email, 'telefono' => $c->telefono,
             'tipo_comprador' => $c->tipo_comprador, 'volumen' => $c->volumen, 'mensaje' => $c->mensaje,
+            // Las consultas públicas no están vinculadas a una cuenta compradora ni aportan CUIT; nunca inferimos identidad.
+            'validacion_cuit_estado' => 'pendiente',
             'oferta' => $oferta ? ['id' => $oferta->id, 'titulo' => $tituloOferta] : null,
             'contrato' => $c->contrato_id ? ['id' => $c->contrato_id] : null,
             'whatsapp_url' => $tel ? 'https://wa.me/'.$tel.'?text='.rawurlencode($texto) : null,

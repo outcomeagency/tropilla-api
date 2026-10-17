@@ -3,17 +3,22 @@
 namespace App\Http\Controllers\Api\V1\Comprador;
 
 use App\Casts\PgTextArray;
+use App\Domain\Contrapartes\Cuit;
+use App\Domain\Contrapartes\Fuentes\BcraCentralDeudores;
 use App\Domain\Contratos\Actions\GestionarEntrega;
 use App\Domain\Contratos\Actions\GestionarTomas;
 use App\Domain\Contratos\ConsultasContratos;
 use App\Domain\Establecimientos\Models\Establecimiento;
+use App\Domain\Sistema\Actions\RegistrarAuditoria;
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Support\Formato;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Cuenta liviana de comprador y toma de tokens (TPA-57). El comprador no tiene membresía en el establecimiento: toma por código
@@ -28,13 +33,31 @@ class CompradorController extends Controller
         return response()->json(['data' => self::comprador($c)]);
     }
 
-    public function guardarPerfil(Request $request): JsonResponse
+    public function guardarPerfil(Request $request, RegistrarAuditoria $auditoria): JsonResponse
     {
         $d = $request->validate(['empresa' => ['required', 'string', 'min:2', 'max:200'], 'tipo' => ['required', 'in:frigorifico,exportador,gastronomico,institucion,productor,otro'],
-            'pais' => ['required', 'string', 'size:2', 'alpha'], 'idiomas' => ['sometimes', 'array'], 'idiomas.*' => ['in:es,en,pt'], 'volumen_habitual' => ['sometimes', 'nullable', 'string', 'max:200']]);
+            'pais' => ['required', 'string', 'size:2', 'alpha'], 'idiomas' => ['sometimes', 'array'], 'idiomas.*' => ['in:es,en,pt'], 'volumen_habitual' => ['sometimes', 'nullable', 'string', 'max:200'],
+            'cuit' => ['required', 'string', 'regex:/^[0-9-]{11,13}$/', function ($attribute, $value, $fail) {
+                if (! Cuit::valido($value)) {
+                    $fail('El CUIT no es válido. Revisá sus 11 dígitos.');
+                }
+            }],
+            'razon_social' => ['required', 'string', 'min:2', 'max:200'], 'consentimiento_cuit' => ['accepted']]);
+        $cuit = preg_replace('/\D/', '', $d['cuit']);
+        if (DB::table('compradores')->where('cuit_hash', hash('sha256', $cuit))->where('usuario_id', '<>', $request->user()->id)->exists()) {
+            throw ValidationException::withMessages(['cuit' => 'Ese CUIT ya está asociado a otra cuenta.']);
+        }
+        $fuente = app(BcraCentralDeudores::class)->consultar($cuit);
+        $denominacion = $fuente['datos']['denominacion'] ?? null;
+        $coincide = is_string($denominacion) && mb_strtolower(trim($denominacion)) === mb_strtolower(trim($d['razon_social']));
+        $estado = $fuente['estado'] !== 'ok' || ! $denominacion ? 'pendiente' : ($coincide ? 'validado' : 'inconsistente');
         $idiomas = '{'.implode(',', array_values(array_unique($d['idiomas'] ?? [$request->user()->idioma ?? 'es']))).'}';
         DB::table('compradores')->updateOrInsert(['usuario_id' => $request->user()->id], ['empresa' => $d['empresa'], 'tipo' => $d['tipo'], 'pais' => strtoupper($d['pais']),
-            'idiomas' => $idiomas, 'volumen_habitual' => $d['volumen_habitual'] ?? null, 'updated_at' => now(), 'created_at' => now()]);
+            'idiomas' => $idiomas, 'volumen_habitual' => $d['volumen_habitual'] ?? null, 'cuit_cifrado' => Crypt::encryptString($cuit), 'cuit_hash' => hash('sha256', $cuit),
+            'razon_social_declarada' => $d['razon_social'], 'razon_social_informada' => $denominacion, 'validacion_cuit_estado' => $estado, 'validacion_cuit_fuente' => 'bcra_central_deudores',
+            'validacion_cuit_en' => $fuente['consultado_en'], 'consentimiento_cuit' => true, 'consentimiento_cuit_en' => now(), 'updated_at' => now()]);
+        $auditoria->handle(null, (string) $request->user()->id, 'validacion_cuit_comprador', (string) $request->user()->id, 'consulta', null,
+            ['cuit_hash' => hash('sha256', $cuit), 'fuente' => 'bcra_central_deudores', 'estado_fuente' => $fuente['estado'], 'estado_validacion' => $estado, 'consentimiento' => true]);
 
         return $this->perfil($request);
     }
@@ -109,7 +132,9 @@ class CompradorController extends Controller
     /** @return array<string, mixed> */
     public static function comprador(object $c): array
     {
-        return ['empresa' => $c->empresa, 'tipo' => $c->tipo, 'pais' => $c->pais, 'idiomas' => PgTextArray::parse($c->idiomas), 'volumen_habitual' => $c->volumen_habitual];
+        return ['empresa' => $c->empresa, 'tipo' => $c->tipo, 'pais' => $c->pais, 'idiomas' => PgTextArray::parse($c->idiomas), 'volumen_habitual' => $c->volumen_habitual,
+            'validacion_cuit' => ['estado' => $c->validacion_cuit_estado ?? 'pendiente', 'razon_social_informada' => $c->razon_social_informada ?? null,
+                'fuente' => $c->validacion_cuit_fuente ?? null, 'validado_en' => $c->validacion_cuit_en ?? null]];
     }
 
     // ---- Seguir productores ----

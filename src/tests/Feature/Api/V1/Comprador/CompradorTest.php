@@ -28,7 +28,7 @@ it('cuenta liviana → precio especial visible → tomar N tokens (≤ libres, i
     Sanctum::actingAs($this->comprador);
     $this->postJson("/api/v1/contratos/{$this->codigo}/tomas", ['tokens' => 10])->assertStatus(403)->assertJsonPath('code', 'perfil_comprador_requerido');
     $this->getJson('/api/v1/me/comprador')->assertNotFound();
-    $this->putJson('/api/v1/me/comprador', ['empresa' => 'Frigorífico del Litoral', 'tipo' => 'frigorifico', 'pais' => 'ar', 'idiomas' => ['es', 'en']])->assertOk()
+    $this->putJson('/api/v1/me/comprador', ['empresa' => 'Frigorífico del Litoral', 'tipo' => 'frigorifico', 'pais' => 'ar', 'idiomas' => ['es', 'en'], 'cuit' => '30-50001091-2', 'razon_social' => 'Frigorífico del Litoral', 'consentimiento_cuit' => true])->assertOk()
         ->assertJsonPath('data.pais', 'AR')->assertJsonPath('data.idiomas', ['es', 'en']);
     $this->getJson("/api/v1/public/contratos/{$this->codigo}")->assertJsonPath('data.precio_especial_kg', '4784')->assertJsonPath('data.anticipo_por_token', '143520');
 
@@ -56,7 +56,7 @@ it('cuenta liviana → precio especial visible → tomar N tokens (≤ libres, i
 
 it('la toma sin «recibí» se libera a las 48 h y los tokens vuelven a estar libres; devolución confirmada; entrega confirmada por el comprador', function () {
     Sanctum::actingAs($this->comprador);
-    $this->putJson('/api/v1/me/comprador', ['empresa' => 'Exportadora', 'tipo' => 'exportador', 'pais' => 'CN'])->assertOk();
+    $this->putJson('/api/v1/me/comprador', ['empresa' => 'Exportadora', 'tipo' => 'exportador', 'pais' => 'CN', 'cuit' => '30-50001091-2', 'razon_social' => 'Exportadora', 'consentimiento_cuit' => true])->assertOk();
     $vencera = $this->postJson("/api/v1/contratos/{$this->codigo}/tomas", ['tokens' => 30])->assertCreated()->json('data.id');
     $this->travelTo('2026-10-22 12:00:01');
     $this->artisan('contratos:liberar-tomas')->expectsOutput('Tomas liberadas: 1');
