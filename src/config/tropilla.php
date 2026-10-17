@@ -64,6 +64,8 @@ return [
 
     // Alertas climáticas (TPA-70): fuentes gratuitas sin key, cache por punto y recálculo cada 6 h (scheduler `clima:actualizar`).
     'clima' => [
+        // Probabilidad ENSO (NOAA CPC) desde la que el escenario de lluvia o sequía del NEA pasa a amarillo (TPA-81).
+        'enso_umbral_pct' => (int) env('TROPILLA_CLIMA_ENSO_UMBRAL_PCT', 60),
         'open_meteo_forecast_url' => env('TROPILLA_CLIMA_FORECAST_URL', 'https://api.open-meteo.com/v1/forecast'),
         'open_meteo_archive_url' => env('TROPILLA_CLIMA_ARCHIVE_URL', 'https://archive-api.open-meteo.com/v1/archive'),
         'noaa_oni_url' => env('TROPILLA_CLIMA_ONI_URL', 'https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt'),

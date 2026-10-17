@@ -72,9 +72,11 @@ final class FuentesEscenarios
             foreach ((new \DOMXPath($doc))->query('//table//tr') ?: [] as $row) {
                 $celdas = array_map(fn ($cell) => trim($cell->textContent), iterator_to_array($row->childNodes));
                 $celdas = array_values(array_filter($celdas, fn ($cell) => $cell !== ''));
-                if (count($celdas) < 6 || ! preg_match('/^[A-Z]{3}$/', $celdas[0])) {
+                // La tabla oficial trae la temporada en un <th> con tooltip («SON Sep Oct Nov») y tres <td> con La Niña, neutral y El Niño.
+                if (count($celdas) < 4 || ! preg_match('/^([A-Z]{3})\b/', $celdas[0], $temporada)) {
                     continue;
                 }
+                $celdas[0] = $temporada[1];
                 $numeros = array_values(array_filter($celdas, fn ($cell) => preg_match('/^\d{1,3}$/', $cell)));
                 if (count($numeros) >= 3) {
                     $ultimos = array_slice($numeros, -3);

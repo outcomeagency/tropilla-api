@@ -55,3 +55,25 @@ it('combina señales de NASA, MODIS y NOAA y usa el resumen IA falso en pruebas'
     Http::assertSent(fn (HttpRequest $r) => str_contains($r->url(), 'modis.ornl.gov'));
     Http::assertSent(fn (HttpRequest $r) => str_contains($r->url(), 'cpc.ncep.noaa.gov'));
 });
+
+it('lee la tabla oficial de NOAA CPC y marca el exceso hídrico con El Niño probable', function () {
+    Cache::flush();
+    FakeExtractor::reset();
+    Http::fake([
+        'power.larc.nasa.gov/*' => Http::response(['properties' => ['parameter' => ['PRECTOTCORR' => ['20261001' => 4.0]]]]),
+        'modis.ornl.gov/*' => Http::response([], 500),
+        'www.cpc.ncep.noaa.gov/*' => Http::response('<table id="probabilities-table"><tbody><tr class="cell-headings"><th scope="col">Season</th><th scope="col">La Niña</th><th scope="col">Neutral</th><th scope="col">El Niño</th></tr>'
+            .'<tr><th scope="row"><abbr>SON <span class="tooltip">Sep Oct Nov</span></abbr></th><td>0</td><td>0</td><td>100</td></tr>'
+            .'<tr><th scope="row"><abbr>OND <span class="tooltip">Oct Nov Dec</span></abbr></th><td>0</td><td>2</td><td>98</td></tr></tbody></table>'),
+    ]);
+
+    $salida = app(GenerarEscenariosClimaticos::class)->handle($this->est);
+    $porCodigo = collect($salida['escenarios'])->keyBy('codigo');
+
+    expect($salida['fuentes']['noaa_enso']['periodos'])->toHaveCount(2)
+        ->and($salida['fuentes']['noaa_enso']['periodos'][1])->toBe(['temporada' => 'OND', 'probabilidades' => ['la_nina_pct' => 0, 'neutral_pct' => 2, 'el_nino_pct' => 98]])
+        ->and($porCodigo['exceso_hidrico']['nivel'])->toBe('amarillo')
+        ->and($porCodigo['exceso_hidrico']['descripcion'])->toContain('100 % a El Niño para SON')
+        ->and($porCodigo['sequia']['nivel'])->toBe('gris')
+        ->and($porCodigo['exceso_hidrico']['probabilidad'])->toBeNull();
+});
