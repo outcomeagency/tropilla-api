@@ -155,7 +155,8 @@ final class PerfilPublicoBuilder
                 'raza' => $a->raza, 'especie' => $a->especie_codigo, 'sexo' => $a->sexo ?? null, 'centro' => $a->centro, 'fecha_nacimiento' => $a->fecha_nacimiento,
                 'peso_kg' => $nivel === 0 ? $a->peso_kg : null, 'peso_fecha' => $nivel === 0 ? $a->peso_fecha : null,
                 'condicion_corporal' => $nivel === 0 ? $a->cc_valor : null, 'partos' => $nivel === 0 ? $a->partos : null,
-                'crias' => $nivel === 0 ? DB::table('reproductores_externos')->where('establecimiento_id', $est)->where(fn ($q) => $q->where('madre_externa_id', $id)->orWhere('padre_externa_id', $id))->count() : null, 'foto' => null];
+                'crias' => $nivel === 0 ? DB::table('reproductores_externos')->where('establecimiento_id', $est)->where(fn ($q) => $q->where('madre_externa_id', $id)->orWhere('padre_externa_id', $id))->count() : null,
+                'foto' => $nivel === 0 ? Fotos::publica($a->foto_sha256 ?? null, $locale) : null];
             $madre = $a->madre_id ? ['interno', $a->madre_id] : ($a->madre_externa_id ? ['externo', $a->madre_externa_id] : null);
             $padre = $a->padre_id ? ['interno', $a->padre_id] : ($a->padre_externa_id ? ['externo', $a->padre_externa_id] : null);
         } else {

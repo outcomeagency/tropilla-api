@@ -110,7 +110,9 @@ class DemoRegionalSeeder extends Seeder
             $niveles[$gen] = [];
             for ($i = 0; $i < $cantidad; $i++) {
                 $rp = "TPA76-BOV-G{$gen}-".str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT);
-                $fila = DB::table('reproductores_externos')->where('establecimiento_id', $est->id)->where('rp', $rp)->first();
+                // El RP visible puede haberse corregido (PerfilPublicoDemoSeeder); el registro declarado es la clave estable.
+                $registro = "BRAF-NEA-{$gen}-".str_pad((string) ($i + 1), 3, '0', STR_PAD_LEFT);
+                $fila = DB::table('reproductores_externos')->where('establecimiento_id', $est->id)->where(fn ($q) => $q->where('rp', $rp)->orWhere('registro_genealogico', $registro))->first();
                 if (! $fila) {
                     $id = (string) Str::uuid7();
                     $madre = $gen === 1 ? null : $niveles[$gen - 1][($i * 2) % count($niveles[$gen - 1])];
