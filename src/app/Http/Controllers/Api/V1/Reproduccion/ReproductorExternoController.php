@@ -60,7 +60,9 @@ final class ReproductorExternoController extends Controller
     {
         Gate::authorize('hacienda.corregir', $establecimiento);
         $actual = DB::table('reproductores_externos')->where('establecimiento_id', $establecimiento->id)->where('id', $reproductor)->first() ?? abort(404);
-        if ($actual->archivado_en !== null) return response()->noContent();
+        if ($actual->archivado_en !== null) {
+            return response()->noContent();
+        }
 
         return DB::transaction(function () use ($actual, $establecimiento, $cambio, $request) {
             $version = $actual->row_version + 1;
@@ -76,7 +78,7 @@ final class ReproductorExternoController extends Controller
 
     private function validar(Request $request, Establecimiento $establecimiento): array
     {
-        $d = $request->validate(['nombre' => ['required', 'string', 'max:255'], 'rp' => ['nullable', 'string', 'max:100'], 'registro_genealogico' => ['nullable', 'string', 'max:120'], 'raza' => ['nullable', 'string', 'max:120'], 'especie_codigo' => ['required', 'string', 'max:32'], 'centro' => ['nullable', 'string', 'max:255'], 'madre_id' => ['nullable', 'uuid'], 'padre_id' => ['nullable', 'uuid'], 'madre_externa_id' => ['nullable', 'uuid'], 'padre_externa_id' => ['nullable', 'uuid']]);
+        $d = $request->validate(['nombre' => ['required', 'string', 'max:255'], 'rp' => ['nullable', 'string', 'max:100'], 'registro_genealogico' => ['nullable', 'string', 'max:120'], 'raza' => ['nullable', 'string', 'max:120'], 'especie_codigo' => ['required', 'string', 'max:32'], 'sexo' => ['nullable', 'in:M,H'], 'centro' => ['nullable', 'string', 'max:255'], 'fecha_nacimiento' => ['nullable', 'date'], 'peso_kg' => ['nullable', 'numeric', 'min:0', 'max:99999'], 'peso_fecha' => ['nullable', 'date'], 'cc_valor' => ['nullable', 'numeric', 'min:0', 'max:10'], 'partos' => ['nullable', 'integer', 'min:0', 'max:100'], 'madre_id' => ['nullable', 'uuid'], 'padre_id' => ['nullable', 'uuid'], 'madre_externa_id' => ['nullable', 'uuid'], 'padre_externa_id' => ['nullable', 'uuid']]);
         foreach (['madre_id', 'padre_id'] as $k) {
             if (! empty($d[$k]) && ! DB::table('animales')->where('establecimiento_id', $establecimiento->id)->where('id', $d[$k])->exists()) {
                 throw ValidationException::withMessages([$k => ['Animal interno inexistente.']]);

@@ -7684,6 +7684,37 @@ paths:
                 required: [data]
                 additionalProperties: false
         '404': {$ref: '#/components/responses/NoEncontrado'}
+  /public/establecimientos/{slug}/{bloque}:
+    get:
+      tags: [Público]
+      summary: Bloque ampliado del perfil (solo si el productor lo publicó)
+      operationId: get_public_establecimientos_slug_bloque
+      security: []
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema: {type: string}
+      - name: bloque
+        in: path
+        required: true
+        schema: {type: string, enum: [reproductores, composicion, indicadores, galeria]}
+      - name: locale
+        in: query
+        required: false
+        schema: {type: string, enum: [es, en, pt]}
+      responses:
+        '200':
+          description: Bloque opt-in; sin publicación devuelve null o lista vacía
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {oneOf: [{$ref: '#/components/schemas/PerfilReproductoresPublicos'}, {$ref: '#/components/schemas/PerfilComposicionPublica'}, {$ref: '#/components/schemas/PerfilIndicadoresPublicos'}, {$ref: '#/components/schemas/PerfilGaleriaPublica'}]}
+                required: [data]
+                additionalProperties: false
+        '404': {$ref: '#/components/responses/NoEncontrado'}
   /public/establecimientos/{slug}/ofertas:
     get:
       tags: [Público]
@@ -9721,7 +9752,13 @@ components:
         registro_genealogico: {type: [string, 'null']}
         raza: {type: [string, 'null']}
         especie_codigo: {type: string}
+        sexo: {type: [string, 'null'], enum: [M, H, null]}
         centro: {type: [string, 'null']}
+        fecha_nacimiento: {type: [string, 'null'], format: date}
+        peso_kg: {type: [number, 'null']}
+        peso_fecha: {type: [string, 'null'], format: date}
+        cc_valor: {type: [number, 'null']}
+        partos: {type: [integer, 'null']}
         madre_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
         padre_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
         madre_externa_id: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
@@ -12126,6 +12163,97 @@ components:
         row_version: {type: integer}
       required: [row_version]
       additionalProperties: false
+    PerfilReproductoresPublicos:
+      type: array
+      items:
+        type: object
+        properties:
+          tipo: {type: string, enum: [interno, externo]}
+          nombre: {type: [string, 'null']}
+          rp: {type: [string, 'null']}
+          registro: {type: [string, 'null']}
+          raza: {type: [string, 'null']}
+          especie: {type: [string, 'null']}
+          sexo: {type: [string, 'null'], enum: [M, H, null]}
+          centro: {type: [string, 'null']}
+          fecha_nacimiento: {type: [string, 'null'], format: date}
+          peso_kg: {type: [number, 'null']}
+          peso_fecha: {type: [string, 'null'], format: date}
+          condicion_corporal: {type: [number, 'null']}
+          partos: {type: [integer, 'null']}
+          crias: {type: [integer, 'null']}
+          foto: {oneOf: [{$ref: '#/components/schemas/Foto'}, {type: 'null'}]}
+          madre: {oneOf: [{$ref: '#/components/schemas/PerfilReproductorPublico'}, {type: 'null'}]}
+          padre: {oneOf: [{$ref: '#/components/schemas/PerfilReproductorPublico'}, {type: 'null'}]}
+        additionalProperties: false
+    PerfilReproductorPublico:
+      type: object
+      properties:
+        tipo: {type: string, enum: [interno, externo]}
+        nombre: {type: [string, 'null']}
+        rp: {type: [string, 'null']}
+        registro: {type: [string, 'null']}
+        raza: {type: [string, 'null']}
+        especie: {type: [string, 'null']}
+        sexo: {type: [string, 'null'], enum: [M, H, null]}
+        centro: {type: [string, 'null']}
+        fecha_nacimiento: {type: [string, 'null'], format: date}
+        peso_kg: {type: [number, 'null']}
+        peso_fecha: {type: [string, 'null'], format: date}
+        condicion_corporal: {type: [number, 'null']}
+        partos: {type: [integer, 'null']}
+        crias: {type: [integer, 'null']}
+        foto: {oneOf: [{$ref: '#/components/schemas/Foto'}, {type: 'null'}]}
+        madre: {oneOf: [{$ref: '#/components/schemas/PerfilReproductorPublico'}, {type: 'null'}]}
+        padre: {oneOf: [{$ref: '#/components/schemas/PerfilReproductorPublico'}, {type: 'null'}]}
+      additionalProperties: false
+    PerfilComposicionPublica:
+      type: object
+      properties:
+        por_especie: {type: array, items: {type: object, additionalProperties: true}}
+        razas: {type: array, items: {type: object, additionalProperties: true}}
+      additionalProperties: false
+    PerfilIndicadoresPublicos:
+      type: object
+      properties:
+        prenez_ultimo_tacto:
+          type: [object, 'null']
+          properties:
+            porcentaje: {type: number}
+            evaluados: {type: integer}
+            fecha: {type: string, format: date}
+            fuente: {type: string}
+          additionalProperties: false
+        partos_por_temporada:
+          type: array
+          items:
+            type: object
+            properties:
+              temporada: {type: integer}
+              partos: {type: integer}
+              fuente: {type: string}
+              fecha: {type: string, format: date}
+            additionalProperties: false
+        anios_en_tropilla: {type: integer}
+        antiguedad_fuente:
+          type: object
+          properties:
+            fuente: {type: string}
+            fecha: {type: string, format: date}
+          additionalProperties: false
+        plan_sanitario:
+          type: [object, 'null']
+          properties:
+            texto: {type: string}
+            fuente: {type: string}
+            fecha: {type: string, format: date}
+          additionalProperties: false
+      additionalProperties: false
+    PerfilGaleriaPublica:
+      type: object
+      properties:
+        fotos: {type: array, items: {$ref: '#/components/schemas/Foto'}}
+      additionalProperties: false
     PerfilPublico:
       type: object
       properties:
@@ -12188,6 +12316,10 @@ components:
                   oneOf:
                   - {$ref: '#/components/schemas/Decimal'}
                   - {type: 'null'}
+            reproductores: {type: [array, 'null'], items: {$ref: '#/components/schemas/PerfilReproductorPublico'}}
+            composicion: {oneOf: [{$ref: '#/components/schemas/PerfilComposicionPublica'}, {type: 'null'}]}
+            indicadores: {oneOf: [{$ref: '#/components/schemas/PerfilIndicadoresPublicos'}, {type: 'null'}]}
+            galeria: {oneOf: [{$ref: '#/components/schemas/PerfilGaleriaPublica'}, {type: 'null'}]}
             sanidad:
               type: [object, 'null']
               properties:

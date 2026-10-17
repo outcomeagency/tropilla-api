@@ -74,6 +74,7 @@ final class Fotos
     public static function esPublica(string $sha): bool
     {
         return DB::table('perfiles_publicos')->where('publicado', true)->whereRaw('? = ANY(fotos)', [$sha])->exists()
+            || DB::table('perfiles_publicos')->where('publicado', true)->whereRaw("(secciones->'reproductores'->>'activa' = 'true' OR secciones->'galeria'->>'activa' = 'true') AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(secciones->'reproductores'->'ids', '[]'::jsonb)) r WHERE r->>'tipo' = 'interno' AND EXISTS (SELECT 1 FROM animales_estado a WHERE a.animal_id::text = r->>'id' AND a.foto_sha256 = ?))", [$sha])->exists()
             || DB::table('profesionales')->where('publico', true)->where('foto_sha256', $sha)->exists()
             || DB::table('ofertas as o')->join('oferta_publicaciones as op', fn ($j) => $j->on('op.oferta_id', '=', 'o.id')->on('op.version', '=', 'o.publicacion_vigente'))
                 ->whereIn('o.estado', ['publicada', 'reservada', 'vendida'])->whereRaw("jsonb_exists(op.contenido->'fotos', ?)", [$sha])->exists();

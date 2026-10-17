@@ -101,6 +101,7 @@ Route::prefix('v1')->name('v1.')->group(function () {
         Route::get('establecimientos/{slug}', [PerfilPublicoController::class, 'show'])->name('establecimientos.show');
         Route::get('establecimientos/{slug}/ofertas', [PerfilPublicoController::class, 'ofertas'])->name('establecimientos.ofertas');
         Route::get('establecimientos/{slug}/contratos', [PerfilPublicoController::class, 'contratos'])->name('establecimientos.contratos');
+        Route::get('establecimientos/{slug}/{bloque}', [PerfilPublicoController::class, 'bloque'])->where('bloque', 'reproductores|composicion|indicadores|galeria')->name('establecimientos.bloque');
         Route::get('contratos/{codigo}', [ContratoPublicoController::class, 'show'])->where('codigo', '[0-9A-Za-z]{10}')->name('contratos.show');
         Route::get('buscos', [BuscoController::class, 'publicos'])->name('buscos.index');
         Route::get('profesionales/{slug}', [ProfesionalController::class, 'publico'])->where('slug', '[a-z0-9-]{3,60}')->name('profesionales.show');

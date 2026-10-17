@@ -50,7 +50,19 @@ final class GestionarPerfil
             if (isset($d['secciones'])) {
                 $actual = json_decode($p->secciones, true) ?: Perfiles::seccionesDefault();
                 foreach ($d['secciones'] as $s => $conf) {
-                    $actual[$s] = [...($actual[$s] ?? []), ...array_intersect_key((array) $conf, array_flip(['activa', 'modo']))];
+                    if ($s === 'reproductores' && isset($conf['ids'])) {
+                        foreach ($conf['ids'] as $ref) {
+                            $tabla = $ref['tipo'] === 'interno' ? 'animales' : 'reproductores_externos';
+                            $q = DB::table($tabla)->where('id', $ref['id'])->where('establecimiento_id', $est->id);
+                            if ($ref['tipo'] === 'externo') {
+                                $q->whereNull('archivado_en');
+                            }
+                            if (! $q->exists()) {
+                                throw ApiException::validacion(__('El reproductor seleccionado no pertenece a este establecimiento.'), ['secciones.reproductores.ids' => [$ref['id']]]);
+                            }
+                        }
+                    }
+                    $actual[$s] = [...($actual[$s] ?? []), ...array_intersect_key((array) $conf, array_flip(['activa', 'modo', 'ids']))];
                 }
                 $cambios['secciones'] = json_encode($actual);
             }

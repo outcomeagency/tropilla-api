@@ -7,6 +7,7 @@ use App\Domain\Perfil\Services\PerfilPublicoBuilder;
 use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\Publico\OfertaPublicaResource;
+use App\Http\Resources\V1\Publico\PerfilBloqueResource;
 use App\Support\Leyenda;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
@@ -42,6 +43,15 @@ class PerfilPublicoController extends Controller
 
         return response()->json(['data' => DB::table('contratos_futuro')->where('establecimiento_id', $p->establecimiento_id)->whereIn('estado', ContratoPublicoController::VISIBLES)
             ->orderBy('fecha_entrega')->get()->map(fn ($c) => ConsultasContratos::publico($c, $comprador, $locale))->all()], 200, [], JSON_UNESCAPED_UNICODE);
+    }
+
+    public function bloque(Request $request, string $slug, string $bloque): PerfilBloqueResource
+    {
+        abort_unless(in_array($bloque, ['reproductores', 'composicion', 'indicadores', 'galeria'], true), 404);
+        $perfil = $this->perfil($slug);
+        $datos = PerfilPublicoBuilder::armar($perfil, Leyenda::locale($request->query('locale')));
+
+        return new PerfilBloqueResource($datos['secciones'][$bloque] ?? null);
     }
 
     private function perfil(string $slug): object
