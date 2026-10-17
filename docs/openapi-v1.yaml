@@ -688,6 +688,36 @@ paths:
         '401': {$ref: '#/components/responses/NoAutenticado'}
         '403': {$ref: '#/components/responses/Prohibido'}
         '404': {$ref: '#/components/responses/NoEncontrado'}
+  /establecimientos/{establecimiento}/clima/escenarios:
+    get:
+      tags: [Establecimientos]
+      summary: Escenarios climáticos y plan orientativo
+      operationId: get_establecimientos_establecimiento_clima_escenarios
+      description: '**Ability:** `clima.ver`. TPA-81. Consulta asíncrona con caché; fuentes NASA POWER, MODIS/ORNL y NOAA CPC. ENSO no representa probabilidad local. No reemplaza decisión productiva ni asesoramiento profesional.'
+      parameters:
+      - name: establecimiento
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Último análisis disponible
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: {$ref: '#/components/schemas/EscenariosClimaticos'}
+                  meta: {type: object, additionalProperties: true}
+                required: [data, meta]
+        '202':
+          description: El cálculo está en cola
+          content:
+            application/json:
+              schema: {type: object, additionalProperties: true}
+        '401': {$ref: '#/components/responses/NoAutenticado'}
+        '403': {$ref: '#/components/responses/Prohibido'}
+        '404': {$ref: '#/components/responses/NoEncontrado'}
   /establecimientos/{establecimiento}/clima/reglas:
     get:
       tags: [Establecimientos]
@@ -9234,6 +9264,21 @@ components:
         enso: {type: object, nullable: true, description: 'fase (el_nino|la_nina|neutral), oni, temporada, anio, obtenido_en, fuente, fuente_url'}
         fuentes: {type: array, items: {type: object, properties: {nombre: {type: string}, url: {type: string}, licencia: {type: string}, cadencia: {type: string}}}}
         errores: {type: array, items: {type: object, properties: {fuente: {type: string}, mensaje: {type: string}}}}
+    EscenariosClimaticos:
+      type: object
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        zona: {type: string}
+        emitido_en: {$ref: '#/components/schemas/FechaHora'}
+        horizonte_meses: {type: array, items: {type: integer}, minItems: 2, maxItems: 2}
+        escenarios: {type: array, items: {type: object, additionalProperties: true}}
+        plan_respuesta: {type: array, items: {type: object, properties: {accion: {type: string}, href: {type: string}, relacion: {type: string}, orientacion: {type: string}}, required: [accion, href, relacion], additionalProperties: false}}
+        resumen: {type: string}
+        proveedor_ia: {type: string}
+        fuentes: {type: object, additionalProperties: true}
+        aviso: {type: string}
+      required: [id, zona, emitido_en, horizonte_meses, escenarios, plan_respuesta, resumen, proveedor_ia, fuentes, aviso]
+      additionalProperties: false
     Inicio:
       type: object
       properties:
